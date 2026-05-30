@@ -103,3 +103,28 @@ TEST_CASE("InputStage: input gain scales output", "[audio][input_stage]") {
     // 0.25 * 10^(6/20) ≈ 0.498
     REQUIRE_THAT(peak, WithinAbs(0.498f, 0.02f));
 }
+
+#include "harness/RealtimeSentinel.h"
+using guitar_dsp::tests::RealtimeSentinel;
+
+TEST_CASE("InputStage: zero allocations on audio thread", "[audio][input_stage][realtime]") {
+    InputStage stage;
+    stage.prepare(48000.0, 512);
+    stage.setNoiseGateThreshold(-40.0f);
+    stage.setInputGainDb(3.0f);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> buf(512);
+
+    RealtimeSentinel sentinel;
+    sentinel.markCurrentThreadAsRealtime();
+
+    // Process 10 seconds of audio in 512-sample blocks.
+    for (int i = 0; i < 938; ++i) {
+        gen.sine(440.0f, 0.5f, buf.data(), buf.size());
+        stage.process(buf.data(), buf.data(), buf.size());
+    }
+
+    sentinel.unmarkCurrentThreadAsRealtime();
+    REQUIRE(sentinel.violations() == 0);
+}
