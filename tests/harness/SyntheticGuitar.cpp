@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <random>
 #include <vector>
 
 namespace guitar_dsp::tests {
@@ -48,8 +49,11 @@ void SyntheticGuitar::pluck(float frequencyHz, float decaySeconds, float amplitu
     // Karplus-Strong with simple 2-tap lowpass feedback.
     const int delayLen = std::max(2, static_cast<int>(sampleRate_ / frequencyHz));
     std::vector<float> line(static_cast<std::size_t>(delayLen));
-    // Initial noise burst.
-    for (auto& s : line) s = amplitude * (2.0f * (std::rand() / float(RAND_MAX)) - 1.0f);
+    // Initial noise burst, deterministic across runs so pluck() output is
+    // reproducible (matters once a golden-file test consumes it).
+    std::mt19937 rng{0x70'6c'75'63'6bu}; // "pluck"
+    std::uniform_real_distribution<float> dist{-amplitude, amplitude};
+    for (auto& s : line) s = dist(rng);
 
     const float decayFactor = static_cast<float>(
         std::pow(0.5, 1.0 / (decaySeconds * sampleRate_ / delayLen)));
