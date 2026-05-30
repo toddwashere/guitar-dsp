@@ -37,5 +37,5 @@ add_subdirectory(external/Catch2)
 add_subdirectory(src)
 
 # Test tree
-# add_subdirectory(tests)  # uncommented in Task 6 when tests/CMakeLists.txt is added
 enable_testing()
+add_subdirectory(tests)
