@@ -1,0 +1,31 @@
+# Build artifacts
+build/
+cmake-build-*/
+*.dSYM/
+
+# JUCE
+JuceLibraryCode/
+Builds/
+
+# macOS
+.DS_Store
+*.swp
+
+# IDEs
+.vscode/
+.idea/
+*.xcodeproj/
+*.xcworkspace/
+
+# Catch2 ignore (we vendor it as submodule)
+external/Catch2/build/
+
+# Test artifacts
+tests/output/
+*.junit.xml
+
+# Python (for tools/tts_prebake later)
+__pycache__/
+*.pyc
+.venv/
+venv/
