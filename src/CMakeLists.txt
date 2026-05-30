@@ -2,6 +2,7 @@
 # Modules added here as they are implemented.
 add_library(guitar_dsp_audio STATIC
     audio/InputStage.cpp
+    audio/Mixer.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC

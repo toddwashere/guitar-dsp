@@ -4,6 +4,7 @@ add_executable(guitar_dsp_tests
     unit/test_synthetic_guitar.cpp
     unit/test_golden_file.cpp
     unit/audio/test_input_stage.cpp
+    unit/audio/test_mixer.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
