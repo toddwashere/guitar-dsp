@@ -38,16 +38,10 @@ void Mixer::setDryWet(float dryWet) {
     dryWet = std::clamp(dryWet, 0.0f, 1.0f);
     targetDryGain_ = std::cos(dryWet * kPiOverTwo);
     targetWetGain_ = std::sin(dryWet * kPiOverTwo);
-    // Snap current to target so that the first process() block starts
-    // from the correct gain. Mid-stream changes will ramp because
-    // current retains the previous value when process() is already running.
-    currentDryGain_ = targetDryGain_;
-    currentWetGain_ = targetWetGain_;
 }
 
 void Mixer::setMasterGainDb(float db) {
     targetMasterGain_ = dbToLinear(db);
-    currentMasterGain_ = targetMasterGain_;
 }
 
 void Mixer::process(const float* dry,

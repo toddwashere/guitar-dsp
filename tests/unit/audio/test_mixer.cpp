@@ -16,6 +16,7 @@ TEST_CASE("Mixer: dry=1 wet=0 is bit-exact passthrough", "[audio][mixer]") {
     mixer.prepare(48000.0, 512);
     mixer.setDryWet(0.0f);  // 0 = fully dry
     mixer.setMasterGainDb(0.0f);
+    mixer.reset();  // snap current to new target (initial state, not mid-playback)
 
     SyntheticGuitar gen{48000.0};
     std::vector<float> dry(512), wet(512, 0.0f), out(512);
@@ -32,6 +33,7 @@ TEST_CASE("Mixer: dry=0 wet=1 is bit-exact wet", "[audio][mixer]") {
     mixer.prepare(48000.0, 512);
     mixer.setDryWet(1.0f);  // 1 = fully wet
     mixer.setMasterGainDb(0.0f);
+    mixer.reset();  // snap current to new target (initial state, not mid-playback)
 
     SyntheticGuitar gen{48000.0};
     std::vector<float> dry(512, 0.0f), wet(512), out(512);
@@ -48,6 +50,7 @@ TEST_CASE("Mixer: master gain scales output", "[audio][mixer]") {
     mixer.prepare(48000.0, 512);
     mixer.setDryWet(0.0f);
     mixer.setMasterGainDb(-6.0f);  // ~0.5x
+    mixer.reset();  // snap current to new target (initial state, not mid-playback)
 
     SyntheticGuitar gen{48000.0};
     std::vector<float> dry(512), wet(512, 0.0f), out(512);
@@ -76,4 +79,32 @@ TEST_CASE("Mixer: zero allocations on audio thread", "[audio][mixer][realtime]")
         mixer.process(dry.data(), wet.data(), out.data(), out.size());
     sentinel.unmarkCurrentThreadAsRealtime();
     REQUIRE(sentinel.violations() == 0);
+}
+
+TEST_CASE("Mixer: parameter changes ramp without instant jumps", "[audio][mixer]") {
+    Mixer mixer;
+    mixer.prepare(48000.0, 512);
+    mixer.setDryWet(0.0f);
+    mixer.setMasterGainDb(0.0f);
+    mixer.reset();  // start fully dry
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> dry(512), wet(512), out(512);
+    gen.dc(1.0f, dry.data(), dry.size());
+    gen.dc(0.0f, wet.data(), wet.size());
+
+    // Process one block fully dry to establish baseline (out ≈ 1.0).
+    mixer.process(dry.data(), wet.data(), out.data(), out.size());
+    REQUIRE_THAT(out[511], WithinAbs(1.0f, 0.01f));
+
+    // Now switch to fully wet (without reset). The ramp should mean the
+    // first sample of the next block is still close to dry, not instantly
+    // wet (which would be 0).
+    mixer.setDryWet(1.0f);
+    mixer.process(dry.data(), wet.data(), out.data(), out.size());
+
+    // Sample 0: ramp barely moved, output should still be near 1.0 (dry).
+    REQUIRE(out[0] > 0.7f);
+    // Sample 511: ramp has progressed, output should be much smaller.
+    REQUIRE(out[511] < 0.3f);
 }
