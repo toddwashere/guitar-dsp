@@ -8,9 +8,9 @@ namespace guitar_dsp {
 
 namespace {
 
-constexpr float kMeterFloorDb = -60.0f;
+constexpr float kMeterFloorDb   = -60.0f;
 constexpr float kMeterCeilingDb =   0.0f;
-constexpr int   kTimerHz = 30;
+constexpr int   kTimerHz        = 30;
 
 float linearToDb(float linear) {
     if (linear < 1.0e-6f) return kMeterFloorDb;
@@ -57,103 +57,89 @@ void DiagnosticPanel::resized() {}
 juce::String DiagnosticPanel::describeAudioDevice() const {
     const auto sr = processor_.getSampleRate();
     const auto bs = processor_.getBlockSize();
-    if (sr <= 0.0) return "(audio device not yet configured)";
+    if (sr <= 0.0) return "(audio not configured)";
     const double latencyMs = 1000.0 * bs / sr;
-    return juce::String(sr, 0) + " Hz, "
-         + juce::String(bs) + " samples ("
-         + juce::String(latencyMs, 1) + " ms)";
+    return juce::String(sr, 0) + " Hz · "
+         + juce::String(bs) + " samples · "
+         + juce::String(latencyMs, 1) + " ms";
 }
 
 void DiagnosticPanel::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour::fromRGB(18, 20, 26));
 
-    auto bounds = getLocalBounds().reduced(20);
+    const auto bounds = getLocalBounds().reduced(8, 6);
     auto area = bounds;
 
-    g.setColour(juce::Colours::white);
-    g.setFont(makeFont(26.0f, true));
-    g.drawText("Guitar DSP — passthrough diagnostic",
-               area.removeFromTop(38),
-               juce::Justification::left);
+    // --- Row 1: status line (audio config + channel routing + gate) -------
+    auto statusRow = area.removeFromTop(20);
 
-    area.removeFromTop(8);
-    g.setFont(makeFont(14.0f));
-
-    auto drawRow = [&g, &area](const juce::String& label, const juce::String& value) {
-        auto row = area.removeFromTop(22);
-        const auto labelArea = row.removeFromLeft(140);
-        g.setColour(juce::Colour::fromRGB(120, 130, 150));
-        g.drawText(label, labelArea, juce::Justification::left);
-        g.setColour(juce::Colour::fromRGB(220, 225, 235));
-        g.drawText(value, row, juce::Justification::left);
-    };
-
-    drawRow("Audio I/O:", describeAudioDevice());
+    g.setFont(makeFont(13.0f, true));
+    g.setColour(juce::Colour::fromRGB(220, 225, 235));
 
     const int inCh  = processor_.getLastInputChannelCount();
     const int outCh = processor_.getLastOutputChannelCount();
-    drawRow("Input bus:",
-            juce::String(inCh) + " ch"
-            + (inCh >= 2 ? juce::String(" (downmixed L+R → mono)")
-                         : (inCh == 1 ? juce::String(" (mono passthrough)")
-                                      : juce::String(" (no input)"))));
-    drawRow("Output bus:",
-            juce::String(outCh) + " ch (mono fanned to all)");
-
-    area.removeFromTop(20);
-
-    const int meterHeight = 36;
-    auto inputMeterRow  = area.removeFromTop(meterHeight);
-    area.removeFromTop(10);
-    auto outputMeterRow = area.removeFromTop(meterHeight);
-    area.removeFromTop(20);
-
-    drawMeter(g, inputMeterRow,  "Input",  displayInputPeak_);
-    drawMeter(g, outputMeterRow, "Output", displayOutputPeak_);
-
-    auto gateRow = area.removeFromTop(28);
     const float gateGain = processor_.getGateGain();
     const bool gateOpen = gateGain > 0.5f;
-    g.setColour(juce::Colour::fromRGB(120, 130, 150));
-    g.setFont(makeFont(14.0f));
-    g.drawText("Gate:", gateRow.removeFromLeft(140), juce::Justification::left);
 
-    auto lampBounds = gateRow.removeFromLeft(20).reduced(2);
+    const juce::String statusText =
+        describeAudioDevice()
+      + juce::String("   ·   I:") + juce::String(inCh)
+      + (inCh >= 2 ? juce::String("→mono") : juce::String(""))
+      + juce::String(" → O:") + juce::String(outCh)
+      + juce::String("   ·   Gate ");
+
+    g.drawText(statusText, statusRow, juce::Justification::left);
+
+    // Gate LED inline at the end of the status text.
+    const auto textWidth = g.getCurrentFont().getStringWidth(statusText);
+    auto lampBounds = juce::Rectangle<int>(statusRow.getX() + textWidth + 2,
+                                           statusRow.getY() + 4,
+                                           14, 14);
     g.setColour(gateOpen ? juce::Colour::fromRGB(80, 220, 110)
                          : juce::Colour::fromRGB(80, 80, 90));
     g.fillEllipse(lampBounds.toFloat());
 
-    g.setColour(juce::Colour::fromRGB(220, 225, 235));
-    g.drawText((gateOpen ? juce::String("open") : juce::String("closed"))
-               + " (gain " + juce::String(gateGain, 2) + ")",
-               gateRow.withTrimmedLeft(8), juce::Justification::left);
-
-    auto footer = bounds.removeFromBottom(20);
-    g.setColour(juce::Colour::fromRGB(90, 100, 120));
+    g.setColour(juce::Colour::fromRGB(150, 160, 175));
     g.setFont(makeFont(11.0f));
-    g.drawText("Refreshes at " + juce::String(kTimerHz) + " Hz • audio-thread peaks via lock-free atomics",
-               footer, juce::Justification::centred);
+    g.drawText("(" + juce::String(gateGain, 2) + ")",
+               juce::Rectangle<int>(lampBounds.getRight() + 4,
+                                    statusRow.getY(), 60, statusRow.getHeight()),
+               juce::Justification::left);
+
+    area.removeFromTop(4);
+
+    // --- Row 2: side-by-side input + output meters -----------------------
+    auto metersRow = area.removeFromTop(28);
+    const int gap = 12;
+    const int halfWidth = (metersRow.getWidth() - gap) / 2;
+    auto inputMeterArea  = metersRow.removeFromLeft(halfWidth);
+    metersRow.removeFromLeft(gap);
+    auto outputMeterArea = metersRow;
+
+    drawMeter(g, inputMeterArea,  "In",  displayInputPeak_);
+    drawMeter(g, outputMeterArea, "Out", displayOutputPeak_);
 }
 
 void DiagnosticPanel::drawMeter(juce::Graphics& g,
                                 juce::Rectangle<int> bounds,
                                 const juce::String& label,
                                 float peakLin) const {
-    const auto labelArea = bounds.removeFromLeft(140);
-    g.setColour(juce::Colour::fromRGB(120, 130, 150));
-    g.setFont(makeFont(14.0f));
+    const auto labelArea = bounds.removeFromLeft(28);
+    g.setColour(juce::Colour::fromRGB(150, 160, 175));
+    g.setFont(makeFont(12.0f, true));
     g.drawText(label, labelArea, juce::Justification::left);
 
     const auto dbStr = (peakLin < 1.0e-6f)
-        ? juce::String("-inf dBFS")
-        : juce::String(linearToDb(peakLin), 1) + " dBFS";
-    const auto dbArea = bounds.removeFromRight(80);
+        ? juce::String("-inf")
+        : juce::String(linearToDb(peakLin), 1);
+    const auto dbArea = bounds.removeFromRight(48);
     g.setColour(juce::Colour::fromRGB(220, 225, 235));
-    g.drawText(dbStr, dbArea, juce::Justification::right);
+    g.setFont(makeFont(11.0f));
+    g.drawText(dbStr + " dB", dbArea, juce::Justification::right);
 
-    auto barBounds = bounds.reduced(0, 8);
+    auto barBounds = bounds.reduced(4, 7);
     g.setColour(juce::Colour::fromRGB(40, 44, 52));
-    g.fillRoundedRectangle(barBounds.toFloat(), 3.0f);
+    g.fillRoundedRectangle(barBounds.toFloat(), 2.0f);
 
     const float n = meterNorm(peakLin);
     auto fill = barBounds.toFloat();
@@ -161,11 +147,11 @@ void DiagnosticPanel::drawMeter(juce::Graphics& g,
 
     juce::Colour barColour = juce::Colour::fromRGB(80, 200, 120);
     const float db = linearToDb(peakLin);
-    if (db > -6.0f) barColour = juce::Colour::fromRGB(220, 90, 90);
+    if (db > -6.0f)       barColour = juce::Colour::fromRGB(220, 90, 90);
     else if (db > -18.0f) barColour = juce::Colour::fromRGB(220, 200, 90);
 
     g.setColour(barColour);
-    g.fillRoundedRectangle(fill, 3.0f);
+    g.fillRoundedRectangle(fill, 2.0f);
 }
 
 } // namespace guitar_dsp

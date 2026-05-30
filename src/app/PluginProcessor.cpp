@@ -87,11 +87,32 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     outputPeak_.store(outPeak, std::memory_order_relaxed);
     gateGain_.store(graph_.input().currentGateGain(), std::memory_order_relaxed);
 
+    // Write post-DSP mono samples into the visualization ring buffer.
+    // Bitmask wraparound (kAudioRingSize is power-of-two).
+    constexpr int mask = kAudioRingSize - 1;
+    int idx = audioRingWriteIdx_.load(std::memory_order_relaxed);
+    for (int i = 0; i < numSamples; ++i) {
+        audioRing_[static_cast<std::size_t>(idx & mask)] = monoScratch_[static_cast<std::size_t>(i)];
+        ++idx;
+    }
+    audioRingWriteIdx_.store(idx & mask, std::memory_order_release);
+
     // Fan the mono graph output to all output channels.
     for (int ch = 0; ch < totalOut; ++ch) {
         float* out = buffer.getWritePointer(ch);
         std::memcpy(out, monoScratch_.data(), sizeof(float) * static_cast<std::size_t>(numSamples));
     }
+}
+
+void PluginProcessor::snapshotRecentSamples(float* dest, int count) const noexcept {
+    constexpr int N = kAudioRingSize;
+    const int safeCount = std::min(count, N);
+    const int writeIdx = audioRingWriteIdx_.load(std::memory_order_acquire);
+    const int startIdx = (writeIdx - safeCount + N) % N;
+    for (int i = 0; i < safeCount; ++i) {
+        dest[i] = audioRing_[static_cast<std::size_t>((startIdx + i) % N)];
+    }
+    for (int i = safeCount; i < count; ++i) dest[i] = 0.0f;
 }
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor() {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -46,6 +47,13 @@ public:
     int   getLastInputChannelCount()  const noexcept { return lastInputChannels_.load(std::memory_order_relaxed); }
     int   getLastOutputChannelCount() const noexcept { return lastOutputChannels_.load(std::memory_order_relaxed); }
 
+    // Snapshot the most recent `count` post-DSP mono samples into `dest`.
+    // Safe to call from any thread; uses a power-of-two ring buffer
+    // updated atomically from the audio thread. Reads near the write
+    // boundary may tear by a sample, which is invisible in visualization.
+    static constexpr int kAudioRingSize = 4096;  // ~93 ms at 44.1 kHz
+    void snapshotRecentSamples(float* dest, int count) const noexcept;
+
 private:
     audio::AudioGraph graph_;
     std::vector<float> monoScratch_;
@@ -55,6 +63,9 @@ private:
     std::atomic<float> gateGain_    {1.0f};
     std::atomic<int>   lastInputChannels_  {0};
     std::atomic<int>   lastOutputChannels_ {0};
+
+    std::array<float, kAudioRingSize> audioRing_{};
+    std::atomic<int>                  audioRingWriteIdx_{0};
 };
 
 } // namespace guitar_dsp
