@@ -25,6 +25,7 @@ juce_generate_juce_header(guitar_dsp_app)
 target_sources(guitar_dsp_app PRIVATE
     PluginProcessor.cpp
     PluginEditor.cpp
+    DiagnosticPanel.cpp
 )
 
 target_compile_definitions(guitar_dsp_app PRIVATE

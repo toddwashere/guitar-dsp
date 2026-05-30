@@ -24,6 +24,11 @@ public:
     void setNoiseGateThreshold(float thresholdDb);
     void setInputGainDb(float gainDb);
 
+    // Current gate gain (0..1), updated each sample by process(). Safe to
+    // read from the same audio thread that calls process(); cross-thread
+    // readers should snapshot through their own atomic.
+    float currentGateGain() const noexcept { return gateCurrentGain_; }
+
 private:
     double sampleRate_ = 48000.0;
 

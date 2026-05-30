@@ -2,6 +2,8 @@
 #include "PluginEditor.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstring>
 
 namespace guitar_dsp {
 
@@ -38,6 +40,9 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     const int totalIn = getTotalNumInputChannels();
     if (totalOut == 0) return;
 
+    lastInputChannels_.store(totalIn, std::memory_order_relaxed);
+    lastOutputChannels_.store(totalOut, std::memory_order_relaxed);
+
     // Grow scratch only if buffer is larger than expected; this happens
     // off the hot path only when the host changes block size at runtime.
     if (monoScratch_.size() < static_cast<std::size_t>(numSamples)) {
@@ -47,21 +52,40 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
 
     // Build a mono input — downmixing stereo by averaging — so the DSP graph
     // sees a single channel regardless of how the host configures the bus.
+    float inPeak = 0.0f;
     if (totalIn >= 2) {
         const float* l = buffer.getReadPointer(0);
         const float* r = buffer.getReadPointer(1);
         for (int i = 0; i < numSamples; ++i) {
-            monoScratch_[static_cast<std::size_t>(i)] = 0.5f * (l[i] + r[i]);
+            const float m = 0.5f * (l[i] + r[i]);
+            monoScratch_[static_cast<std::size_t>(i)] = m;
+            const float a = std::abs(m);
+            if (a > inPeak) inPeak = a;
         }
         graph_.process(monoScratch_.data(), monoScratch_.data(),
                        static_cast<std::size_t>(numSamples));
     } else if (totalIn == 1) {
         const float* in = buffer.getReadPointer(0);
+        for (int i = 0; i < numSamples; ++i) {
+            const float a = std::abs(in[i]);
+            if (a > inPeak) inPeak = a;
+        }
         graph_.process(in, monoScratch_.data(),
                        static_cast<std::size_t>(numSamples));
     } else {
         std::fill_n(monoScratch_.begin(), numSamples, 0.0f);
     }
+
+    // Output peak from the post-DSP mono scratch.
+    float outPeak = 0.0f;
+    for (int i = 0; i < numSamples; ++i) {
+        const float a = std::abs(monoScratch_[static_cast<std::size_t>(i)]);
+        if (a > outPeak) outPeak = a;
+    }
+
+    inputPeak_.store(inPeak, std::memory_order_relaxed);
+    outputPeak_.store(outPeak, std::memory_order_relaxed);
+    gateGain_.store(graph_.input().currentGateGain(), std::memory_order_relaxed);
 
     // Fan the mono graph output to all output channels.
     for (int ch = 0; ch < totalOut; ++ch) {
