@@ -336,7 +336,8 @@ The visualizer reads scene state, playback position, and audio levels via lock-f
 ├── docs/superpowers/specs/
 │   └── 2026-05-29-while-my-guitar-gently-speaks-design.md
 ├── external/
-│   └── JUCE/                                  (git submodule)
+│   ├── JUCE/                                  (git submodule)
+│   └── Catch2/                                (git submodule, v3.x)
 ├── src/
 │   ├── app/
 │   │   └── Main.cpp
@@ -373,7 +374,29 @@ The visualizer reads scene state, playback position, and audio levels via lock-f
 │       ├── prebake.py
 │       ├── formant_extract.py
 │       ├── alignment.py
-│       └── requirements.txt
+│       ├── requirements.txt
+│       └── tests/
+│           └── test_prebake.py                (pytest)
+├── tests/
+│   ├── unit/
+│   │   ├── audio/                             (one .cpp per audio module)
+│   │   ├── midi/
+│   │   ├── scenes/
+│   │   └── tts/
+│   ├── integration/
+│   │   ├── test_render_scene.cpp              (golden-file scene renders)
+│   │   ├── test_realtime_safety.cpp           (allocation/lock sentinel)
+│   │   └── test_mini_soak.cpp                 (10-min randomized run)
+│   ├── fixtures/
+│   │   ├── inputs/                            (WAV inputs: sine, pluck, strum)
+│   │   ├── expected/                          (golden reference WAVs)
+│   │   └── midi/                              (captured MIDI sequences)
+│   └── harness/
+│       ├── RealtimeSentinel.{h,cpp}           (malloc/mutex interception)
+│       ├── GoldenFile.{h,cpp}                 (WAV diff with tolerance)
+│       └── SyntheticGuitar.{h,cpp}            (input generators)
+├── .github/workflows/
+│   └── ci.yml                                 (macos-latest build + tests)
 ├── assets/
 │   ├── scenes/                                (0-9 JSON files)
 │   ├── tts/                                   (prebaked clip directories)
@@ -398,15 +421,90 @@ The visualizer reads scene state, playback position, and audio levels via lock-f
 | Crash mid-performance | Very low | Catastrophic | (a) Run under `launchd` with restart-on-crash on performance days. (b) 4-hour soak test in CI before any conference. (c) ASan/UBSan debug builds during development. (d) Crash logs auto-saved. |
 | Visualization stutter | Low | Low | Visualizer is fully decoupled from audio thread; stutter would be cosmetic, not audible. |
 
-## 12. Test plan (v1)
+## 12. Testing strategy
 
-1. **Latency measurement**: loopback test through a USB audio interface; round-trip latency target ≤ 10 ms at 64-sample / 48 kHz.
-2. **Vocoder intelligibility**: record output of each speaking scene at performance volume; blind transcription must hit ≥ 90% word recognition.
-3. **Soak test**: 4-hour continuous run with random scene switches every 5–30 s; monitor xruns, memory, CPU; must complete with zero crashes and zero xruns.
-4. **Hotplug test**: yank/reconnect FCB1010 and audio interface during playback; confirm recovery within 1 s and 5 s respectively.
-5. **MIDI mapping test**: every switch and both expression pedals fire correct events; remap test via JSON edit.
-6. **TTS source failover test**: simulate failure in each live source independently; confirm fallback chain operates silently.
-7. **Rehearsal pass**: full 15-minute show end-to-end, three times, before any conference.
+Stability across repeated live performance is the top non-functional requirement, so automated testing is a first-class concern, not a bolt-on. The test suite is organized by the question *"would this fail catastrophically on stage?"* — Tier 1 prevents on-stage failures and is required for v1 merge; Tier 2 is required before the first conference; Tier 3 is required to call v1 "done."
+
+### 12.1 Framework
+
+**Primary**: [Catch2 v3](https://github.com/catchorg/Catch2), vendored as a git submodule under `external/Catch2`. Chosen for:
+- `WithinRel` / `WithinAbs` floating-point matchers (essential for DSP correctness assertions)
+- `GENERATE` parameterized tests (sweep across sample rates, buffer sizes, scene ids)
+- Clean CMake integration
+- Active maintenance, modern C++
+
+**Python**: pytest for the `tools/tts_prebake/` pipeline.
+
+**Not used**: JUCE's built-in `UnitTest` (insufficient matchers and parameterization), Google Test (heavier integration, no offsetting advantages here). rapidcheck (true property-based testing) may be added later but is not required for v1.
+
+### 12.2 Custom test harness
+
+Three reusable components live under `tests/harness/`:
+
+- **`RealtimeSentinel`** — overrides `operator new` / `operator delete` / `pthread_mutex_lock` during test runs; aborts with a stack trace if any is called from a thread registered as the audio thread. Used by `test_realtime_safety.cpp` to run the full audio graph through 60 s of synthetic input with zero tolerance for allocations/locks in the callback.
+- **`GoldenFile`** — loads a reference WAV, compares against a freshly-rendered WAV with configurable tolerance (bit-exact in release, small `WithinRel` tolerance allowed for SIMD/compiler variation). Provides a "regenerate goldens" command-line flag for intentional updates.
+- **`SyntheticGuitar`** — generates deterministic test inputs: sine sweeps, plucked notes (Karplus-Strong), chord strums. Used by both unit tests (per-module) and golden-file integration tests.
+
+### 12.3 Tier 1 — required for v1 merge
+
+| # | Target | Test | Why |
+|---|---|---|---|
+| 1 | Audio-thread real-time safety | `RealtimeSentinel` wraps the full audio graph through 60 s of synthetic input. Zero allocations, zero lock acquisitions tolerated in the audio thread. | Allocation/locking in the callback is the #1 cause of live audio crashes. |
+| 2 | Channel vocoder DSP correctness | Sine carrier + sine modulator → assert output envelope tracks modulator within 0.5 dB. Per-band isolation: feed band-center frequencies, assert correct band activates. Sibilance noise injection: feed unvoiced burst, assert noise channel engages. | A broken vocoder ruins the talk's centerpiece. |
+| 3 | Filter stability under extreme parameters | Sweep cutoff / resonance / Q across full ranges at 44.1 / 48 / 96 kHz. Assert no `nan`, no `inf`, output never exceeds `+24 dB` peak. | Footswitch + expression pedal can drive a filter to instability; an exploding filter is loud and unrecoverable. |
+| 4 | Scene transition glitch-freeness | Capture output across each scene switch with continuous sine input. Assert no sample-to-sample delta exceeds threshold (no clicks). | The whole show is scene switches; each must be silent at the seams. |
+| 5 | MIDI mapping | Synthetic PC 0–9 messages → assert correct scene activation event. CC 27 / CC 7 → correct param events. Malformed MIDI (truncated, wrong channel, running status edge cases) → no crash. | A wrong scene fire is confusing; a MIDI-induced crash is catastrophic. |
+| 6 | Scene JSON loader | Valid scene JSON → correct `Scene` struct. Missing fields → clear error. Malformed JSON → clear error, no crash. Reference to missing TTS clip → fallback chain engages, scene still loads. | A typo in scene JSON cannot brick the app on a performance day. |
+| 7 | `ITTSSource` contracts | Mock-driven: `PrebakedTTSSource` returns correct duration / channel layout. `PiperTTSSource` survives subprocess crash (mock subprocess that exits nonzero). `LiveTTSSource` survives missing voice id. All three trigger their declared fallback when failing. | Failover is the entire point of having three sources; untested failover is no failover. |
+| 8 | Sample-rate handling | Resample 48 kHz prebaked TTS to 44.1 / 96 kHz; assert correct length (within ±1 sample) and pitch (FFT-based, within 1 cent). Simulate device sample-rate change mid-run; assert `prepareToPlay` recomputes filter coefficients. | Plugging into a different audio interface on the road will hit this. |
+
+### 12.4 Tier 2 — required before first conference
+
+| # | Target | Test |
+|---|---|---|
+| 9 | `InstrumentCarousel` stages | Bypass mode = identity (bit-exact). Octaver octaves are octaves (within 5 cents). Bit crusher quantization is correct (step count). Reverb RT60 matches configured value within ±10%. |
+| 10 | `TTSClipPlayer` | Plays exactly N samples then silence. Reset returns to sample 0. Two starts in a row don't double-trigger. End-of-clip transition is silent. |
+| 11 | Parameter ramping | Set parameter from 0 to 1 in one block; assert ramp is smooth (linear or exp as configured), no instant jumps. Verify no zipper noise in spectrum. |
+| 12 | `Mixer` | Dry=1/wet=0 → exact input passthrough (bit-exact). Dry=0/wet=1 → wet input only. Master gain is linear in linear-amplitude units. |
+| 13 | Scene hot reload | Modify a scene JSON file during simulated playback; assert reload happens within 200 ms, no audio drop, no allocations on audio thread. |
+| 14 | `FCB1010Mapping` JSON | Default mapping loads. Custom remap loads. Invalid remap → falls back to default with logged warning, never crashes. |
+
+### 12.5 Tier 3 — required to call v1 "done"
+
+| # | Target | Approach |
+|---|---|---|
+| 15 | Golden-file scene renders | For each of the 10 scenes, feed `fixtures/inputs/strum_clean.wav` and `fixtures/inputs/sine_sweep.wav`, render to WAV, diff against `fixtures/expected/scene_<n>_<input>.wav` via `GoldenFile` harness. **The highest-leverage test in the suite** — catches any unintentional DSP regression for the life of the project. |
+| 16 | Audio-thread benchmark | Process 1 s of audio per scene; assert wall-clock time < real-time budget × 0.4 (i.e., < 40% CPU per scene on the reference machine). Regression-guards against accidental performance tanking. |
+| 17 | Mini soak (in CI) | 10-minute randomized scene-switching run with synthetic input; assert zero xruns, zero log errors, memory growth < 50 MB. The full 4-hour soak stays manual / pre-conference. |
+| 18 | TTS pre-bake pipeline | pytest: run `prebake.py` on a one-word input; assert outputs exist; `audio.wav` is valid 48 kHz mono float; `alignment.json` has one word entry with sensible timing; pipeline is idempotent (second run is a no-op). |
+
+### 12.6 CI
+
+GitHub Actions workflow at `.github/workflows/ci.yml`, runs on `macos-latest`:
+
+- **Build matrix**: Debug + Release; Debug build also runs with AddressSanitizer + UndefinedBehaviorSanitizer.
+- **Run on every PR**: all Tier 1 + Tier 2 unit/integration tests, the mini soak (test #17), the Python pre-bake pytest.
+- **Target wall-clock**: full suite under 5 minutes (CI tests stay short; full soak runs locally).
+- **Failed test = blocked merge.** No exceptions for v1 work.
+
+### 12.7 Manual / interactive tests (not automated)
+
+The following remain manual because they're hardware-dependent or subjective. They are part of the pre-conference checklist, not the CI gate:
+
+1. **Latency measurement**: loopback test through a real USB audio interface; round-trip target ≤ 10 ms at 64-sample / 48 kHz.
+2. **Vocoder intelligibility**: record each speaking scene at performance volume; blind human transcription must hit ≥ 90% word recognition.
+3. **Full 4-hour soak**: continuous run with random scene switches every 5–30 s; zero crashes, zero xruns, monitored manually.
+4. **FCB1010 + audio interface hotplug**: yank/reconnect during playback; confirm recovery within 1 s (MIDI) / 5 s (audio).
+5. **Full 15-minute dress rehearsal**: end-to-end show, three times, before any conference.
+
+### 12.8 Coverage expectations
+
+No hard line-coverage target — for DSP code, line coverage is a poor proxy for correctness. Instead:
+
+- **Every audio module** under `src/audio/` has a corresponding `tests/unit/audio/test_<module>.cpp`.
+- **Every public method** of `IVocoder` and `ITTSSource` is exercised by at least one test against each implementation.
+- **Every scene** has a golden-file render in Tier 3.
+- New DSP code without tests blocks PR merge; new UI code is exempt.
 
 ## 13. v2 roadmap (out of scope for this spec)
 
