@@ -1,0 +1,3 @@
+add_executable(generate_sine_440 generate_sine_440.cpp)
+target_link_libraries(generate_sine_440 PRIVATE juce::juce_audio_formats)
+target_compile_features(generate_sine_440 PRIVATE cxx_std_20)

@@ -36,6 +36,9 @@ add_subdirectory(external/Catch2)
 # Application source tree
 add_subdirectory(src)
 
+# Fixture generator tools
+add_subdirectory(tools/fixtures)
+
 # Test tree
 enable_testing()
 add_subdirectory(tests)
