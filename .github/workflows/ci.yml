@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            $([ "${{ matrix.build_type }}" = "Debug" ] && echo "-DGUITAR_DSP_ASAN=ON -DGUITAR_DSP_UBSAN=ON")
+
+      - name: Build app
+        run: cmake --build build --target guitar_dsp_app_Standalone
+
+      - name: Build tests
+        run: cmake --build build --target guitar_dsp_tests
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure --timeout 300
