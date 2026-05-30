@@ -1,7 +1,9 @@
 add_executable(guitar_dsp_tests
     unit/test_smoke.cpp
     unit/test_realtime_sentinel.cpp
+    unit/test_synthetic_guitar.cpp
     harness/RealtimeSentinel.cpp
+    harness/SyntheticGuitar.cpp
 )
 
 target_link_libraries(guitar_dsp_tests PRIVATE
