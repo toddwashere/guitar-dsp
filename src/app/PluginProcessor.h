@@ -2,6 +2,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "audio/AudioGraph.h"
+
 namespace guitar_dsp {
 
 class PluginProcessor : public juce::AudioProcessor {
@@ -9,7 +11,6 @@ public:
     PluginProcessor();
     ~PluginProcessor() override = default;
 
-    // AudioProcessor overrides
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
     bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
@@ -32,6 +33,10 @@ public:
 
     void getStateInformation(juce::MemoryBlock&) override {}
     void setStateInformation(const void*, int) override {}
+
+private:
+    audio::AudioGraph graph_;
+    std::vector<float> monoScratch_;
 };
 
 } // namespace guitar_dsp

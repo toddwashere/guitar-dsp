@@ -1,6 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#include <algorithm>
+
 namespace guitar_dsp {
 
 PluginProcessor::PluginProcessor()
@@ -8,17 +10,19 @@ PluginProcessor::PluginProcessor()
         .withInput("Input", juce::AudioChannelSet::mono(), true)
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {}
 
-void PluginProcessor::prepareToPlay(double, int) {
-    // No-op for now; real prepare logic arrives with AudioGraph in Task 15.
+void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+    graph_.prepare(sampleRate, samplesPerBlock);
+    monoScratch_.assign(static_cast<std::size_t>(samplesPerBlock), 0.0f);
 }
 
-void PluginProcessor::releaseResources() {}
+void PluginProcessor::releaseResources() {
+    graph_.reset();
+}
 
 bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     const auto inputs = layouts.getMainInputChannelSet();
     const auto outputs = layouts.getMainOutputChannelSet();
-    if (inputs.isDisabled() || outputs.isDisabled())
-        return false;
+    if (inputs.isDisabled() || outputs.isDisabled()) return false;
     return inputs == juce::AudioChannelSet::mono()
         && (outputs == juce::AudioChannelSet::mono()
             || outputs == juce::AudioChannelSet::stereo());
@@ -27,20 +31,23 @@ bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
     juce::ScopedNoDenormals noDenormals;
 
-    // Trivial mono->stereo passthrough; replaced by AudioGraph in Task 15.
-    const auto numSamples = buffer.getNumSamples();
-    const auto totalOut = getTotalNumOutputChannels();
-    const auto totalIn = getTotalNumInputChannels();
+    const int numSamples = buffer.getNumSamples();
+    const int totalOut = getTotalNumOutputChannels();
+    if (totalOut == 0) return;
 
-    if (totalIn == 1 && totalOut == 2) {
-        const float* in = buffer.getReadPointer(0);
-        float* outL = buffer.getWritePointer(0);
-        float* outR = buffer.getWritePointer(1);
-        for (int i = 0; i < numSamples; ++i) {
-            const float s = in[i];
-            outL[i] = s;
-            outR[i] = s;
-        }
+    // Grow scratch only if buffer is larger than expected; this happens
+    // off the hot path only when the host changes block size at runtime.
+    if (monoScratch_.size() < static_cast<std::size_t>(numSamples)) {
+        monoScratch_.assign(static_cast<std::size_t>(numSamples), 0.0f);
+        graph_.prepare(getSampleRate(), numSamples);
+    }
+
+    const float* in = buffer.getReadPointer(0);
+    graph_.process(in, monoScratch_.data(), static_cast<std::size_t>(numSamples));
+
+    for (int ch = 0; ch < totalOut; ++ch) {
+        float* out = buffer.getWritePointer(ch);
+        std::memcpy(out, monoScratch_.data(), sizeof(float) * static_cast<std::size_t>(numSamples));
     }
 }
 
