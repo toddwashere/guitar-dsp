@@ -51,7 +51,7 @@ void SyntheticGuitar::pluck(float frequencyHz, float decaySeconds, float amplitu
     std::vector<float> line(static_cast<std::size_t>(delayLen));
     // Initial noise burst, deterministic across runs so pluck() output is
     // reproducible (matters once a golden-file test consumes it).
-    std::mt19937 rng{0x70'6c'75'63'6bu}; // "pluck"
+    std::mt19937 rng{0x706C7563u}; // "pluc"
     std::uniform_real_distribution<float> dist{-amplitude, amplitude};
     for (auto& s : line) s = dist(rng);
 
