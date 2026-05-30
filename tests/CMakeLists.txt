@@ -2,12 +2,15 @@ add_executable(guitar_dsp_tests
     unit/test_smoke.cpp
     unit/test_realtime_sentinel.cpp
     unit/test_synthetic_guitar.cpp
+    unit/test_golden_file.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
+    harness/GoldenFile.cpp
 )
 
 target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio
+    juce::juce_audio_formats
     Catch2::Catch2WithMain
 )
 
