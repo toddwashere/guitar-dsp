@@ -1,9 +1,7 @@
 # Audio module library — pure C++, no JUCE dependency.
-# Modules added here as they are implemented in later tasks.
-# Placeholder source keeps the empty static library legal under CMake/Ninja
-# until the first real module (Task 11) lands.
+# Modules added here as they are implemented.
 add_library(guitar_dsp_audio STATIC
-    audio/.placeholder.cpp
+    audio/InputStage.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
