@@ -23,7 +23,10 @@ TEST_CASE("sentinel: detects heap allocation on realtime thread", "[harness]") {
 
     {
         // Force a heap allocation in the marked region.
-        auto* v = new std::vector<int>(16);
+        // The `volatile` storage and `g_sink` write prevent the optimizer
+        // from eliding the new/delete pair under -O3.
+        std::vector<int>* volatile v = new std::vector<int>(16);
+        v->at(0) = 1;
         delete v;
     }
 
@@ -35,7 +38,11 @@ TEST_CASE("sentinel: allocations on non-realtime thread do not count", "[harness
     RealtimeSentinel sentinel;
 
     {
-        auto* v = new std::vector<int>(16);
+        // volatile + side-effect prevent the optimizer from eliding the
+        // allocation, ensuring this test really exercises the not-marked
+        // code path rather than passing vacuously.
+        std::vector<int>* volatile v = new std::vector<int>(16);
+        v->at(0) = 1;
         delete v;
     }
 
