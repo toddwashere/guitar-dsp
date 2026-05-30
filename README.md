@@ -13,7 +13,7 @@ git clone --recurse-submodules <repo-url>
 cd guitar-dsp
 cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target guitar_dsp_app_Standalone
-open "build/src/app/guitar_dsp_app_artefacts/Standalone/Guitar DSP.app"
+open "build/src/app/guitar_dsp_app_artefacts/Release/Standalone/Guitar DSP.app"
 ```
 
 ## Run tests
