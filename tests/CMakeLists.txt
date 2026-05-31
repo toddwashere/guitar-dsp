@@ -32,6 +32,7 @@ add_executable(guitar_dsp_tests
     integration/test_apple_speaking_scene.cpp
     integration/test_scene_hot_reload.cpp
     integration/test_fallback_chain.cpp
+    integration/test_carousel_scene.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
