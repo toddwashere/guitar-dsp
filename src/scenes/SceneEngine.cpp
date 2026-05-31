@@ -61,6 +61,11 @@ TtsConfig SceneEngine::activeTtsConfig() const {
     return scenes_[static_cast<std::size_t>(activeIndex_)].tts;
 }
 
+CarouselConfig SceneEngine::activeCarouselConfig() const {
+    if (activeIndex_ < 0) return {};
+    return scenes_[static_cast<std::size_t>(activeIndex_)].carousel;
+}
+
 void SceneEngine::forEachScene(const std::function<void(const Scene&)>& fn) const {
     for (const auto& s : scenes_) fn(s);
 }

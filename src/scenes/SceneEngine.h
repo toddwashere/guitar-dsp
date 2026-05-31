@@ -45,6 +45,9 @@ public:
     // Returns the active scene's full TTS config (copy). Empty struct if
     // no active scene. Message-thread only.
     TtsConfig activeTtsConfig() const;
+    // Returns the active scene's carousel config (copy). Disabled-default
+    // struct if no active scene. Message-thread only.
+    CarouselConfig activeCarouselConfig() const;
     // Visit every loaded scene (message-thread only). Order is by scene id.
     void forEachScene(const std::function<void(const Scene&)>& fn) const;
 
