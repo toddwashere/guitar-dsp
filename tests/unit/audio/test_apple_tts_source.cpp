@@ -43,3 +43,18 @@ TEST_CASE("AppleTTSSource: synthesize produces non-empty clip [opt-in]",
     for (float s : clip->samples) peak = std::max(peak, std::abs(s));
     REQUIRE(peak > 0.001f);
 }
+
+TEST_CASE("AppleTTSSource: setVoice with a known identifier succeeds [opt-in]",
+          "[audio][tts][apple][live]") {
+    if (!ttsTestEnabled()) {
+        SKIP("set GUITAR_DSP_TEST_APPLE_TTS=1 to run live synthesis");
+    }
+    AppleTTSSource src;
+    src.prepare(48000.0);
+    // Samantha is a long-standing default macOS voice; should resolve
+    // on any modern macOS install.
+    src.setVoice("com.apple.voice.compact.en-US.Samantha");
+    auto clip = src.synthesize("voice test");
+    REQUIRE(clip);
+    REQUIRE(clip->samples.size() > 4800);
+}
