@@ -8,6 +8,7 @@ add_library(guitar_dsp_audio STATIC
     audio/TTSClipPlayer.cpp
     audio/PrebakedTTSSource.cpp
     audio/AppleTTSSource.mm
+    audio/TTSPrewarmer.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
