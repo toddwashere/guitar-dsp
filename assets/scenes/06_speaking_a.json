@@ -1,7 +1,11 @@
 {
   "id": 6,
-  "name": "Speaking A — hello",
+  "name": "Speaking A — apple",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
-  "tts": { "source": "prebaked", "clip": "06_hello_cleveland" }
+  "tts": {
+    "source": "apple",
+    "text": "Welcome to the talk. The guitar is now speaking.",
+    "voice": "com.apple.voice.compact.en-US.Samantha"
+  }
 }
