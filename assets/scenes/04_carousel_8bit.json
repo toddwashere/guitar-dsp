@@ -2,5 +2,12 @@
   "id": 4,
   "name": "Carousel — 8-bit",
   "color": "#f25e8e",
-  "mixer": { "masterGainDb": -8.0, "dryWet": 0.0, "transitionMs": 20 }
+  "mixer": { "masterGainDb": -6.0, "dryWet": 1.0, "transitionMs": 15 },
+  "carousel": {
+    "enabled": true,
+    "drive": 4.0,
+    "waveshaper": { "type": "hardclip", "amount": 0.9 },
+    "crusher": { "bits": 4, "downsample": 8 },
+    "outputTrimDb": -3.0
+  }
 }

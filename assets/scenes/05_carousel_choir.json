@@ -1,6 +1,0 @@
-{
-  "id": 5,
-  "name": "Carousel — choir / pad",
-  "color": "#b48ce3",
-  "mixer": { "masterGainDb": -10.0, "dryWet": 0.0, "transitionMs": 20 }
-}

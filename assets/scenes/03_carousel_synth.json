@@ -2,5 +2,15 @@
   "id": 3,
   "name": "Carousel — synth lead",
   "color": "#5cd1c4",
-  "mixer": { "masterGainDb": -6.0, "dryWet": 0.0, "transitionMs": 20 }
+  "mixer": { "masterGainDb": -5.0, "dryWet": 1.0, "transitionMs": 25 },
+  "carousel": {
+    "enabled": true,
+    "drive": 10.0,
+    "waveshaper": { "type": "tanh", "amount": 1.6 },
+    "filter": { "mode": "lowpass", "cutoffHz": 700, "resonance": 0.75,
+                "mod": "lfo", "lfoHz": 0.5 },
+    "chorus": { "rateHz": 3.0, "depth": 0.4, "mix": 0.4 },
+    "reverb": { "roomSize": 0.5, "wet": 0.25 },
+    "outputTrimDb": -3.0
+  }
 }

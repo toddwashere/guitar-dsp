@@ -1,0 +1,14 @@
+{
+  "id": 5,
+  "name": "Carousel — auto-wah",
+  "color": "#9bd14a",
+  "mixer": { "masterGainDb": -4.0, "dryWet": 1.0, "transitionMs": 20 },
+  "carousel": {
+    "enabled": true,
+    "drive": 6.0,
+    "waveshaper": { "type": "tanh", "amount": 1.2 },
+    "filter": { "mode": "bandpass", "cutoffHz": 350, "resonance": 0.8,
+                "mod": "envelope", "envAmount": 2200 },
+    "outputTrimDb": -2.0
+  }
+}

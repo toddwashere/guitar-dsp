@@ -1,6 +1,0 @@
-{
-  "id": 2,
-  "name": "Carousel — piano-ish",
-  "color": "#7eb8de",
-  "mixer": { "masterGainDb": -4.0, "dryWet": 0.0, "transitionMs": 20 }
-}

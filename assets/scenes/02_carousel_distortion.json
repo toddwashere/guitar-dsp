@@ -1,0 +1,14 @@
+{
+  "id": 2,
+  "name": "Carousel — distorted guitar",
+  "color": "#d6453c",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 1.0, "transitionMs": 20 },
+  "carousel": {
+    "enabled": true,
+    "drive": 18.0,
+    "waveshaper": { "type": "hardclip", "amount": 1.0 },
+    "filter": { "mode": "lowpass", "cutoffHz": 3000, "resonance": 0.2, "mod": "static" },
+    "reverb": { "roomSize": 0.2, "wet": 0.08 },
+    "outputTrimDb": -4.0
+  }
+}
