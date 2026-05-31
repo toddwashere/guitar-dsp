@@ -52,24 +52,7 @@ target_link_libraries(guitar_dsp_app
 
 # Copy assets/ into the Standalone .app's Resources directory after build.
 # Path is JUCE-specific: <target>_artefacts/<BUILD_TYPE>/Standalone/<PRODUCT_NAME>.app
-# Find assets/ directory at configure-time. Resolve to absolute path.
-set(_GUITAR_DSP_ASSET_CANDIDATES
-    "${CMAKE_BINARY_DIR}/../.claude/worktrees/phase-2-scenes-and-midi/assets"
-    "${PROJECT_SOURCE_DIR}/assets"
-    "${CMAKE_BINARY_DIR}/../assets"
-)
-
-foreach(_CANDIDATE ${_GUITAR_DSP_ASSET_CANDIDATES})
-    if(EXISTS "${_CANDIDATE}")
-        get_filename_component(GUITAR_DSP_ASSETS_SRC "${_CANDIDATE}" ABSOLUTE)
-        break()
-    endif()
-endforeach()
-
-if(NOT GUITAR_DSP_ASSETS_SRC)
-    message(FATAL_ERROR "Could not find assets/ directory")
-endif()
-
+set(GUITAR_DSP_ASSETS_SRC "${CMAKE_SOURCE_DIR}/assets")
 set(GUITAR_DSP_APP_RESOURCES
     "$<TARGET_FILE_DIR:guitar_dsp_app_Standalone>/../Resources/assets")
 
