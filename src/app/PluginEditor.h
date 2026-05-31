@@ -5,6 +5,7 @@
 #include "DiagnosticPanel.h"
 #include "Oscilloscope.h"
 #include "PluginProcessor.h"
+#include "SceneIndicator.h"
 #include "SpectrumAnalyzer.h"
 
 namespace guitar_dsp {
@@ -24,6 +25,7 @@ private:
     PluginProcessor& processor_;
 
     DiagnosticPanel    diagnosticPanel_;
+    SceneIndicator     sceneIndicator_;
     Oscilloscope       oscilloscope_;
     SpectrumAnalyzer   spectrumAnalyzer_;
 };
