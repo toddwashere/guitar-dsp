@@ -23,6 +23,7 @@ external/Catch2/build/
 # Test artifacts
 tests/output/
 *.junit.xml
+Testing/
 
 # Python (for tools/tts_prebake later)
 __pycache__/
