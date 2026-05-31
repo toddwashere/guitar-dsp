@@ -15,6 +15,16 @@ namespace guitar_dsp::scenes {
 //   - loadScenes / activateScene: message thread only
 //   - currentMixerParams: audio thread only (lock-free, never allocates)
 //   - getActiveSceneId / getActiveScene / getSceneCount: message thread
+//
+// Snapshot publication is deliberately *not* atomic across the three
+// MixerParams fields: each is stored to an independent std::atomic<float>
+// with relaxed ordering. An audio-thread read straddling a publishSnapshot
+// call can therefore briefly see a mix of scene N's masterGainDb with
+// scene N+1's dryWet (a "torn" snapshot). This is tolerated because the
+// audio::Mixer downstream applies per-sample exponential smoothing to both
+// gain and dryWet, so a one-block torn read is indistinguishable from the
+// normal cross-fade between scenes. Avoiding the tear would require a
+// seqlock or RCU pattern; the smoothing makes that complexity unnecessary.
 class SceneEngine {
 public:
     SceneEngine();

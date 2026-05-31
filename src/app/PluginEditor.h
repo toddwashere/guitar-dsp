@@ -20,6 +20,9 @@ public:
     void resized() override;
 
 private:
+    // KeyListener::keyPressed(KeyPress, Component*) would otherwise hide
+    // Component::keyPressed(KeyPress), triggering -Woverloaded-virtual.
+    using juce::Component::keyPressed;
     bool keyPressed(const juce::KeyPress&, juce::Component*) override;
 
     PluginProcessor& processor_;

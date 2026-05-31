@@ -12,7 +12,14 @@ namespace guitar_dsp::midi {
 // Opens MIDI inputs via JUCE and forwards messages to a single callback
 // on the message thread. If any input device name contains "FCB1010"
 // (case-insensitive), only that device is opened; otherwise all available
-// inputs are opened. Re-scans on every refresh() call.
+// inputs are opened. Device discovery happens once, at construction.
+//
+// Hot-plug support (re-scanning when the FCB1010 is connected mid-set)
+// is deliberately deferred: tearing down and reopening JUCE MidiInputs
+// on a periodic timer would drop in-flight messages and is the wrong
+// default for a live performance. A future phase can add an explicit,
+// user-triggered rescan (UI button or scene-change hook) once the
+// re-open semantics are nailed down.
 class MidiRouter : private juce::MidiInputCallback {
 public:
     using MessageCallback = std::function<void(const juce::MidiMessage&)>;
@@ -20,14 +27,15 @@ public:
     explicit MidiRouter(MessageCallback onMessage);
     ~MidiRouter() override;
 
-    // Re-scan available devices and (re)open the matching ones. Safe to
-    // call repeatedly; idempotent for devices already open.
-    void refresh();
-
     // Names of currently-open MIDI input devices (for the diagnostic UI).
     std::vector<juce::String> openDeviceNames() const;
 
 private:
+    // Re-scan available devices and (re)open the matching ones. Called
+    // once from the constructor; not exposed externally — see hot-plug
+    // note above.
+    void refresh();
+
     void handleIncomingMidiMessage(juce::MidiInput* source,
                                    const juce::MidiMessage& message) override;
 

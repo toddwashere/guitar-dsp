@@ -16,7 +16,7 @@ namespace guitar_dsp {
 class PluginProcessor : public juce::AudioProcessor {
 public:
     PluginProcessor();
-    ~PluginProcessor() override = default;
+    ~PluginProcessor() override;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -76,6 +76,14 @@ private:
     std::atomic<int>                  audioRingWriteIdx_{0};
 
     scenes::SceneEngine sceneEngine_;
+
+    // Liveness flag for queued MIDI callbacks. The MidiRouter callback
+    // hops to the message thread via callAsync, so a callback can still
+    // be in flight after PluginProcessor is destroyed. The callback
+    // captures a weak_ptr to this atomic and bails out if the strong
+    // ref has been dropped (i.e. we're gone).
+    std::shared_ptr<std::atomic<bool>> alive_
+        {std::make_shared<std::atomic<bool>>(true)};
 
     midi::FCB1010Mapping              midiMapping_ {midi::FCB1010Mapping::stockDefaults()};
     std::unique_ptr<midi::MidiRouter> midiRouter_;

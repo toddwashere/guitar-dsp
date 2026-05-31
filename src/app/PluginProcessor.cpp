@@ -27,7 +27,15 @@ PluginProcessor::PluginProcessor()
         .withInput("Input", juce::AudioChannelSet::mono(), true)
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
     midiRouter_ = std::make_unique<midi::MidiRouter>(
-        [this](const juce::MidiMessage& msg) {
+        [this, weakAlive = std::weak_ptr<std::atomic<bool>>(alive_)]
+        (const juce::MidiMessage& msg) {
+            // This runs on the message thread after a callAsync hop. If we
+            // were destroyed between the hop and the dispatch, the weak_ptr
+            // will fail to lock (or the atomic will read false) — bail out
+            // before touching any members on a dead `this`.
+            auto alive = weakAlive.lock();
+            if (!alive || !alive->load(std::memory_order_acquire)) return;
+
             // Record last summary for the diagnostic UI: pack the first two
             // bytes of the MIDI message into one int (status<<16 | data1).
             const auto* raw = msg.getRawData();
@@ -50,6 +58,13 @@ PluginProcessor::PluginProcessor()
         assetsPoller_ = std::make_unique<AssetsPoller>(*this);
         assetsPoller_->startTimer(2000);
     }
+}
+
+PluginProcessor::~PluginProcessor() {
+    // Mark dead before member destructors run. Any callAsync lambdas
+    // already queued by MidiRouter will see this and bail out instead
+    // of dereferencing a half-destroyed `this`.
+    alive_->store(false, std::memory_order_release);
 }
 
 void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
