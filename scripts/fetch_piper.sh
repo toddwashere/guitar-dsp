@@ -4,6 +4,14 @@
 #
 # Usage: ./scripts/fetch_piper.sh
 #
+# Pin the voice model's HuggingFace revision for rehearsal reproducibility:
+#
+#     PIPER_VOICE_REF=<commit-sha-or-tag> ./scripts/fetch_piper.sh
+#
+# The default is "main" which is what most users want for first-time fetch.
+# For reproducible conference rehearsals, look up the current commit of
+# https://huggingface.co/rhasspy/piper-voices and pin it via the env var.
+#
 # Requires: curl, tar. Optionally: shasum for verification.
 
 set -euo pipefail
@@ -29,7 +37,10 @@ case "$(uname -s)/$(uname -m)" in
         ;;
 esac
 
-VOICE_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium"
+VOICE_REF="${PIPER_VOICE_REF:-main}"
+VOICE_BASE="https://huggingface.co/rhasspy/piper-voices/resolve/${VOICE_REF}/en/en_US/amy/medium"
+
+echo "Voice ref: ${VOICE_REF} (override with PIPER_VOICE_REF=<sha>)"
 
 mkdir -p "$PIPER_DIR/voices"
 
