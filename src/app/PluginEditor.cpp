@@ -7,14 +7,16 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       processor_(p),
       diagnosticPanel_(p),
       sceneIndicator_(p),
+      midiDevicePicker_(p),
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
-    setSize(720, 500);
+    setSize(720, 528);
     setResizable(true, true);
-    setResizeLimits(520, 340, 1800, 1200);
+    setResizeLimits(520, 360, 1800, 1200);
     addAndMakeVisible(diagnosticPanel_);
     addAndMakeVisible(sceneIndicator_);
+    addAndMakeVisible(midiDevicePicker_);
     addAndMakeVisible(sayPanel_);
     addAndMakeVisible(oscilloscope_);
     addAndMakeVisible(spectrumAnalyzer_);
@@ -30,6 +32,7 @@ void PluginEditor::resized() {
     auto bounds = getLocalBounds();
     diagnosticPanel_.setBounds(bounds.removeFromTop(62));
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
+    midiDevicePicker_.setBounds(bounds.removeFromTop(28));
     sayPanel_.setBounds(bounds.removeFromTop(40));
     const int remaining = bounds.getHeight();
     oscilloscope_.setBounds(bounds.removeFromTop(remaining / 2));

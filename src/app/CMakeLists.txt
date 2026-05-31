@@ -31,6 +31,7 @@ target_sources(guitar_dsp_app PRIVATE
     SceneIndicator.cpp
     SpectrumAnalyzer.cpp
     SayPanel.cpp
+    MidiDevicePicker.cpp
 )
 
 target_compile_definitions(guitar_dsp_app PRIVATE

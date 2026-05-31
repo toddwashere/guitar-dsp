@@ -73,6 +73,9 @@ public:
     // or synthesis returned nullptr.
     bool sayText(const std::string& text, const std::string& voiceId = {});
 
+    // Pass-through to MidiRouter::setPreferredDeviceName. Empty = auto-pick.
+    void setMidiPreferredDeviceName(const juce::String& name);
+
 private:
     audio::AudioGraph graph_;
     std::vector<float> monoScratch_;

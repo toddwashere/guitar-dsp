@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "DiagnosticPanel.h"
+#include "MidiDevicePicker.h"
 #include "Oscilloscope.h"
 #include "PluginProcessor.h"
 #include "SayPanel.h"
@@ -30,6 +31,7 @@ private:
 
     DiagnosticPanel    diagnosticPanel_;
     SceneIndicator     sceneIndicator_;
+    MidiDevicePicker   midiDevicePicker_;
     SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;
     SpectrumAnalyzer   spectrumAnalyzer_;

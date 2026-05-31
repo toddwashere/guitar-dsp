@@ -128,6 +128,10 @@ void PluginProcessor::releaseResources() {
     graph_.reset();
 }
 
+void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
+    if (midiRouter_) midiRouter_->setPreferredDeviceName(name);
+}
+
 bool PluginProcessor::sayText(const std::string& text, const std::string& voiceId) {
     if (text.empty() || !appleTtsSource_) return false;
     if (!voiceId.empty()) appleTtsSource_->setVoice(voiceId);
