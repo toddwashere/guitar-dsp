@@ -49,6 +49,12 @@ void DiagnosticPanel::timerCallback() {
     displayInputPeak_  = std::max(in,  displayInputPeak_  * decayPerFrame);
     displayOutputPeak_ = std::max(out, displayOutputPeak_ * decayPerFrame);
 
+    const int currentSummary = processor_.getLastMidiSummary();
+    if (currentSummary != lastMidiSummary_) {
+        lastMidiSummary_ = currentSummary;
+        lastMidiTimeMs_  = juce::Time::currentTimeMillis();
+    }
+
     repaint();
 }
 
@@ -105,6 +111,22 @@ void DiagnosticPanel::paint(juce::Graphics& g) {
                juce::Rectangle<int>(lampBounds.getRight() + 4,
                                     statusRow.getY(), 60, statusRow.getHeight()),
                juce::Justification::left);
+
+    // MIDI activity LED at the far right of the status row.
+    {
+        const auto now = juce::Time::currentTimeMillis();
+        const bool midiHot = (now - lastMidiTimeMs_) < 200 && lastMidiTimeMs_ > 0;
+
+        auto statusBounds = getLocalBounds().reduced(8, 6).removeFromTop(20);
+        auto midiArea = statusBounds.removeFromRight(70);  // ~70 px for LED + label
+        auto midiLamp = midiArea.removeFromLeft(20).withSizeKeepingCentre(14, 14);
+        g.setColour(midiHot ? juce::Colour::fromRGB(80, 180, 220)
+                            : juce::Colour::fromRGB(80, 80, 90));
+        g.fillEllipse(midiLamp.toFloat());
+        g.setColour(juce::Colour::fromRGB(150, 160, 175));
+        g.setFont(juce::Font{juce::FontOptions{}.withHeight(11.0f)});
+        g.drawText("MIDI", midiArea, juce::Justification::left);
+    }
 
     area.removeFromTop(4);
 

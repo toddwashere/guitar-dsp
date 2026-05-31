@@ -32,6 +32,10 @@ private:
     // the visual movement is calm at 30 Hz.
     float displayInputPeak_  = 0.0f;
     float displayOutputPeak_ = 0.0f;
+
+    // MIDI activity indicator state.
+    int          lastMidiSummary_ = 0;
+    juce::int64  lastMidiTimeMs_  = 0;
 };
 
 } // namespace guitar_dsp
