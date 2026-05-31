@@ -24,6 +24,10 @@ external/Catch2/build/
 tests/output/
 *.junit.xml
 Testing/
+tests/fixtures/tts/*/audio.wav
+
+# Harness-managed worktrees (created by EnterWorktree)
+.claude/
 
 # Python (for tools/tts_prebake later)
 __pycache__/
