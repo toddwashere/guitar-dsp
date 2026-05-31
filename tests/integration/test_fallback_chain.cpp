@@ -143,3 +143,33 @@ TEST_CASE("fallback chain: empty key for source returns nullptr",
     auto clip = synthesizeWithFallback(cfg, reg, emptyKey);
     REQUIRE_FALSE(clip);
 }
+
+TEST_CASE("fallback chain: primary and fallback both unknown -> nullptr",
+          "[integration][fallback]") {
+    TTSSourceRegistry reg;  // empty registry
+
+    TtsConfig cfg;
+    cfg.source = "piper";
+    cfg.fallback = "apple";
+    cfg.text = "hello";
+
+    auto clip = synthesizeWithFallback(cfg, reg, identityKeyFor);
+    REQUIRE_FALSE(clip);
+}
+
+TEST_CASE("fallback chain: primary fails with no fallback -> nullptr",
+          "[integration][fallback]") {
+    AlwaysFailSource piper{"piper"};
+    AlwaysSucceedSource apple{"apple"};  // present but not in chain
+    TTSSourceRegistry reg{{"piper", &piper}, {"apple", &apple}};
+
+    TtsConfig cfg;
+    cfg.source = "piper";
+    cfg.fallback = "";  // explicitly no fallback
+    cfg.text = "hello";
+
+    auto clip = synthesizeWithFallback(cfg, reg, identityKeyFor);
+    REQUIRE_FALSE(clip);
+    REQUIRE(piper.calls.load() == 1);
+    REQUIRE(apple.calls.load() == 0);
+}
