@@ -137,6 +137,39 @@ TEST_CASE("Carousel: reverb adds a decaying tail after input stops",
     REQUIRE(tailPeak > 1e-3f);
 }
 
+TEST_CASE("Carousel: full preset stays finite and bounded on a pluck",
+          "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 512);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.drive = 9.0f;
+    cfg.shaper = CarouselConfig::Shaper::Tanh;
+    cfg.shaperAmount = 1.2f;
+    cfg.crusherBits = 6; cfg.crusherDownsample = 2;
+    cfg.filterMode = CarouselConfig::FilterMode::BandPass;
+    cfg.filterMod  = CarouselConfig::FilterMod::Envelope;
+    cfg.filterCutoffHz = 500.0f; cfg.filterResonance = 0.85f;
+    cfg.filterEnvAmount = 2500.0f;
+    cfg.chorusRateHz = 4.0f; cfg.chorusDepth = 0.4f; cfg.chorusMix = 0.5f;
+    cfg.reverbRoomSize = 0.5f; cfg.reverbWet = 0.3f;
+    cfg.outputTrimDb = -2.0f;
+    c.setConfig(cfg);
+
+    std::vector<float> in(512), out(512);
+    for (int blk = 0; blk < 100; ++blk) {
+        const float amp = 0.8f * std::exp(-blk / 30.0f);
+        for (int i = 0; i < 512; ++i)
+            in[static_cast<size_t>(i)] =
+                amp * std::sin(2.0f*3.14159265f*196.0f*(blk*512+i)/48000.0f);
+        c.process(in.data(), out.data(), out.size());
+        for (float x : out) {
+            REQUIRE(std::isfinite(x));
+            REQUIRE(std::fabs(x) < 8.0f);
+        }
+    }
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);
