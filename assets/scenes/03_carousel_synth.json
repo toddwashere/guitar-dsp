@@ -1,0 +1,6 @@
+{
+  "id": 3,
+  "name": "Carousel — synth lead",
+  "color": "#5cd1c4",
+  "mixer": { "masterGainDb": -6.0, "dryWet": 0.0, "transitionMs": 20 }
+}

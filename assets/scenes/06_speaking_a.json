@@ -1,0 +1,6 @@
+{
+  "id": 6,
+  "name": "Speaking A — hello",
+  "color": "#a64dff",
+  "mixer": { "masterGainDb": -6.0, "dryWet": 0.0, "transitionMs": 20 }
+}

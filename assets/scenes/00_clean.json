@@ -1,0 +1,6 @@
+{
+  "id": 0,
+  "name": "Clean intro",
+  "color": "#cccccc",
+  "mixer": { "masterGainDb": 0.0, "dryWet": 0.0, "transitionMs": 20 }
+}

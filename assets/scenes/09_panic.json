@@ -1,0 +1,6 @@
+{
+  "id": 9,
+  "name": "Panic — bypass to clean",
+  "color": "#ff4d4d",
+  "mixer": { "masterGainDb": 0.0, "dryWet": 0.0, "transitionMs": 30 }
+}

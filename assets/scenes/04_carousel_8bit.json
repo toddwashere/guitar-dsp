@@ -1,0 +1,6 @@
+{
+  "id": 4,
+  "name": "Carousel — 8-bit",
+  "color": "#f25e8e",
+  "mixer": { "masterGainDb": -8.0, "dryWet": 0.0, "transitionMs": 20 }
+}

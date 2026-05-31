@@ -1,0 +1,6 @@
+{
+  "id": 1,
+  "name": "Carousel — Hammond organ",
+  "color": "#e69e3c",
+  "mixer": { "masterGainDb": -2.0, "dryWet": 0.0, "transitionMs": 20 }
+}
