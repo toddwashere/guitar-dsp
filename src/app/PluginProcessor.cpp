@@ -179,6 +179,19 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         juce::MessageManager::callAsync([this, activeSceneId] {
             if (sceneEngine_.getActiveSceneId() != activeSceneId) return;
 
+            // Carousel branch selection + config push (message thread).
+            const auto carouselCfg = sceneEngine_.activeCarouselConfig();
+            graph_.carousel().setConfig(carouselCfg);
+            graph_.setWetSource(carouselCfg.enabled
+                ? audio::AudioGraph::WetSource::Carousel
+                : audio::AudioGraph::WetSource::Vocoder);
+            if (carouselCfg.enabled) {
+                // Instrument scene: no TTS clip plays under it.
+                currentTtsClipKey_.clear();
+                graph_.ttsClipPlayer().setClip(nullptr);
+                return;
+            }
+
             const auto cfg = sceneEngine_.activeTtsConfig();
 
             // Build a per-source key (matches what synthesize() expects).
