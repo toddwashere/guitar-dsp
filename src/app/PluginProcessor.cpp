@@ -5,10 +5,22 @@
 #include <cmath>
 #include <cstring>
 
+#include <juce_events/juce_events.h>
+
 #include "AssetLocator.h"
 #include "scenes/SceneLibrary.h"
 
 namespace guitar_dsp {
+
+class PluginProcessor::AssetsPoller : public juce::Timer {
+public:
+    explicit AssetsPoller(PluginProcessor& p) : owner_(p) {}
+    void timerCallback() override {
+        owner_.sceneEngine_.reloadFrom(AssetLocator::scenesDirectory());
+    }
+private:
+    PluginProcessor& owner_;
+};
 
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
@@ -33,6 +45,11 @@ PluginProcessor::PluginProcessor()
                 // through in Phase 3.
             }
         });
+
+    if (const char* env = std::getenv("GUITAR_DSP_HOT_RELOAD"); env && std::string(env) == "1") {
+        assetsPoller_ = std::make_unique<AssetsPoller>(*this);
+        assetsPoller_->startTimer(2000);
+    }
 }
 
 void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {

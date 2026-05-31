@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <string>
 #include <vector>
 
 #include "Scene.h"
@@ -20,6 +21,9 @@ public:
 
     // Message-thread API
     void loadScenes(std::vector<Scene> scenes);
+    // Re-load scenes from `directory`. If the previously active scene id
+    // still exists, it stays active; otherwise the lowest id is activated.
+    void reloadFrom(const std::string& directory);
     bool activateScene(int id);
     int  getActiveSceneId() const;
     int  getSceneCount() const;

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "SceneLibrary.h"
+
 namespace guitar_dsp::scenes {
 
 SceneEngine::SceneEngine() = default;
@@ -17,6 +19,13 @@ void SceneEngine::loadScenes(std::vector<Scene> scenes) {
         activeIndex_ = 0;
         publishSnapshot(scenes_[0].mixer);
     }
+}
+
+void SceneEngine::reloadFrom(const std::string& directory) {
+    auto fresh = SceneLibrary::loadDirectory(directory);
+    const int previousActive = getActiveSceneId();
+    loadScenes(std::move(fresh));
+    if (previousActive >= 0) activateScene(previousActive);  // best-effort
 }
 
 bool SceneEngine::activateScene(int id) {

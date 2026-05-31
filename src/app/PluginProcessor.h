@@ -80,6 +80,9 @@ private:
     midi::FCB1010Mapping              midiMapping_ {midi::FCB1010Mapping::stockDefaults()};
     std::unique_ptr<midi::MidiRouter> midiRouter_;
     std::atomic<int>                  lastMidiSummary_ {0};
+
+    class AssetsPoller;
+    std::unique_ptr<AssetsPoller> assetsPoller_;
 };
 
 } // namespace guitar_dsp
