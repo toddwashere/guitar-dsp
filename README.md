@@ -31,24 +31,33 @@ GUITAR_DSP_REGENERATE_GOLDENS=1 ctest --test-dir build --output-on-failure -R go
 
 ## Project status
 
-This branch implements **Phase 2: Scene system + MIDI/FCB1010**. The app loads 10 scenes from `assets/scenes/*.json` at startup and exposes them via:
+This branch implements **Phase 3: Vocoder + Prebaked TTS**. Scenes 6, 7, and 8 now activate a 24-band channel vocoder whose modulator is a pre-baked TTS audio clip — the live guitar becomes the carrier, producing a "guitar speaks the words" effect.
 
-- **Keyboard**: number keys `1`–`9` activate scenes 0–8; `0` activates scene 9.
-- **MIDI**: any device whose name contains "FCB1010" is auto-connected. Program Change 0–9 activates the corresponding scene; CC 27 and CC 7 are recognized as expression-pedal channels (no-op in Phase 2; wired in Phase 3).
+### Generating TTS clips
 
-Each scene currently varies only the Mixer's master gain (so switching is audible). Per-scene DSP differences (carousel, vocoder) arrive in Phases 3 and 4.
+Speaking-scene clips are generated offline by `tools/tts_prebake/prebake.py` (Piper-based — see `tools/tts_prebake/README.md` for setup). The committed clips under `assets/tts/` cover scenes 6, 7, and 8:
 
-### Hot reload (development)
+- `06_hello_cleveland/` — "hello cleveland"
+- `07_mid_talk/` — "I think therefore I riff"
+- `08_gently_weeps/` — opening lyric from the title track
 
-Set `GUITAR_DSP_HOT_RELOAD=1` to enable a 2-second polling reload of `assets/scenes/`. Edits propagate without restarting the app.
+To change a clip's text:
 
-### Asset path override
+```bash
+cd tools/tts_prebake && source .venv/bin/activate
+python prebake.py --text "your new text here" --out ../../assets/tts/06_hello_cleveland
+```
 
-Set `GUITAR_DSP_ASSETS_DIR=<path>` to load assets from a directory other than the app bundle (useful for editing source `assets/` while running the binary directly).
+then rebuild the app — the post-build asset copy picks it up.
+
+### Live behavior
+
+Switch to scene 7 (key `7`, or PC 6 on the FCB1010) and play guitar. The vocoder shapes the guitar's harmonics with the TTS clip's envelope, producing intelligible-but-very-clearly-guitar speech. The active scene's `dryWet` controls how much of the dry guitar bleeds through.
 
 ### Subsequent phases (see plans directory)
 
-- **Phase 3**: Vocoder + 3 TTS sources (prebaked / Apple / Piper).
-- **Phase 4**: Instrument Carousel — real per-scene DSP.
-- **Phase 5**: Full-screen visualization (spectrogram, karaoke text).
+- **Phase 3.5**: Apple `AVSpeechSynthesizer` source — live TTS for the future audience-text encore.
+- **Phase 3.6**: Piper subprocess source — alternative live engine with bundled binary.
+- **Phase 4**: Instrument Carousel — real per-scene DSP for scenes 1–5.
+- **Phase 5**: Full-screen visualization (spectrogram, karaoke text overlay).
 - **Phase 6**: Hardening + dress rehearsal.
