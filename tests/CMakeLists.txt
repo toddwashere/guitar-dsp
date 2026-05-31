@@ -18,6 +18,7 @@ add_executable(guitar_dsp_tests
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     integration/test_scene_switch.cpp
+    integration/test_speaking_scene.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
