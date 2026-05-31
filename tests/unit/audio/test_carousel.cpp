@@ -165,7 +165,34 @@ TEST_CASE("Carousel: full preset stays finite and bounded on a pluck",
         c.process(in.data(), out.data(), out.size());
         for (float x : out) {
             REQUIRE(std::isfinite(x));
-            REQUIRE(std::fabs(x) < 8.0f);
+            REQUIRE(std::fabs(x) <= 1.0f);   // brick-wall limiter ceiling
+        }
+    }
+}
+
+TEST_CASE("Carousel: output limiter bounds extreme presets to [-1,1]",
+          "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 512);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.drive = 36.0f;          // absurd boost
+    cfg.shaper = CarouselConfig::Shaper::None;   // no shaper to self-bound
+    cfg.filterMode = CarouselConfig::FilterMode::BandPass;
+    cfg.filterMod  = CarouselConfig::FilterMod::Static;
+    cfg.filterCutoffHz = 440.0f;
+    cfg.filterResonance = 0.95f; // max resonance
+    cfg.reverbRoomSize = 0.9f; cfg.reverbWet = 0.9f;
+    cfg.outputTrimDb = 24.0f;    // and crank the trim too
+    c.setConfig(cfg);
+
+    auto in = tone(512, 440.0f);
+    std::vector<float> out(512, 0.0f);
+    for (int blk = 0; blk < 20; ++blk) {
+        c.process(in.data(), out.data(), out.size());
+        for (float x : out) {
+            REQUIRE(std::isfinite(x));
+            REQUIRE(std::fabs(x) <= 1.0f);
         }
     }
 }

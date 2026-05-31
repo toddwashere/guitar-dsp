@@ -138,6 +138,17 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
         juce::dsp::ProcessContextReplacing<float> ctx(block);
         reverb_.process(ctx);
     }
+
+    // Brick-wall safety limiter. A resonant filter + reverb tail can boost
+    // past full scale; this is a live-PA signal, so guarantee the carousel
+    // never emits beyond [-1, 1] regardless of preset or input. Also scrubs
+    // any non-finite sample (NaN/Inf) to silence so a bad value can never
+    // reach the audio device.
+    for (std::size_t i = 0; i < numSamples; ++i) {
+        float x = out[i];
+        if (!std::isfinite(x)) x = 0.0f;
+        out[i] = std::clamp(x, -1.0f, 1.0f);
+    }
 }
 
 } // namespace guitar_dsp::audio
