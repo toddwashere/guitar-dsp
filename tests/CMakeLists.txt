@@ -12,6 +12,7 @@ add_executable(guitar_dsp_tests
     unit/midi/test_fcb1010_mapping.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
+    integration/test_scene_switch.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
