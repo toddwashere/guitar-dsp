@@ -31,7 +31,29 @@ GUITAR_DSP_REGENERATE_GOLDENS=1 ctest --test-dir build --output-on-failure -R go
 
 ## Project status
 
-This branch implements **Phase 3.6: Piper subprocess TTS + three-source fallback chain**. The app now supports **three** TTS sources via the same `ITTSSource` interface, with automatic fallback declared per-scene:
+This branch implements **Phase 4: Instrument Carousel A**. Carousel scenes 1–5
+now process the live guitar through a pedal-style effects chain (`audio::Carousel`)
+— no MIDI notes, no pitch-shifting; the effect only reshapes timbre:
+
+| Key | Scene | Effect |
+|-----|-------|--------|
+| `2` | 1 | Organ / Leslie (tanh warmth + chorus + light reverb) |
+| `3` | 2 | Distorted guitar (drive + hard clip + tone filter) |
+| `4` | 3 | Synth lead (LFO-swept resonant filter + chorus + reverb) |
+| `5` | 4 | 8-bit chiptune (bit crusher + sample-rate reducer) |
+| `6` | 5 | Auto-wah (envelope-following resonant bandpass) |
+
+The chain is built from `juce::dsp` modules (`WaveShaper`,
+`StateVariableTPTFilter`, `Chorus`, `Reverb`) plus bespoke `Crusher` and
+modulation stages. Each scene's `carousel` JSON block parameterizes the chain;
+absent sub-blocks bypass that stage. `AudioGraph` routes instrument scenes
+through the carousel and speaking scenes through the vocoder via a wet-source
+selector. Piano and choir/pad (which need pitch-shifting/harmonization) are
+deferred to **Phase 4b**.
+
+### TTS (Phases 3–3.6)
+
+The app supports **three** TTS sources via the same `ITTSSource` interface, with automatic fallback declared per-scene:
 
 - **PrebakedTTSSource** — loads `.wav` files baked offline. Used by scenes 6, 8.
 - **AppleTTSSource** — `AVSpeechSynthesizer`. Used as Apple's fallback when chosen.
@@ -73,9 +95,9 @@ A `TTSPrewarmer` per live source pre-synthesizes every scene's text in a backgro
 
 ### Subsequent phases (see plans directory)
 
-- **Phase 4**: Instrument Carousel — real per-scene DSP for scenes 1-5.
+- **Phase 4b**: pitch/harmony instruments — pitch shifter, harmonizer, formant shifter (piano, choir/pad).
 - **Phase 5**: Full-screen visualization (spectrogram, karaoke text overlay).
-- **Phase 6**: Hardening + dress rehearsal (lands queued chips: data race, UAF guards, type-and-say UI).
+- **Phase 6**: Hardening + dress rehearsal (lands queued chips: data race, UAF guards).
 
 ### Listing available Apple voices
 
