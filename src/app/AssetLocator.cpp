@@ -48,4 +48,18 @@ std::string AssetLocator::ttsDirectory() {
     return (fs::path(root) / "tts").string();
 }
 
+std::string AssetLocator::piperBinaryPath() {
+    const auto root = assetsRoot();
+    if (root.empty()) return {};
+    const auto p = (fs::path(root) / "piper" / "piper").string();
+    return fs::exists(p) ? p : std::string{};
+}
+
+std::string AssetLocator::defaultPiperVoicePath() {
+    const auto root = assetsRoot();
+    if (root.empty()) return {};
+    const auto p = (fs::path(root) / "piper" / "voices" / "en_US-amy-medium.onnx").string();
+    return fs::exists(p) ? p : std::string{};
+}
+
 } // namespace guitar_dsp

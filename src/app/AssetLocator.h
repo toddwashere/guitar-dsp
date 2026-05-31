@@ -15,6 +15,15 @@ public:
     static std::string midiDirectory();
     static std::string ttsDirectory();
 
+    // Returns the path to the bundled Piper binary, or empty if not bundled.
+    // Path: <assetsRoot>/piper/piper
+    static std::string piperBinaryPath();
+
+    // Returns the path to the default Piper voice .onnx model, or empty if
+    // not bundled. Path: <assetsRoot>/piper/voices/en_US-amy-medium.onnx
+    // (matching the model the prebake tool already uses).
+    static std::string defaultPiperVoicePath();
+
 private:
     static std::string assetsRoot();
 };
