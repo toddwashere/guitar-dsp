@@ -6,6 +6,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_input_stage.cpp
     unit/audio/test_mixer.cpp
     unit/audio/test_audio_graph.cpp
+    unit/audio/test_ivocoder_compiles.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_engine.cpp
