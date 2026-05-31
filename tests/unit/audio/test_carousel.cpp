@@ -75,6 +75,47 @@ TEST_CASE("Carousel: crusher reduces distinct output levels", "[audio][carousel]
     REQUIRE(levels.size() <= 12);
 }
 
+TEST_CASE("Carousel: lowpass attenuates a high tone", "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 4096);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.filterMode = CarouselConfig::FilterMode::LowPass;
+    cfg.filterMod  = CarouselConfig::FilterMod::Static;
+    cfg.filterCutoffHz = 400.0f;
+    cfg.filterResonance = 0.3f;
+    c.setConfig(cfg);
+
+    auto hi = tone(4096, 5000.0f);
+    std::vector<float> out(4096, 0.0f);
+    c.process(hi.data(), out.data(), out.size());
+    c.process(hi.data(), out.data(), out.size());
+
+    float peak = 0.0f;
+    for (float x : out) peak = std::max(peak, std::fabs(x));
+    REQUIRE(peak < 0.25f);
+}
+
+TEST_CASE("Carousel: envelope-modulated bandpass produces finite output (auto-wah)",
+          "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 4096);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.filterMode = CarouselConfig::FilterMode::BandPass;
+    cfg.filterMod  = CarouselConfig::FilterMod::Envelope;
+    cfg.filterCutoffHz = 300.0f;
+    cfg.filterResonance = 0.7f;
+    cfg.filterEnvAmount = 2000.0f;
+    c.setConfig(cfg);
+
+    auto in = tone(4096, 440.0f);
+    std::vector<float> out(4096, 0.0f);
+    c.process(in.data(), out.data(), out.size());
+    c.process(in.data(), out.data(), out.size());
+    for (float x : out) { REQUIRE(std::isfinite(x)); REQUIRE(std::fabs(x) < 4.0f); }
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);

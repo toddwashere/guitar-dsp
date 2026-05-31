@@ -69,6 +69,17 @@ void Carousel::applyConfig(const scenes::CarouselConfig& cfg) noexcept {
     crusher_.setDownsample(cfg.crusherDownsample);
     driveGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.drive));
     trimGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.outputTrimDb));
+
+    using FM = scenes::CarouselConfig::FilterMode;
+    switch (cfg.filterMode) {
+        case FM::LowPass:  filter_.setType(juce::dsp::StateVariableTPTFilterType::lowpass); break;
+        case FM::BandPass: filter_.setType(juce::dsp::StateVariableTPTFilterType::bandpass); break;
+        case FM::HighPass: filter_.setType(juce::dsp::StateVariableTPTFilterType::highpass); break;
+        case FM::Off: default: break;
+    }
+    filter_.setResonance(juce::jlimit(0.05f, 0.95f, cfg.filterResonance));
+    filter_.setCutoffFrequency(juce::jlimit(20.0f, 18000.0f, cfg.filterCutoffHz));
+    lfo_.setRateHz(cfg.filterLfoHz);
 }
 
 void Carousel::process(const float* in, float* out, std::size_t numSamples) noexcept {
@@ -80,10 +91,26 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
         return;
     }
 
+    const bool filterOn = active_.filterMode != scenes::CarouselConfig::FilterMode::Off;
+    using FMod = scenes::CarouselConfig::FilterMod;
     for (std::size_t i = 0; i < numSamples; ++i) {
         float x = in[i] * driveGain_.getNextValue() * active_.shaperAmount;
         x = shape(x, active_.shaper);
         x = crusher_.processSample(x);
+
+        if (filterOn) {
+            if (active_.filterMod == FMod::Envelope) {
+                const float e = env_.processSample(x);
+                filter_.setCutoffFrequency(juce::jlimit(20.0f, 18000.0f,
+                    active_.filterCutoffHz + active_.filterEnvAmount * e));
+            } else if (active_.filterMod == FMod::Lfo) {
+                const float l = lfo_.processSample();
+                filter_.setCutoffFrequency(juce::jlimit(20.0f, 18000.0f,
+                    active_.filterCutoffHz * std::pow(2.0f, l)));
+            }
+            x = filter_.processSample(0, x);
+        }
+
         x *= trimGain_.getNextValue();
         out[i] = x;
     }
