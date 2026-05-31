@@ -1,0 +1,11 @@
+{
+  "id": 99,
+  "name": "Apple test scene",
+  "color": "#a64dff",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
+  "tts": {
+    "source": "apple",
+    "text": "Hello from Apple TTS",
+    "voice": "com.apple.voice.compact.en-US.Samantha"
+  }
+}

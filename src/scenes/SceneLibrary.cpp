@@ -66,6 +66,10 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
                 s.tts.source = t->getProperty("source").toString().toStdString();
             if (t->hasProperty("clip"))
                 s.tts.clip = t->getProperty("clip").toString().toStdString();
+            if (t->hasProperty("text"))
+                s.tts.text = t->getProperty("text").toString().toStdString();
+            if (t->hasProperty("voice"))
+                s.tts.voice = t->getProperty("voice").toString().toStdString();
         }
     }
 

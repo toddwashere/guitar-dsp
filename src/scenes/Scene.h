@@ -13,7 +13,9 @@ struct MixerParams {
 
 struct TtsConfig {
     std::string source;   // "prebaked" | "apple" | "piper" | "" (none)
-    std::string clip;     // identifier passed to ITTSSource::synthesize()
+    std::string clip;     // identifier passed to PrebakedTTSSource
+    std::string text;     // text passed to live sources (apple, piper)
+    std::string voice;    // optional voice id for live sources
 };
 
 struct Scene {
