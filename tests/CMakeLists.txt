@@ -8,6 +8,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_audio_graph.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
+    unit/scenes/test_scene_engine.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     harness/RealtimeSentinel.cpp

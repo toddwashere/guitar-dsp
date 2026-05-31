@@ -14,6 +14,7 @@ target_compile_features(guitar_dsp_audio PUBLIC cxx_std_20)
 
 add_library(guitar_dsp_scenes STATIC
     scenes/SceneLibrary.cpp
+    scenes/SceneEngine.cpp
 )
 
 target_include_directories(guitar_dsp_scenes PUBLIC
