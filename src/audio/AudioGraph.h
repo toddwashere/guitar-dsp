@@ -3,16 +3,18 @@
 #include <cstddef>
 #include <vector>
 
+#include "ChannelVocoder.h"
 #include "InputStage.h"
 #include "Mixer.h"
+#include "TTSClipPlayer.h"
 
 namespace guitar_dsp::audio {
 
-// The top-level audio processing graph. In Phase 1 this is just:
-//   InputStage -> (passthrough as both dry and wet) -> Mixer -> Output
-// Subsequent phases insert the Instrument Carousel and Vocoder branches
-// between InputStage and Mixer. All buffers used internally are sized at
-// prepare() time; processing is allocation-free.
+// The top-level audio processing graph.
+//   InputStage -> dry path -> Mixer -> Output
+//                          -> TTSClipPlayer -> ChannelVocoder -> wet path -> Mixer
+// All buffers used internally are sized at prepare() time; processing is
+// allocation-free.
 class AudioGraph {
 public:
     AudioGraph();
@@ -24,10 +26,14 @@ public:
 
     InputStage& input() { return inputStage_; }
     Mixer& mixer() { return mixer_; }
+    TTSClipPlayer& ttsClipPlayer() { return ttsClipPlayer_; }
+    ChannelVocoder& vocoder() { return vocoder_; }
 
 private:
     InputStage inputStage_;
     Mixer mixer_;
+    TTSClipPlayer ttsClipPlayer_;
+    ChannelVocoder vocoder_;
 
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;

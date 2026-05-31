@@ -9,6 +9,10 @@ AudioGraph::AudioGraph() = default;
 void AudioGraph::prepare(double sampleRate, int blockSize) {
     inputStage_.prepare(sampleRate, blockSize);
     mixer_.prepare(sampleRate, blockSize);
+    ttsClipPlayer_.prepare(sampleRate, blockSize);
+    vocoder_.prepare(sampleRate, blockSize);
+    vocoder_.setWetLevel(1.0f);
+    vocoder_.setSibilance(0.5f);
 
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     wetBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
@@ -23,6 +27,8 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
 void AudioGraph::reset() {
     inputStage_.reset();
     mixer_.reset();
+    ttsClipPlayer_.reset();
+    vocoder_.reset();
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
     std::fill(wetBuffer_.begin(), wetBuffer_.end(), 0.0f);
 }
@@ -34,7 +40,18 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
     numSamples = std::min(numSamples, postInputBuffer_.size());
 
     inputStage_.process(in, postInputBuffer_.data(), numSamples);
-    // Wet path is silent in Phase 1; subsequent phases populate it.
+
+    // Fill wetBuffer_ with the modulator (TTS playback). When no clip is
+    // active, this is silence and the vocoder will output silence too.
+    ttsClipPlayer_.process(wetBuffer_.data(), numSamples);
+
+    // Vocoder: carrier = post-input guitar, modulator = TTS playback.
+    // Re-uses wetBuffer_ in place (aliasing safe -- vocoder reads then writes
+    // per sample).
+    vocoder_.process(postInputBuffer_.data(), wetBuffer_.data(),
+                     wetBuffer_.data(), numSamples);
+
+    // Mixer: dry = post-input guitar, wet = vocoder output.
     mixer_.process(postInputBuffer_.data(), wetBuffer_.data(), out, numSamples);
 }
 
