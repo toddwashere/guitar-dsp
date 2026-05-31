@@ -31,31 +31,51 @@ GUITAR_DSP_REGENERATE_GOLDENS=1 ctest --test-dir build --output-on-failure -R go
 
 ## Project status
 
-This branch implements **Phase 3.5: Apple AVSpeechSynthesizer live TTS source**. The app now ships with **two** TTS sources via the same `ITTSSource` interface:
+This branch implements **Phase 3.6: Piper subprocess TTS + three-source fallback chain**. The app now supports **three** TTS sources via the same `ITTSSource` interface, with automatic fallback declared per-scene:
 
-- **PrebakedTTSSource** (Phase 3) — loads .wav files from `assets/tts/<key>/audio.wav`. Used by scenes 7 and 8.
-- **AppleTTSSource** (this phase) — synthesizes text at runtime via macOS `AVSpeechSynthesizer`. Used by scene 6.
+- **PrebakedTTSSource** — loads `.wav` files baked offline. Used by scenes 6, 8.
+- **AppleTTSSource** — `AVSpeechSynthesizer`. Used as Apple's fallback when chosen.
+- **PiperTTSSource** — bundled Piper CLI subprocess. Used by scene 7 (with prebaked fallback).
 
-Scene JSON picks the source per scene:
+### One-time Piper setup
+
+The Piper binary (~30 MB) and voice (~63 MB) are NOT committed. Fetch them once:
+
+```bash
+./scripts/fetch_piper.sh
+```
+
+This downloads:
+- `assets/piper/piper` — the Piper CLI binary
+- `assets/piper/voices/en_US-amy-medium.onnx` — voice model + `.json` metadata
+
+The CMake post-build asset copy picks these up automatically and includes them in the .app bundle's `Contents/Resources/assets/piper/`. If you skip this step, scenes that declare `"source": "piper"` will fall back to their declared `tts.fallback` (typically prebaked or apple) — the app works, just without the Piper voice.
+
+### Fallback chain
+
+Scene JSON:
 
 ```json
 {
   "tts": {
-    "source": "apple",
-    "text": "what the guitar should say",
-    "voice": "com.apple.voice.compact.en-US.Samantha"
+    "source": "piper",
+    "text": "phrase to speak",
+    "voice": "en_US-amy-medium",
+    "clip": "fallback_clip_name",
+    "fallback": "prebaked"
   }
 }
 ```
 
-A `TTSPrewarmer` pre-synthesizes every live-scene's text in a background thread at app startup, so scene activation is instant even though each synthesis takes ~300 ms-1 s.
+At scene activation, the app calls the primary source's `synthesize()`. If it returns nullptr (binary missing, network down, voice not installed), the chain walks once into `tts.fallback`. Chain depth is capped at 1 hop (Phase 3.6 scope); deeper chains require spec changes.
+
+A `TTSPrewarmer` per live source pre-synthesizes every scene's text in a background thread at app startup, so scene activation is instant even though each synthesis takes ~300 ms–1 s.
 
 ### Subsequent phases (see plans directory)
 
-- **Phase 3.6**: Piper subprocess source — third source with bundled binary, completes the three-source fallback chain.
 - **Phase 4**: Instrument Carousel — real per-scene DSP for scenes 1-5.
 - **Phase 5**: Full-screen visualization (spectrogram, karaoke text overlay).
-- **Phase 6**: Hardening + dress rehearsal.
+- **Phase 6**: Hardening + dress rehearsal (lands queued chips: data race, UAF guards, type-and-say UI).
 
 ### Listing available Apple voices
 
