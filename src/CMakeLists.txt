@@ -5,6 +5,7 @@ add_library(guitar_dsp_audio STATIC
     audio/Mixer.cpp
     audio/AudioGraph.cpp
     audio/ChannelVocoder.cpp
+    audio/TTSClipPlayer.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
