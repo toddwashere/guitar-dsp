@@ -39,3 +39,11 @@ venv/
 tools/tts_prebake/voices/*.onnx
 tools/tts_prebake/voices/*.onnx.json
 tools/tts_prebake/.venv/
+
+# Piper binary + voices (download via scripts/fetch_piper.sh)
+assets/piper/piper
+assets/piper/*.dylib
+assets/piper/*.so
+assets/piper/espeak-ng-data/
+assets/piper/voices/*.onnx
+assets/piper/voices/*.onnx.json
