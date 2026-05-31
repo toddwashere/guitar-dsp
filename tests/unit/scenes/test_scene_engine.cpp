@@ -53,3 +53,21 @@ TEST_CASE("SceneEngine: getActiveScene returns the live struct",
     REQUIRE(eng.getActiveScene().id == 1);
     REQUIRE(eng.getActiveScene().mixer.masterGainDb == -6.0f);
 }
+
+TEST_CASE("SceneEngine: activeTtsKey reflects the active scene's TTS clip",
+          "[scenes][engine][tts]") {
+    SceneEngine eng;
+    Scene s0 = Scene::defaults(0);
+    Scene s1 = Scene::defaults(1);
+    s1.tts.source = "prebaked";
+    s1.tts.clip = "test_clip";
+    eng.loadScenes({s0, s1});
+
+    REQUIRE(eng.activeTtsKey().empty());  // scene 0 has no tts
+
+    eng.activateScene(1);
+    REQUIRE(eng.activeTtsKey() == "test_clip");
+
+    eng.activateScene(0);
+    REQUIRE(eng.activeTtsKey().empty());
+}

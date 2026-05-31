@@ -51,6 +51,11 @@ const Scene& SceneEngine::getActiveScene() const {
     return scenes_[static_cast<std::size_t>(activeIndex_)];
 }
 
+std::string SceneEngine::activeTtsKey() const {
+    if (activeIndex_ < 0) return {};
+    return scenes_[static_cast<std::size_t>(activeIndex_)].tts.clip;
+}
+
 MixerParams SceneEngine::currentMixerParams() const noexcept {
     MixerParams m;
     m.masterGainDb = snapMasterGainDb_.load(std::memory_order_relaxed);

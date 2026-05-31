@@ -38,6 +38,9 @@ public:
     int  getActiveSceneId() const;
     int  getSceneCount() const;
     const Scene& getActiveScene() const;
+    // Returns the active scene's TTS clip key, or empty string if none.
+    // Message-thread only.
+    std::string activeTtsKey() const;
 
     // Audio-thread API
     MixerParams currentMixerParams() const noexcept;
