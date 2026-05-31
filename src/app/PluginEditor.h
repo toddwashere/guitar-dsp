@@ -5,6 +5,7 @@
 #include "DiagnosticPanel.h"
 #include "Oscilloscope.h"
 #include "PluginProcessor.h"
+#include "SayPanel.h"
 #include "SceneIndicator.h"
 #include "SpectrumAnalyzer.h"
 
@@ -29,6 +30,7 @@ private:
 
     DiagnosticPanel    diagnosticPanel_;
     SceneIndicator     sceneIndicator_;
+    SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;
     SpectrumAnalyzer   spectrumAnalyzer_;
 };

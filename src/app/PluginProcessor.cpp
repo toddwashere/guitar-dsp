@@ -128,6 +128,18 @@ void PluginProcessor::releaseResources() {
     graph_.reset();
 }
 
+bool PluginProcessor::sayText(const std::string& text, const std::string& voiceId) {
+    if (text.empty() || !appleTtsSource_) return false;
+    if (!voiceId.empty()) appleTtsSource_->setVoice(voiceId);
+    auto clip = appleTtsSource_->synthesize(text);
+    if (!clip) return false;
+    // Bypass currentTtsClipKey_ tracking — this is an ad-hoc overlay, not a
+    // scene-driven clip. The next scene change will replace it normally.
+    currentTtsClipKey_.clear();
+    graph_.ttsClipPlayer().setClip(clip);
+    return true;
+}
+
 bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     const auto inputs = layouts.getMainInputChannelSet();
     const auto outputs = layouts.getMainOutputChannelSet();

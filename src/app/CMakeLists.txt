@@ -30,6 +30,7 @@ target_sources(guitar_dsp_app PRIVATE
     Oscilloscope.cpp
     SceneIndicator.cpp
     SpectrumAnalyzer.cpp
+    SayPanel.cpp
 )
 
 target_compile_definitions(guitar_dsp_app PRIVATE

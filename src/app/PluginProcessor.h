@@ -66,6 +66,13 @@ public:
 
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
+    // Synthesize `text` with Apple TTS and route it through the active
+    // scene's vocoder/mixer chain. Call from the message thread only.
+    // Optionally pin a voice identifier; pass empty to use whatever the
+    // active scene last selected. Returns false if no Apple source exists
+    // or synthesis returned nullptr.
+    bool sayText(const std::string& text, const std::string& voiceId = {});
+
 private:
     audio::AudioGraph graph_;
     std::vector<float> monoScratch_;
