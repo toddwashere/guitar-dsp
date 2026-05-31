@@ -3,6 +3,7 @@
 
 #include "audio/ChannelVocoder.h"
 #include "harness/SyntheticGuitar.h"
+#include "harness/RealtimeSentinel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -44,4 +45,41 @@ TEST_CASE("ChannelVocoder: modulator amplitude shapes carrier", "[audio][vocoder
 
     INFO("rmsFirst=" << rmsFirst << " rmsSecond=" << rmsSecond);
     REQUIRE(rmsSecond < rmsFirst * 0.5);  // strongly attenuated
+}
+
+TEST_CASE("ChannelVocoder: silent modulator produces silent output", "[audio][vocoder]") {
+    ChannelVocoder voc;
+    voc.prepare(48000.0, 512);
+    voc.setWetLevel(1.0f);
+    voc.setSibilance(0.0f);
+
+    SyntheticGuitar gen{48000.0};
+    constexpr int N = 4800;
+    std::vector<float> carrier(N), modulator(N, 0.0f), out(N);
+    gen.sine(800.0f, 0.6f, carrier.data(), N);
+
+    voc.process(carrier.data(), modulator.data(), out.data(), N);
+
+    float peak = 0.0f;
+    for (int i = N - 480; i < N; ++i) peak = std::max(peak, std::abs(out[i]));
+    REQUIRE(peak < 1e-3f);
+}
+
+TEST_CASE("ChannelVocoder: zero allocations on audio thread", "[audio][vocoder][realtime]") {
+    ChannelVocoder voc;
+    voc.prepare(48000.0, 512);
+    voc.setWetLevel(1.0f);
+    voc.setSibilance(0.4f);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> carrier(512), modulator(512), out(512);
+    gen.sine(800.0f, 0.5f, carrier.data(), 512);
+    gen.sine(800.0f, 0.4f, modulator.data(), 512);
+
+    guitar_dsp::tests::RealtimeSentinel sentinel;
+    sentinel.markCurrentThreadAsRealtime();
+    for (int i = 0; i < 938; ++i)  // 10 s of audio in 512-sample blocks
+        voc.process(carrier.data(), modulator.data(), out.data(), 512);
+    sentinel.unmarkCurrentThreadAsRealtime();
+    REQUIRE(sentinel.violations() == 0);
 }
