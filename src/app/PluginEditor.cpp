@@ -14,6 +14,8 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(diagnosticPanel_);
     addAndMakeVisible(oscilloscope_);
     addAndMakeVisible(spectrumAnalyzer_);
+    setWantsKeyboardFocus(true);
+    addKeyListener(this);
 }
 
 void PluginEditor::paint(juce::Graphics& g) {
@@ -30,6 +32,18 @@ void PluginEditor::resized() {
     const int remaining = bounds.getHeight();
     oscilloscope_.setBounds(bounds.removeFromTop(remaining / 2));
     spectrumAnalyzer_.setBounds(bounds);
+}
+
+bool PluginEditor::keyPressed(const juce::KeyPress& key, juce::Component*) {
+    const auto kc = key.getKeyCode();
+
+    int sceneId = -1;
+    if (kc >= '1' && kc <= '9')      sceneId = kc - '1';   // 1 -> 0, 9 -> 8
+    else if (kc == '0')              sceneId = 9;          // 0 -> 9
+    if (sceneId < 0) return false;
+
+    processor_.sceneEngine().activateScene(sceneId);
+    return true;
 }
 
 } // namespace guitar_dsp

@@ -9,7 +9,8 @@
 
 namespace guitar_dsp {
 
-class PluginEditor : public juce::AudioProcessorEditor {
+class PluginEditor : public juce::AudioProcessorEditor,
+                     private juce::KeyListener {
 public:
     explicit PluginEditor(PluginProcessor&);
     ~PluginEditor() override = default;
@@ -18,6 +19,8 @@ public:
     void resized() override;
 
 private:
+    bool keyPressed(const juce::KeyPress&, juce::Component*) override;
+
     PluginProcessor& processor_;
 
     DiagnosticPanel    diagnosticPanel_;
