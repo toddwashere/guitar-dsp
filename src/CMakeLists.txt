@@ -11,6 +11,7 @@ add_library(guitar_dsp_audio STATIC
     audio/PiperTTSSource.cpp
     audio/TTSPrewarmer.cpp
     audio/TTSSynthChain.cpp
+    audio/Crusher.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
