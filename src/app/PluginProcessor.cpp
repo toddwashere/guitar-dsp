@@ -81,6 +81,10 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     prebakedTtsSource_ = std::make_unique<audio::PrebakedTTSSource>(
         AssetLocator::ttsDirectory());
     prebakedTtsSource_->prepare(sampleRate);
+
+    appleTtsSource_ = std::make_unique<audio::AppleTTSSource>();
+    appleTtsSource_->prepare(sampleRate);
+
     currentTtsClipKey_.clear();
     lastSeenSceneId_ = -1;
     graph_.ttsClipPlayer().setClip(nullptr);
@@ -117,17 +121,31 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     if (activeSceneId != lastSeenSceneId_) {
         lastSeenSceneId_ = activeSceneId;
         juce::MessageManager::callAsync([this, activeSceneId] {
-            // Re-check on the message thread (scene may have changed again).
             if (sceneEngine_.getActiveSceneId() != activeSceneId) return;
-            const std::string key = sceneEngine_.activeTtsKey();
+
+            const auto cfg = sceneEngine_.activeTtsConfig();
+
+            // Build a per-source key (matches what synthesize() expects).
+            std::string key;
+            if (cfg.source == "prebaked") key = cfg.clip;
+            else if (cfg.source == "apple") key = cfg.text;
+            // (Other sources land in Phase 3.6.)
+
             if (key == currentTtsClipKey_) return;
             currentTtsClipKey_ = key;
 
-            if (key.empty() || !prebakedTtsSource_) {
+            if (key.empty()) {
                 graph_.ttsClipPlayer().setClip(nullptr);
                 return;
             }
-            auto clip = prebakedTtsSource_->synthesize(key);
+
+            audio::TTSClipPtr clip;
+            if (cfg.source == "prebaked" && prebakedTtsSource_) {
+                clip = prebakedTtsSource_->synthesize(key);
+            } else if (cfg.source == "apple" && appleTtsSource_) {
+                if (!cfg.voice.empty()) appleTtsSource_->setVoice(cfg.voice);
+                clip = appleTtsSource_->synthesize(key);
+            }
             graph_.ttsClipPlayer().setClip(clip);  // nullptr is OK (silences)
         });
     }
