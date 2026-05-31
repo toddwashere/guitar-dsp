@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "audio/AudioGraph.h"
 #include "audio/TTSClip.h"
+#include "scenes/Scene.h"
 #include "harness/SyntheticGuitar.h"
 #include "harness/RealtimeSentinel.h"
 
@@ -89,4 +90,34 @@ TEST_CASE("AudioGraph: with TTS clip active + dryWet=1, output is vocoded",
     float peakSecond = 0.0f;
     for (int i = 40000; i < 48000; ++i) peakSecond = std::max(peakSecond, std::abs(out[i]));
     REQUIRE(peakSecond < 0.02f);
+}
+
+TEST_CASE("AudioGraph: carousel wet-source transforms the guitar",
+          "[audio][graph][carousel]") {
+    using guitar_dsp::scenes::CarouselConfig;
+
+    AudioGraph g;
+    g.prepare(48000.0, 512);
+    g.mixer().setDryWet(1.0f);
+    g.mixer().setMasterGainDb(0.0f);
+    g.mixer().reset();
+
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.shaper = CarouselConfig::Shaper::HardClip;
+    cfg.drive = 24.0f;
+    g.carousel().setConfig(cfg);
+    g.setWetSource(AudioGraph::WetSource::Carousel);
+
+    std::vector<float> in(512), out(512);
+    for (int i = 0; i < 512; ++i)
+        in[static_cast<size_t>(i)] = 0.9f * std::sin(2.0f*3.14159265f*110.0f*i/48000.0f);
+
+    g.process(in.data(), out.data(), out.size());
+    g.process(in.data(), out.data(), out.size());
+
+    float peak = 0.0f;
+    for (float x : out) peak = std::max(peak, std::fabs(x));
+    REQUIRE(peak <= 1.05f);
+    REQUIRE(peak > 0.3f);
 }
