@@ -22,6 +22,7 @@ add_executable(guitar_dsp_tests
     integration/test_realtime_safety.cpp
     integration/test_scene_switch.cpp
     integration/test_speaking_scene.cpp
+    integration/test_apple_speaking_scene.cpp
     integration/test_scene_hot_reload.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
