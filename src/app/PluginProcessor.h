@@ -2,10 +2,13 @@
 
 #include <array>
 #include <atomic>
+#include <memory>
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "audio/AudioGraph.h"
+#include "midi/FCB1010Mapping.h"
+#include "midi/MidiRouter.h"
 #include "scenes/SceneEngine.h"
 
 namespace guitar_dsp {
@@ -57,6 +60,8 @@ public:
 
     scenes::SceneEngine& sceneEngine() { return sceneEngine_; }
 
+    int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
+
 private:
     audio::AudioGraph graph_;
     std::vector<float> monoScratch_;
@@ -71,6 +76,10 @@ private:
     std::atomic<int>                  audioRingWriteIdx_{0};
 
     scenes::SceneEngine sceneEngine_;
+
+    midi::FCB1010Mapping              midiMapping_ {midi::FCB1010Mapping::stockDefaults()};
+    std::unique_ptr<midi::MidiRouter> midiRouter_;
+    std::atomic<int>                  lastMidiSummary_ {0};
 };
 
 } // namespace guitar_dsp

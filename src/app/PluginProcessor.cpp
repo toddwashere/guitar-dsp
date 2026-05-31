@@ -13,7 +13,27 @@ namespace guitar_dsp {
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
         .withInput("Input", juce::AudioChannelSet::mono(), true)
-        .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {}
+        .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
+    midiRouter_ = std::make_unique<midi::MidiRouter>(
+        [this](const juce::MidiMessage& msg) {
+            // Record last summary for the diagnostic UI: pack the first two
+            // bytes of the MIDI message into one int (status<<16 | data1).
+            const auto* raw = msg.getRawData();
+            const int byte0 = (msg.getRawDataSize() >= 1) ? (raw[0] & 0xFF) : 0;
+            const int byte1 = (msg.getRawDataSize() >= 2) ? (raw[1] & 0xFF) : 0;
+            const int packed = (byte0 << 16) | byte1;
+            lastMidiSummary_.store(packed, std::memory_order_relaxed);
+
+            if (auto cmd = midiMapping_.translate(msg)) {
+                if (cmd->type == midi::SceneCommandType::ActivateScene) {
+                    sceneEngine_.activateScene(cmd->payload);
+                }
+                // SetWetDry / SetMasterGain are recognized but no-op in
+                // Phase 2; expression-pedal continuous control wires
+                // through in Phase 3.
+            }
+        });
+}
 
 void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     graph_.prepare(sampleRate, samplesPerBlock);

@@ -27,6 +27,7 @@ target_link_libraries(guitar_dsp_scenes PUBLIC juce::juce_core)
 
 add_library(guitar_dsp_midi STATIC
     midi/FCB1010Mapping.cpp
+    midi/MidiRouter.cpp
 )
 
 target_include_directories(guitar_dsp_midi PUBLIC
@@ -38,7 +39,9 @@ target_compile_features(guitar_dsp_midi PUBLIC cxx_std_20)
 target_link_libraries(guitar_dsp_midi
     PUBLIC
         juce::juce_audio_basics
+        juce::juce_audio_devices
         juce::juce_core
+        juce::juce_events
 )
 
 # Standalone application (declared in Task 5)
