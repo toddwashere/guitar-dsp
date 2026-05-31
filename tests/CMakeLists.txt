@@ -18,6 +18,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_tts.cpp
     unit/scenes/test_scene_library_tts_text.cpp
     unit/scenes/test_scene_library_tts_fallback.cpp
+    unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_engine.cpp
     unit/midi/test_fcb1010_mapping.cpp
     integration/test_passthrough_golden.cpp

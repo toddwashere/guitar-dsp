@@ -75,6 +75,61 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
         }
     }
 
+    if (obj->hasProperty("carousel")) {
+        if (auto* c = obj->getProperty("carousel").getDynamicObject()) {
+            auto& cc = s.carousel;
+            auto getF = [](juce::DynamicObject* o, const char* k, float d) {
+                return o->hasProperty(k)
+                     ? static_cast<float>(static_cast<double>(o->getProperty(k))) : d;
+            };
+            if (c->hasProperty("enabled"))
+                cc.enabled = static_cast<bool>(c->getProperty("enabled"));
+            cc.drive        = getF(c, "drive", cc.drive);
+            cc.outputTrimDb = getF(c, "outputTrimDb", cc.outputTrimDb);
+
+            if (auto* w = c->hasProperty("waveshaper")
+                            ? c->getProperty("waveshaper").getDynamicObject() : nullptr) {
+                const auto t = w->getProperty("type").toString();
+                if (t == "tanh")      cc.shaper = CarouselConfig::Shaper::Tanh;
+                else if (t == "hardclip") cc.shaper = CarouselConfig::Shaper::HardClip;
+                else if (t == "foldback") cc.shaper = CarouselConfig::Shaper::Foldback;
+                cc.shaperAmount = getF(w, "amount", cc.shaperAmount);
+            }
+            if (auto* cr = c->hasProperty("crusher")
+                             ? c->getProperty("crusher").getDynamicObject() : nullptr) {
+                if (cr->hasProperty("bits"))
+                    cc.crusherBits = static_cast<int>(cr->getProperty("bits"));
+                if (cr->hasProperty("downsample"))
+                    cc.crusherDownsample = static_cast<int>(cr->getProperty("downsample"));
+            }
+            if (auto* f = c->hasProperty("filter")
+                            ? c->getProperty("filter").getDynamicObject() : nullptr) {
+                const auto mode = f->getProperty("mode").toString();
+                if (mode == "lowpass")  cc.filterMode = CarouselConfig::FilterMode::LowPass;
+                else if (mode == "bandpass") cc.filterMode = CarouselConfig::FilterMode::BandPass;
+                else if (mode == "highpass") cc.filterMode = CarouselConfig::FilterMode::HighPass;
+                const auto mod = f->getProperty("mod").toString();
+                if (mod == "envelope") cc.filterMod = CarouselConfig::FilterMod::Envelope;
+                else if (mod == "lfo") cc.filterMod = CarouselConfig::FilterMod::Lfo;
+                cc.filterCutoffHz  = getF(f, "cutoffHz", cc.filterCutoffHz);
+                cc.filterResonance = getF(f, "resonance", cc.filterResonance);
+                cc.filterEnvAmount = getF(f, "envAmount", cc.filterEnvAmount);
+                cc.filterLfoHz     = getF(f, "lfoHz", cc.filterLfoHz);
+            }
+            if (auto* ch = c->hasProperty("chorus")
+                             ? c->getProperty("chorus").getDynamicObject() : nullptr) {
+                cc.chorusRateHz = getF(ch, "rateHz", cc.chorusRateHz);
+                cc.chorusDepth  = getF(ch, "depth", cc.chorusDepth);
+                cc.chorusMix    = getF(ch, "mix", cc.chorusMix);
+            }
+            if (auto* rv = c->hasProperty("reverb")
+                             ? c->getProperty("reverb").getDynamicObject() : nullptr) {
+                cc.reverbRoomSize = getF(rv, "roomSize", cc.reverbRoomSize);
+                cc.reverbWet      = getF(rv, "wet", cc.reverbWet);
+            }
+        }
+    }
+
     return s;
 }
 

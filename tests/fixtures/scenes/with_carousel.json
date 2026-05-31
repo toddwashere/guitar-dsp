@@ -1,0 +1,17 @@
+{
+  "id": 31,
+  "name": "Carousel fixture",
+  "color": "#a64dff",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 1.0, "transitionMs": 25 },
+  "carousel": {
+    "enabled": true,
+    "drive": 6.0,
+    "waveshaper": { "type": "hardclip", "amount": 0.8 },
+    "crusher": { "bits": 4, "downsample": 8 },
+    "filter": { "mode": "bandpass", "cutoffHz": 800, "resonance": 0.7,
+                "mod": "envelope", "envAmount": 2000, "lfoHz": 0 },
+    "chorus": { "rateHz": 5.0, "depth": 0.3, "mix": 0.4 },
+    "reverb": { "roomSize": 0.4, "wet": 0.2 },
+    "outputTrimDb": -1.5
+  }
+}
