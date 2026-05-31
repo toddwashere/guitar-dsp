@@ -1,7 +1,13 @@
 {
   "id": 7,
-  "name": "Speaking B — mid-talk",
+  "name": "Speaking B — piper",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
-  "tts": { "source": "prebaked", "clip": "07_mid_talk" }
+  "tts": {
+    "source": "piper",
+    "text": "I think therefore I riff",
+    "voice": "en_US-amy-medium",
+    "clip": "07_mid_talk",
+    "fallback": "prebaked"
+  }
 }
