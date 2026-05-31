@@ -6,6 +6,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "audio/AudioGraph.h"
+#include "scenes/SceneEngine.h"
 
 namespace guitar_dsp {
 
@@ -54,6 +55,8 @@ public:
     static constexpr int kAudioRingSize = 4096;  // ~93 ms at 44.1 kHz
     void snapshotRecentSamples(float* dest, int count) const noexcept;
 
+    scenes::SceneEngine& sceneEngine() { return sceneEngine_; }
+
 private:
     audio::AudioGraph graph_;
     std::vector<float> monoScratch_;
@@ -66,6 +69,8 @@ private:
 
     std::array<float, kAudioRingSize> audioRing_{};
     std::atomic<int>                  audioRingWriteIdx_{0};
+
+    scenes::SceneEngine sceneEngine_;
 };
 
 } // namespace guitar_dsp

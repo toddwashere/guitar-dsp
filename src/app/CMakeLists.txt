@@ -40,6 +40,7 @@ target_compile_definitions(guitar_dsp_app PRIVATE
 target_link_libraries(guitar_dsp_app
     PRIVATE
         guitar_dsp_audio
+        guitar_dsp_scenes
         juce::juce_audio_utils
         juce::juce_audio_devices
         juce::juce_audio_processors

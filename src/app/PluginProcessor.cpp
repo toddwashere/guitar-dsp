@@ -5,6 +5,9 @@
 #include <cmath>
 #include <cstring>
 
+#include "AssetLocator.h"
+#include "scenes/SceneLibrary.h"
+
 namespace guitar_dsp {
 
 PluginProcessor::PluginProcessor()
@@ -15,6 +18,13 @@ PluginProcessor::PluginProcessor()
 void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     graph_.prepare(sampleRate, samplesPerBlock);
     monoScratch_.assign(static_cast<std::size_t>(samplesPerBlock), 0.0f);
+
+    if (sceneEngine_.getSceneCount() == 0) {
+        const auto dir = AssetLocator::scenesDirectory();
+        auto scenes = scenes::SceneLibrary::loadDirectory(dir);
+        if (scenes.empty()) scenes.push_back(scenes::Scene::defaults(0));
+        sceneEngine_.loadScenes(std::move(scenes));
+    }
 }
 
 void PluginProcessor::releaseResources() {
@@ -34,6 +44,10 @@ bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 
 void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
     juce::ScopedNoDenormals noDenormals;
+
+    const auto sceneParams = sceneEngine_.currentMixerParams();
+    graph_.mixer().setMasterGainDb(sceneParams.masterGainDb);
+    graph_.mixer().setDryWet(sceneParams.dryWet);
 
     const int totalOut = getTotalNumOutputChannels();
     const int totalIn = getTotalNumInputChannels();
