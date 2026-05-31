@@ -83,6 +83,7 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
     for (std::size_t i = 0; i < numSamples; ++i) {
         float x = in[i] * driveGain_.getNextValue() * active_.shaperAmount;
         x = shape(x, active_.shaper);
+        x = crusher_.processSample(x);
         x *= trimGain_.getNextValue();
         out[i] = x;
     }

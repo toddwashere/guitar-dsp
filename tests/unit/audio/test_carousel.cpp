@@ -57,6 +57,24 @@ TEST_CASE("Carousel: hardclip waveshaper bounds output", "[audio][carousel]") {
     REQUIRE(peak > 0.5f);
 }
 
+TEST_CASE("Carousel: crusher reduces distinct output levels", "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 1024);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.crusherBits = 3;
+    cfg.crusherDownsample = 1;
+    c.setConfig(cfg);
+
+    auto in = tone(1024, 220.0f);
+    std::vector<float> out(1024, 0.0f);
+    c.process(in.data(), out.data(), out.size());
+
+    std::set<int> levels;
+    for (float x : out) levels.insert(static_cast<int>(std::lround(x * 100.0f)));
+    REQUIRE(levels.size() <= 12);
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);
