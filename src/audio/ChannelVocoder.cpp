@@ -92,21 +92,32 @@ void ChannelVocoder::process(const float* carrier,
         const float m = modulator[i];
 
         float sum = 0.0f;
+        float sibEnvelope = 0.0f;  // sum of envelopes from high bands
+
         for (int b = 0; b < kNumBands; ++b) {
-            // Band-filter the modulator and track per-band envelope.
             const float mBand = singleBiquad(m, coefs_[static_cast<std::size_t>(b)],
                                                 modulatorState_[static_cast<std::size_t>(b)]);
             const float absM = std::abs(mBand);
             envelope_[static_cast<std::size_t>(b)] =
                 envelopeCoef_ * envelope_[static_cast<std::size_t>(b)] + oneMinusEnv * absM;
 
-            // Band-filter the carrier and scale by modulator envelope.
             const float cBand = singleBiquad(c, coefs_[static_cast<std::size_t>(b)],
                                                 carrierState_[static_cast<std::size_t>(b)]);
             sum += cBand * envelope_[static_cast<std::size_t>(b)];
+
+            // Bands 18..23 are >5 kHz; treat as sibilance candidates.
+            if (b >= 18) sibEnvelope += envelope_[static_cast<std::size_t>(b)];
         }
 
-        output[i] = sum * wetLevel_;
+        // Generate white noise via xorshift32, then attenuate by the
+        // high-band modulator energy and the user's sibilance setting.
+        noiseState_ ^= noiseState_ << 13;
+        noiseState_ ^= noiseState_ >> 17;
+        noiseState_ ^= noiseState_ << 5;
+        const float noise = (static_cast<float>(noiseState_) / 2147483648.0f) - 1.0f;
+        const float sibContrib = noise * sibEnvelope * sibilance_;
+
+        output[i] = (sum + sibContrib) * wetLevel_;
     }
 }
 

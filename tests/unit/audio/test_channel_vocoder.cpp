@@ -83,3 +83,37 @@ TEST_CASE("ChannelVocoder: zero allocations on audio thread", "[audio][vocoder][
     sentinel.unmarkCurrentThreadAsRealtime();
     REQUIRE(sentinel.violations() == 0);
 }
+
+TEST_CASE("ChannelVocoder: sibilance noise activates with high-band modulator energy",
+          "[audio][vocoder]") {
+    ChannelVocoder voc;
+    voc.prepare(48000.0, 512);
+    voc.setWetLevel(1.0f);
+
+    SyntheticGuitar gen{48000.0};
+    constexpr int N = 4800;
+
+    // A 5 kHz modulator (sibilant-band) with a 200 Hz carrier (low):
+    // without sibilance noise injection, the high modulator band has
+    // nothing to scale on the carrier side, so output is near silent.
+    // With sibilance enabled, high-band noise should appear in the output.
+    std::vector<float> carrier(N), modulator(N), outNoSib(N), outWithSib(N);
+    gen.sine(200.0f,  0.6f, carrier.data(),   N);
+    gen.sine(5000.0f, 0.6f, modulator.data(), N);
+
+    voc.setSibilance(0.0f);
+    voc.process(carrier.data(), modulator.data(), outNoSib.data(), N);
+
+    voc.reset();
+    voc.setSibilance(1.0f);
+    voc.process(carrier.data(), modulator.data(), outWithSib.data(), N);
+
+    auto rms = [](const float* p, int n) {
+        double s = 0.0;
+        for (int i = 0; i < n; ++i) s += p[i] * p[i];
+        return std::sqrt(s / n);
+    };
+    INFO("noSib=" << rms(outNoSib.data(),   N)
+                  << "  withSib=" << rms(outWithSib.data(), N));
+    REQUIRE(rms(outWithSib.data(), N) > rms(outNoSib.data(), N) * 3.0);
+}
