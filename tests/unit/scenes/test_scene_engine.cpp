@@ -71,3 +71,22 @@ TEST_CASE("SceneEngine: activeTtsKey reflects the active scene's TTS clip",
     eng.activateScene(0);
     REQUIRE(eng.activeTtsKey().empty());
 }
+
+TEST_CASE("SceneEngine: activeTtsConfig returns full tts block",
+          "[scenes][engine][tts]") {
+    SceneEngine eng;
+    Scene s1 = Scene::defaults(1);
+    s1.tts.source = "apple";
+    s1.tts.text   = "live text";
+    s1.tts.voice  = "com.apple.voice.compact.en-US.Samantha";
+    s1.tts.clip   = "";
+
+    eng.loadScenes({Scene::defaults(0), s1});
+    eng.activateScene(1);
+
+    const auto cfg = eng.activeTtsConfig();
+    REQUIRE(cfg.source == "apple");
+    REQUIRE(cfg.text   == "live text");
+    REQUIRE(cfg.voice  == "com.apple.voice.compact.en-US.Samantha");
+    REQUIRE(cfg.clip.empty());
+}

@@ -41,6 +41,9 @@ public:
     // Returns the active scene's TTS clip key, or empty string if none.
     // Message-thread only.
     std::string activeTtsKey() const;
+    // Returns the active scene's full TTS config (copy). Empty struct if
+    // no active scene. Message-thread only.
+    TtsConfig activeTtsConfig() const;
 
     // Audio-thread API
     MixerParams currentMixerParams() const noexcept;
