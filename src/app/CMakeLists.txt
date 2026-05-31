@@ -54,15 +54,28 @@ target_link_libraries(guitar_dsp_app
         juce::juce_recommended_warning_flags
 )
 
-# Copy assets/ into the Standalone .app's Resources directory after build.
+# Copy assets/ into the Standalone .app's Resources directory.
+# Uses a stamp-file pattern so the copy re-runs whenever any file under
+# assets/ changes (not only when the executable target re-links).
 # Path is JUCE-specific: <target>_artefacts/<BUILD_TYPE>/Standalone/<PRODUCT_NAME>.app
 set(GUITAR_DSP_ASSETS_SRC "${CMAKE_SOURCE_DIR}/assets")
 set(GUITAR_DSP_APP_RESOURCES
     "$<TARGET_FILE_DIR:guitar_dsp_app_Standalone>/../Resources/assets")
+set(GUITAR_DSP_ASSETS_STAMP "${CMAKE_CURRENT_BINARY_DIR}/assets_copied.stamp")
 
-add_custom_command(TARGET guitar_dsp_app_Standalone POST_BUILD
+file(GLOB_RECURSE GUITAR_DSP_ASSET_FILES CONFIGURE_DEPENDS
+    "${GUITAR_DSP_ASSETS_SRC}/*")
+
+add_custom_command(
+    OUTPUT "${GUITAR_DSP_ASSETS_STAMP}"
     COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_APP_RESOURCES}"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${GUITAR_DSP_ASSETS_SRC}" "${GUITAR_DSP_APP_RESOURCES}"
+    COMMAND ${CMAKE_COMMAND} -E touch "${GUITAR_DSP_ASSETS_STAMP}"
+    DEPENDS ${GUITAR_DSP_ASSET_FILES} guitar_dsp_app_Standalone
     COMMENT "Copying assets/ into Guitar DSP.app/Contents/Resources/assets/"
+    VERBATIM
 )
+
+add_custom_target(copy_guitar_dsp_assets ALL
+    DEPENDS "${GUITAR_DSP_ASSETS_STAMP}")
