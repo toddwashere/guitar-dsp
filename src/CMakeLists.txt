@@ -13,6 +13,7 @@ add_library(guitar_dsp_audio STATIC
     audio/TTSSynthChain.cpp
     audio/Crusher.cpp
     audio/CarouselMod.cpp
+    audio/Carousel.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
@@ -24,6 +25,7 @@ target_compile_features(guitar_dsp_audio PUBLIC cxx_std_20)
 target_link_libraries(guitar_dsp_audio
     PUBLIC
         juce::juce_audio_formats
+        juce::juce_dsp
     PRIVATE
         "-framework AVFoundation"
         "-framework Foundation"
