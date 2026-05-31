@@ -12,6 +12,7 @@ add_library(guitar_dsp_audio STATIC
     audio/TTSPrewarmer.cpp
     audio/TTSSynthChain.cpp
     audio/Crusher.cpp
+    audio/CarouselMod.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC

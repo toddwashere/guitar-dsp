@@ -14,6 +14,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_piper_tts_source.cpp
     unit/audio/test_tts_prewarmer.cpp
     unit/audio/test_crusher.cpp
+    unit/audio/test_carousel_mod.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
