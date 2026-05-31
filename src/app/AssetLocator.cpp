@@ -42,4 +42,10 @@ std::string AssetLocator::midiDirectory() {
     return (fs::path(root) / "midi").string();
 }
 
+std::string AssetLocator::ttsDirectory() {
+    const auto root = assetsRoot();
+    if (root.empty()) return {};
+    return (fs::path(root) / "tts").string();
+}
+
 } // namespace guitar_dsp

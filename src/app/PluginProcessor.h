@@ -7,6 +7,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "audio/AudioGraph.h"
+#include "audio/PrebakedTTSSource.h"
 #include "midi/FCB1010Mapping.h"
 #include "midi/MidiRouter.h"
 #include "scenes/SceneEngine.h"
@@ -91,6 +92,10 @@ private:
 
     class AssetsPoller;
     std::unique_ptr<AssetsPoller> assetsPoller_;
+
+    std::unique_ptr<audio::PrebakedTTSSource> prebakedTtsSource_;
+    std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
+    int                                        lastSeenSceneId_ = -1;  // audio thread
 };
 
 } // namespace guitar_dsp

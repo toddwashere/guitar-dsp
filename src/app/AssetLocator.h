@@ -13,6 +13,7 @@ class AssetLocator {
 public:
     static std::string scenesDirectory();
     static std::string midiDirectory();
+    static std::string ttsDirectory();
 
 private:
     static std::string assetsRoot();

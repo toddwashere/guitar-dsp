@@ -77,6 +77,13 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         if (scenes.empty()) scenes.push_back(scenes::Scene::defaults(0));
         sceneEngine_.loadScenes(std::move(scenes));
     }
+
+    prebakedTtsSource_ = std::make_unique<audio::PrebakedTTSSource>(
+        AssetLocator::ttsDirectory());
+    prebakedTtsSource_->prepare(sampleRate);
+    currentTtsClipKey_.clear();
+    lastSeenSceneId_ = -1;
+    graph_.ttsClipPlayer().setClip(nullptr);
 }
 
 void PluginProcessor::releaseResources() {
@@ -100,6 +107,30 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     const auto sceneParams = sceneEngine_.currentMixerParams();
     graph_.mixer().setMasterGainDb(sceneParams.masterGainDb);
     graph_.mixer().setDryWet(sceneParams.dryWet);
+
+    // Check if the active scene id changed. If so, hop to the message
+    // thread to (a) re-check (scene may have moved again), (b) read the
+    // scene's TTS key, and (c) load + setClip the corresponding clip.
+    // This keeps the audio thread allocation-free; the actual file load
+    // happens on the message thread.
+    const int activeSceneId = sceneEngine_.getActiveSceneId();
+    if (activeSceneId != lastSeenSceneId_) {
+        lastSeenSceneId_ = activeSceneId;
+        juce::MessageManager::callAsync([this, activeSceneId] {
+            // Re-check on the message thread (scene may have changed again).
+            if (sceneEngine_.getActiveSceneId() != activeSceneId) return;
+            const std::string key = sceneEngine_.activeTtsKey();
+            if (key == currentTtsClipKey_) return;
+            currentTtsClipKey_ = key;
+
+            if (key.empty() || !prebakedTtsSource_) {
+                graph_.ttsClipPlayer().setClip(nullptr);
+                return;
+            }
+            auto clip = prebakedTtsSource_->synthesize(key);
+            graph_.ttsClipPlayer().setClip(clip);  // nullptr is OK (silences)
+        });
+    }
 
     const int totalOut = getTotalNumOutputChannels();
     const int totalIn = getTotalNumInputChannels();
