@@ -7,6 +7,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_mixer.cpp
     unit/audio/test_audio_graph.cpp
     unit/scenes/test_scene_compiles.cpp
+    unit/scenes/test_scene_library.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     harness/RealtimeSentinel.cpp
@@ -16,6 +17,7 @@ add_executable(guitar_dsp_tests
 
 target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio
+    guitar_dsp_scenes
     juce::juce_audio_formats
     Catch2::Catch2WithMain
 )

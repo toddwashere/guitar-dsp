@@ -1,0 +1,6 @@
+{
+  "id": 7,
+  "name": "Test scene",
+  "color": "#abcdef",
+  "mixer": { "masterGainDb": -3.5, "dryWet": 0.25, "transitionMs": 15 }
+}
