@@ -16,6 +16,7 @@ struct TtsConfig {
     std::string clip;     // identifier passed to PrebakedTTSSource
     std::string text;     // text passed to live sources (apple, piper)
     std::string voice;    // optional voice id for live sources
+    std::string fallback; // source name to try if primary fails ("" = none)
 };
 
 struct Scene {

@@ -1,0 +1,12 @@
+{
+  "id": 42,
+  "name": "Piper with apple fallback",
+  "color": "#a64dff",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
+  "tts": {
+    "source": "piper",
+    "text": "the guitar speaks via piper",
+    "voice": "en_US-amy-medium",
+    "fallback": "apple"
+  }
+}
