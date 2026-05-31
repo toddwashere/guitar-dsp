@@ -82,6 +82,11 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         AssetLocator::ttsDirectory());
     prebakedTtsSource_->prepare(sampleRate);
 
+    // Tear down prewarmer (joins its worker thread) BEFORE replacing the
+    // AppleTTSSource it references. Otherwise the worker could call
+    // synthesize() on a destroyed source if prepareToPlay() is invoked
+    // a second time (e.g. host sample-rate change).
+    applePrewarmer_.reset();
     appleTtsSource_ = std::make_unique<audio::AppleTTSSource>();
     appleTtsSource_->prepare(sampleRate);
 
