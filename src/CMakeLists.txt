@@ -4,6 +4,7 @@ add_library(guitar_dsp_audio STATIC
     audio/InputStage.cpp
     audio/Mixer.cpp
     audio/AudioGraph.cpp
+    audio/ChannelVocoder.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
