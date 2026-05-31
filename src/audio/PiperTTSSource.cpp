@@ -73,6 +73,8 @@ double readVoiceSampleRate(const std::string& voicePath) {
             return static_cast<double>(obj->getProperty("sample_rate"));
         }
     }
+    std::cerr << "[PiperTTSSource] voice JSON " << jf.getFullPathName()
+              << " present but no sample_rate field found; defaulting to 22050 Hz\n";
     return 22050.0;
 }
 
