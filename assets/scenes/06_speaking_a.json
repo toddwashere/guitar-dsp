@@ -2,5 +2,6 @@
   "id": 6,
   "name": "Speaking A — hello",
   "color": "#a64dff",
-  "mixer": { "masterGainDb": -6.0, "dryWet": 0.0, "transitionMs": 20 }
+  "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
+  "tts": { "source": "prebaked", "clip": "06_hello_cleveland" }
 }

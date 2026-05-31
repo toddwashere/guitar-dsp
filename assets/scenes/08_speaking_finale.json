@@ -2,5 +2,6 @@
   "id": 8,
   "name": "Speaking finale — gently weeps",
   "color": "#a64dff",
-  "mixer": { "masterGainDb": -4.0, "dryWet": 0.0, "transitionMs": 20 }
+  "mixer": { "masterGainDb": -2.0, "dryWet": 0.9, "transitionMs": 30 },
+  "tts": { "source": "prebaked", "clip": "08_gently_weeps" }
 }
