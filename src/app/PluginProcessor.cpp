@@ -35,7 +35,6 @@ bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
     juce::ScopedNoDenormals noDenormals;
 
-    const int numSamples = buffer.getNumSamples();
     const int totalOut = getTotalNumOutputChannels();
     const int totalIn = getTotalNumInputChannels();
     if (totalOut == 0) return;
@@ -43,12 +42,11 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     lastInputChannels_.store(totalIn, std::memory_order_relaxed);
     lastOutputChannels_.store(totalOut, std::memory_order_relaxed);
 
-    // Grow scratch only if buffer is larger than expected; this happens
-    // off the hot path only when the host changes block size at runtime.
-    if (monoScratch_.size() < static_cast<std::size_t>(numSamples)) {
-        monoScratch_.assign(static_cast<std::size_t>(numSamples), 0.0f);
-        graph_.prepare(getSampleRate(), numSamples);
-    }
+    // Never allocate on the audio thread. If the host sends a larger
+    // block than declared in prepareToPlay, process only what fits in
+    // the pre-sized scratch; tail samples are left as-is.
+    const int numSamples = std::min(buffer.getNumSamples(),
+                                    static_cast<int>(monoScratch_.size()));
 
     // Build a mono input — downmixing stereo by averaging — so the DSP graph
     // sees a single channel regardless of how the host configures the bus.
