@@ -30,3 +30,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Piper voice files (download separately; too large to commit)
+tools/tts_prebake/voices/*.onnx
+tools/tts_prebake/voices/*.onnx.json
+tools/tts_prebake/.venv/
