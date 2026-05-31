@@ -36,6 +36,27 @@ TEST_CASE("Carousel: disabled config is passthrough", "[audio][carousel]") {
         REQUIRE_THAT(out[i], WithinAbs(in[i], 1e-6f));
 }
 
+TEST_CASE("Carousel: hardclip waveshaper bounds output", "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 512);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.drive = 24.0f;
+    cfg.shaper = CarouselConfig::Shaper::HardClip;
+    cfg.shaperAmount = 1.0f;
+    c.setConfig(cfg);
+
+    auto in = tone(2048, 110.0f);
+    std::vector<float> out(2048, 0.0f);
+    c.process(in.data(), out.data(), out.size());
+    c.process(in.data(), out.data(), out.size());
+
+    float peak = 0.0f;
+    for (float x : out) peak = std::max(peak, std::fabs(x));
+    REQUIRE(peak <= 1.001f);
+    REQUIRE(peak > 0.5f);
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);

@@ -1,9 +1,28 @@
 #include "Carousel.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace guitar_dsp::audio {
+
+namespace {
+inline float shape(float x, scenes::CarouselConfig::Shaper s) noexcept {
+    using S = scenes::CarouselConfig::Shaper;
+    switch (s) {
+        case S::Tanh:     return std::tanh(x);
+        case S::HardClip: return std::clamp(x, -1.0f, 1.0f);
+        case S::Foldback:
+            while (x > 1.0f || x < -1.0f) {
+                if (x > 1.0f)  x = 2.0f - x;
+                if (x < -1.0f) x = -2.0f - x;
+            }
+            return x;
+        case S::None:
+        default:          return x;
+    }
+}
+} // namespace
 
 Carousel::Carousel() = default;
 
@@ -61,9 +80,9 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
         return;
     }
 
-    // Stages added across Tasks 6-10. Skeleton: drive + trim only.
     for (std::size_t i = 0; i < numSamples; ++i) {
-        float x = in[i] * driveGain_.getNextValue();
+        float x = in[i] * driveGain_.getNextValue() * active_.shaperAmount;
+        x = shape(x, active_.shaper);
         x *= trimGain_.getNextValue();
         out[i] = x;
     }
