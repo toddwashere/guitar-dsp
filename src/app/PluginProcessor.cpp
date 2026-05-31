@@ -8,6 +8,7 @@
 #include <juce_events/juce_events.h>
 
 #include "AssetLocator.h"
+#include "audio/TTSSynthChain.h"
 #include "scenes/SceneLibrary.h"
 
 namespace guitar_dsp {
@@ -161,8 +162,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             // Build a per-source key (matches what synthesize() expects).
             std::string key;
             if (cfg.source == "prebaked") key = cfg.clip;
-            else if (cfg.source == "apple") key = cfg.text;
-            // (Other sources land in Phase 3.6.)
+            else                          key = cfg.text;  // live sources (apple, piper)
 
             if (key == currentTtsClipKey_) return;
             currentTtsClipKey_ = key;
@@ -172,18 +172,34 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 return;
             }
 
-            audio::TTSClipPtr clip;
-            if (cfg.source == "prebaked" && prebakedTtsSource_) {
-                clip = prebakedTtsSource_->synthesize(key);
-            } else if (cfg.source == "apple" && appleTtsSource_) {
-                if (applePrewarmer_ && applePrewarmer_->isCached(key)) {
-                    clip = applePrewarmer_->takeIfReady(key);
-                } else {
-                    // Cache miss — fall back to synchronous synth (~0.3-1 s stall).
-                    if (!cfg.voice.empty()) appleTtsSource_->setVoice(cfg.voice);
-                    clip = appleTtsSource_->synthesize(key);
-                }
+            // Build a registry of sources for the chain helper.
+            audio::TTSSourceRegistry registry;
+            if (prebakedTtsSource_) registry["prebaked"] = prebakedTtsSource_.get();
+            if (appleTtsSource_)    registry["apple"]    = appleTtsSource_.get();
+            if (piperTtsSource_)    registry["piper"]    = piperTtsSource_.get();
+
+            // keyFor: prebaked uses cfg.clip; live sources use cfg.text.
+            auto keyFor = [&cfg](const std::string& sourceName) -> std::string {
+                if (sourceName == "prebaked") return cfg.clip;
+                return cfg.text;  // apple, piper, anything else
+            };
+
+            // Set voice on apple before synthesis (no-op if other sources are picked).
+            if (!cfg.voice.empty() && appleTtsSource_) {
+                appleTtsSource_->setVoice(cfg.voice);
             }
+
+            // Prefer the prewarmer cache for live sources when the primary is apple
+            // or piper — falls through to synthesizeWithFallback on cache miss.
+            audio::TTSClipPtr clip;
+            if (cfg.source == "apple" && applePrewarmer_ && applePrewarmer_->isCached(cfg.text)) {
+                clip = applePrewarmer_->takeIfReady(cfg.text);
+            } else if (cfg.source == "piper" && piperPrewarmer_ && piperPrewarmer_->isCached(cfg.text)) {
+                clip = piperPrewarmer_->takeIfReady(cfg.text);
+            } else {
+                clip = audio::synthesizeWithFallback(cfg, registry, keyFor);
+            }
+
             graph_.ttsClipPlayer().setClip(clip);  // nullptr is OK (silences)
         });
     }
