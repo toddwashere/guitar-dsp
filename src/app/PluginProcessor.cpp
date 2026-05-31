@@ -85,6 +85,16 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     appleTtsSource_ = std::make_unique<audio::AppleTTSSource>();
     appleTtsSource_->prepare(sampleRate);
 
+    applePrewarmer_ = std::make_unique<audio::TTSPrewarmer>(*appleTtsSource_);
+
+    // Enqueue every Apple-source scene's text for background synthesis.
+    sceneEngine_.forEachScene([this](const scenes::Scene& s) {
+        if (s.tts.source == "apple" && !s.tts.text.empty()) {
+            if (!s.tts.voice.empty()) appleTtsSource_->setVoice(s.tts.voice);
+            applePrewarmer_->enqueue(s.tts.text);
+        }
+    });
+
     currentTtsClipKey_.clear();
     lastSeenSceneId_ = -1;
     graph_.ttsClipPlayer().setClip(nullptr);
@@ -143,8 +153,13 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             if (cfg.source == "prebaked" && prebakedTtsSource_) {
                 clip = prebakedTtsSource_->synthesize(key);
             } else if (cfg.source == "apple" && appleTtsSource_) {
-                if (!cfg.voice.empty()) appleTtsSource_->setVoice(cfg.voice);
-                clip = appleTtsSource_->synthesize(key);
+                if (applePrewarmer_ && applePrewarmer_->isCached(key)) {
+                    clip = applePrewarmer_->takeIfReady(key);
+                } else {
+                    // Cache miss — fall back to synchronous synth (~0.3-1 s stall).
+                    if (!cfg.voice.empty()) appleTtsSource_->setVoice(cfg.voice);
+                    clip = appleTtsSource_->synthesize(key);
+                }
             }
             graph_.ttsClipPlayer().setClip(clip);  // nullptr is OK (silences)
         });

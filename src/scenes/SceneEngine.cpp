@@ -61,6 +61,10 @@ TtsConfig SceneEngine::activeTtsConfig() const {
     return scenes_[static_cast<std::size_t>(activeIndex_)].tts;
 }
 
+void SceneEngine::forEachScene(const std::function<void(const Scene&)>& fn) const {
+    for (const auto& s : scenes_) fn(s);
+}
+
 MixerParams SceneEngine::currentMixerParams() const noexcept {
     MixerParams m;
     m.masterGainDb = snapMasterGainDb_.load(std::memory_order_relaxed);

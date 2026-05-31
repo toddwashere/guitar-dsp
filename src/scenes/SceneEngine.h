@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,8 @@ public:
     // Returns the active scene's full TTS config (copy). Empty struct if
     // no active scene. Message-thread only.
     TtsConfig activeTtsConfig() const;
+    // Visit every loaded scene (message-thread only). Order is by scene id.
+    void forEachScene(const std::function<void(const Scene&)>& fn) const;
 
     // Audio-thread API
     MixerParams currentMixerParams() const noexcept;
