@@ -100,6 +100,24 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         }
     });
 
+    // Tear down the piper prewarmer first if it exists (same lifetime
+    // rule as apple: prewarmer's worker may be calling synthesize on
+    // the old source).
+    piperPrewarmer_.reset();
+    piperTtsSource_ = std::make_unique<audio::PiperTTSSource>(
+        AssetLocator::piperBinaryPath(),
+        AssetLocator::defaultPiperVoicePath());
+    piperTtsSource_->prepare(sampleRate);
+
+    piperPrewarmer_ = std::make_unique<audio::TTSPrewarmer>(*piperTtsSource_);
+
+    // Enqueue every Piper-source scene's text for background synthesis.
+    sceneEngine_.forEachScene([this](const scenes::Scene& s) {
+        if (s.tts.source == "piper" && !s.tts.text.empty()) {
+            piperPrewarmer_->enqueue(s.tts.text);
+        }
+    });
+
     currentTtsClipKey_.clear();
     lastSeenSceneId_ = -1;
     graph_.ttsClipPlayer().setClip(nullptr);

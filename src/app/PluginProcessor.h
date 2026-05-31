@@ -8,6 +8,7 @@
 
 #include "audio/AudioGraph.h"
 #include "audio/AppleTTSSource.h"
+#include "audio/PiperTTSSource.h"
 #include "audio/PrebakedTTSSource.h"
 #include "audio/TTSPrewarmer.h"
 #include "midi/FCB1010Mapping.h"
@@ -98,6 +99,8 @@ private:
     std::unique_ptr<audio::PrebakedTTSSource> prebakedTtsSource_;
     std::unique_ptr<audio::AppleTTSSource>    appleTtsSource_;
     std::unique_ptr<audio::TTSPrewarmer>      applePrewarmer_;
+    std::unique_ptr<audio::PiperTTSSource>    piperTtsSource_;
+    std::unique_ptr<audio::TTSPrewarmer>      piperPrewarmer_;
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     int                                        lastSeenSceneId_ = -1;  // audio thread
 };
