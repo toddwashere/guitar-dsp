@@ -1,0 +1,7 @@
+{
+  "id": 42,
+  "name": "Speaking — finale",
+  "color": "#a64dff",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
+  "tts": { "source": "prebaked", "clip": "08_gently_weeps" }
+}

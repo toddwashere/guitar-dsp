@@ -12,6 +12,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_prebaked_tts_source.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
+    unit/scenes/test_scene_library_tts.cpp
     unit/scenes/test_scene_engine.cpp
     unit/midi/test_fcb1010_mapping.cpp
     integration/test_passthrough_golden.cpp

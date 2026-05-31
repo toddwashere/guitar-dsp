@@ -11,11 +11,17 @@ struct MixerParams {
     float transitionMs = 20.0f;
 };
 
+struct TtsConfig {
+    std::string source;   // "prebaked" | "apple" | "piper" | "" (none)
+    std::string clip;     // identifier passed to ITTSSource::synthesize()
+};
+
 struct Scene {
     int          id        = 0;
     std::string  name      = "(unnamed)";
     std::uint32_t colorRgb = 0xCCCCCCu;   // 0xRRGGBB
     MixerParams  mixer{};
+    TtsConfig    tts{};
 
     static Scene defaults(int id);
 };

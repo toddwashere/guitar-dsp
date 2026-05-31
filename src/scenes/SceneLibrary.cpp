@@ -60,6 +60,15 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
         }
     }
 
+    if (obj->hasProperty("tts")) {
+        if (auto* t = obj->getProperty("tts").getDynamicObject()) {
+            if (t->hasProperty("source"))
+                s.tts.source = t->getProperty("source").toString().toStdString();
+            if (t->hasProperty("clip"))
+                s.tts.clip = t->getProperty("clip").toString().toStdString();
+        }
+    }
+
     return s;
 }
 
