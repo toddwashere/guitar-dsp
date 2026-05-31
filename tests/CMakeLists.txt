@@ -9,6 +9,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_engine.cpp
+    unit/midi/test_fcb1010_mapping.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     harness/RealtimeSentinel.cpp
@@ -19,6 +20,7 @@ add_executable(guitar_dsp_tests
 target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio
     guitar_dsp_scenes
+    guitar_dsp_midi
     juce::juce_audio_formats
     Catch2::Catch2WithMain
 )
