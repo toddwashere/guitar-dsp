@@ -132,16 +132,22 @@ void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
     if (midiRouter_) midiRouter_->setPreferredDeviceName(name);
 }
 
-bool PluginProcessor::sayText(const std::string& text, const std::string& voiceId) {
-    if (text.empty() || !appleTtsSource_) return false;
+void PluginProcessor::enqueueSayText(const std::string& text,
+                                      const std::string& voiceId) {
+    if (text.empty() || !appleTtsSource_ || !applePrewarmer_) return;
     if (!voiceId.empty()) appleTtsSource_->setVoice(voiceId);
-    auto clip = appleTtsSource_->synthesize(text);
-    if (!clip) return false;
+    applePrewarmer_->enqueue(text);
+}
+
+int PluginProcessor::tryInstallSayText(const std::string& text) {
+    if (text.empty() || !applePrewarmer_) return -1;
+    if (!applePrewarmer_->isCached(text)) return 0;
+    auto clip = applePrewarmer_->takeIfReady(text);
     // Bypass currentTtsClipKey_ tracking — this is an ad-hoc overlay, not a
     // scene-driven clip. The next scene change will replace it normally.
     currentTtsClipKey_.clear();
     graph_.ttsClipPlayer().setClip(clip);
-    return true;
+    return clip ? 1 : -1;
 }
 
 bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {

@@ -66,12 +66,21 @@ public:
 
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
-    // Synthesize `text` with Apple TTS and route it through the active
-    // scene's vocoder/mixer chain. Call from the message thread only.
-    // Optionally pin a voice identifier; pass empty to use whatever the
-    // active scene last selected. Returns false if no Apple source exists
-    // or synthesis returned nullptr.
-    bool sayText(const std::string& text, const std::string& voiceId = {});
+    // Apple-TTS "type and say" plumbing for the message-thread UI.
+    //
+    // enqueueSayText() kicks off background synthesis via the existing
+    // Apple TTS prewarmer (which has its own worker thread — calling
+    // synthesize() directly from the message thread would deadlock
+    // AVSpeechSynthesizer's main-queue callback against itself, then
+    // crash when the late callback dereferences destroyed locals).
+    //
+    // tryInstallSayText() checks whether the prewarmer has finished and,
+    // if so, swaps the resulting clip into the audio graph. Caller (the
+    // SayPanel) polls this on a juce::Timer while the spinner is showing.
+    // Returns: 1 = installed (stop polling), 0 = not ready yet, -1 = the
+    // synthesis finished but failed (stop polling, show error).
+    void enqueueSayText(const std::string& text, const std::string& voiceId = {});
+    int  tryInstallSayText(const std::string& text);
 
     // Pass-through to MidiRouter::setPreferredDeviceName. Empty = auto-pick.
     void setMidiPreferredDeviceName(const juce::String& name);
