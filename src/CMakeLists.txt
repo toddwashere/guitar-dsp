@@ -7,6 +7,7 @@ add_library(guitar_dsp_audio STATIC
     audio/ChannelVocoder.cpp
     audio/TTSClipPlayer.cpp
     audio/PrebakedTTSSource.cpp
+    audio/AppleTTSSource.mm
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
@@ -15,8 +16,12 @@ target_include_directories(guitar_dsp_audio PUBLIC
 
 target_compile_features(guitar_dsp_audio PUBLIC cxx_std_20)
 
-target_link_libraries(guitar_dsp_audio PUBLIC
-    juce::juce_audio_formats
+target_link_libraries(guitar_dsp_audio
+    PUBLIC
+        juce::juce_audio_formats
+    PRIVATE
+        "-framework AVFoundation"
+        "-framework Foundation"
 )
 
 add_library(guitar_dsp_scenes STATIC
