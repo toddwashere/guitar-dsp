@@ -116,6 +116,27 @@ TEST_CASE("Carousel: envelope-modulated bandpass produces finite output (auto-wa
     for (float x : out) { REQUIRE(std::isfinite(x)); REQUIRE(std::fabs(x) < 4.0f); }
 }
 
+TEST_CASE("Carousel: reverb adds a decaying tail after input stops",
+          "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 4096);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.reverbRoomSize = 0.7f;
+    cfg.reverbWet = 0.6f;
+    c.setConfig(cfg);
+
+    auto in = tone(4096, 440.0f);
+    std::vector<float> out(4096, 0.0f);
+    c.process(in.data(), out.data(), out.size());
+
+    std::vector<float> silence(4096, 0.0f), tail(4096, 0.0f);
+    c.process(silence.data(), tail.data(), tail.size());
+    float tailPeak = 0.0f;
+    for (float x : tail) tailPeak = std::max(tailPeak, std::fabs(x));
+    REQUIRE(tailPeak > 1e-3f);
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);

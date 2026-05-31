@@ -80,6 +80,19 @@ void Carousel::applyConfig(const scenes::CarouselConfig& cfg) noexcept {
     filter_.setResonance(juce::jlimit(0.05f, 0.95f, cfg.filterResonance));
     filter_.setCutoffFrequency(juce::jlimit(20.0f, 18000.0f, cfg.filterCutoffHz));
     lfo_.setRateHz(cfg.filterLfoHz);
+
+    chorus_.setRate(cfg.chorusRateHz);
+    chorus_.setDepth(juce::jlimit(0.0f, 1.0f, cfg.chorusDepth));
+    chorus_.setMix(juce::jlimit(0.0f, 1.0f, cfg.chorusMix));
+    chorus_.setCentreDelay(7.0f);
+    chorus_.setFeedback(0.0f);
+
+    juce::dsp::Reverb::Parameters rp;
+    rp.roomSize = juce::jlimit(0.0f, 1.0f, cfg.reverbRoomSize);
+    rp.wetLevel = juce::jlimit(0.0f, 1.0f, cfg.reverbWet);
+    rp.dryLevel = 1.0f - rp.wetLevel * 0.5f;
+    rp.width = 1.0f;
+    reverb_.setParameters(rp);
 }
 
 void Carousel::process(const float* in, float* out, std::size_t numSamples) noexcept {
@@ -113,6 +126,17 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
 
         x *= trimGain_.getNextValue();
         out[i] = x;
+    }
+
+    if (active_.chorusMix > 0.0f && active_.chorusRateHz > 0.0f) {
+        juce::dsp::AudioBlock<float> block(&out, 1, numSamples);
+        juce::dsp::ProcessContextReplacing<float> ctx(block);
+        chorus_.process(ctx);
+    }
+    if (active_.reverbWet > 0.0f) {
+        juce::dsp::AudioBlock<float> block(&out, 1, numSamples);
+        juce::dsp::ProcessContextReplacing<float> ctx(block);
+        reverb_.process(ctx);
     }
 }
 
