@@ -85,10 +85,29 @@ void ChannelVocoder::process(const float* carrier,
                              const float* modulator,
                              float* output,
                              std::size_t numSamples) {
-    // Stub: passthrough carrier so the test in Task 3 can verify the
-    // process path runs without crashing. Real DSP arrives in Task 3.
-    std::memcpy(output, carrier, numSamples * sizeof(float));
-    (void)modulator;
+    const float oneMinusEnv = 1.0f - envelopeCoef_;
+
+    for (std::size_t i = 0; i < numSamples; ++i) {
+        const float c = carrier[i];
+        const float m = modulator[i];
+
+        float sum = 0.0f;
+        for (int b = 0; b < kNumBands; ++b) {
+            // Band-filter the modulator and track per-band envelope.
+            const float mBand = singleBiquad(m, coefs_[static_cast<std::size_t>(b)],
+                                                modulatorState_[static_cast<std::size_t>(b)]);
+            const float absM = std::abs(mBand);
+            envelope_[static_cast<std::size_t>(b)] =
+                envelopeCoef_ * envelope_[static_cast<std::size_t>(b)] + oneMinusEnv * absM;
+
+            // Band-filter the carrier and scale by modulator envelope.
+            const float cBand = singleBiquad(c, coefs_[static_cast<std::size_t>(b)],
+                                                carrierState_[static_cast<std::size_t>(b)]);
+            sum += cBand * envelope_[static_cast<std::size_t>(b)];
+        }
+
+        output[i] = sum * wetLevel_;
+    }
 }
 
 } // namespace guitar_dsp::audio
