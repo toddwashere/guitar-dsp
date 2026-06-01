@@ -13,9 +13,14 @@ public:
     ~SceneIndicator() override;
 
     void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent&) override;
 
 private:
     void timerCallback() override;
+
+    // The 10-slot selector strip in local coordinates. Shared by paint()
+    // and mouseDown() so the clickable regions always match what's drawn.
+    juce::Rectangle<int> stripArea() const;
 
     PluginProcessor& processor_;
 };
