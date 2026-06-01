@@ -31,15 +31,15 @@ GUITAR_DSP_REGENERATE_GOLDENS=1 ctest --test-dir build --output-on-failure -R go
 
 ## Project status
 
-This branch implements **Phase 4: Instrument Carousel A**. Carousel scenes 1–5
+This branch implements **Phase 4b: Instrument Carousel (full)** — all five carousel patches, including the pitch/harmony choir + piano, now process the live guitar. Phase 4b adds bespoke `PitchShifter`, `Harmonizer`, `Comb`, and `Formant` stages (fixed-ratio granular pitch, no MIDI, no pitch tracking). Carousel scenes 1–5
 now process the live guitar through a pedal-style effects chain (`audio::Carousel`)
-— no MIDI notes, no pitch-shifting; the effect only reshapes timbre:
+— no MIDI notes; each scene reshapes timbre via a parameterized chain:
 
 | Key | Scene | Effect |
 |-----|-------|--------|
-| `2` | 1 | Organ / Leslie (tanh warmth + chorus + light reverb) |
+| `2` | 1 | Choir / pad (harmonizer + vowel formant + big reverb) |
 | `3` | 2 | Distorted guitar (drive + hard clip + tone filter) |
-| `4` | 3 | Synth lead (LFO-swept resonant filter + chorus + reverb) |
+| `4` | 3 | Piano-ish (octave pitch + comb resonance + reverb) |
 | `5` | 4 | 8-bit chiptune (bit crusher + sample-rate reducer) |
 | `6` | 5 | Auto-wah (envelope-following resonant bandpass) |
 
@@ -48,8 +48,7 @@ The chain is built from `juce::dsp` modules (`WaveShaper`,
 modulation stages. Each scene's `carousel` JSON block parameterizes the chain;
 absent sub-blocks bypass that stage. `AudioGraph` routes instrument scenes
 through the carousel and speaking scenes through the vocoder via a wet-source
-selector. Piano and choir/pad (which need pitch-shifting/harmonization) are
-deferred to **Phase 4b**.
+selector. Piano (scene 3) and choir/pad (scene 1) use the new pitch/harmonizer stages added in Phase 4b.
 
 ### TTS (Phases 3–3.6)
 
@@ -95,7 +94,6 @@ A `TTSPrewarmer` per live source pre-synthesizes every scene's text in a backgro
 
 ### Subsequent phases (see plans directory)
 
-- **Phase 4b**: pitch/harmony instruments — pitch shifter, harmonizer, formant shifter (piano, choir/pad).
 - **Phase 5**: Full-screen visualization (spectrogram, karaoke text overlay).
 - **Phase 6**: Hardening + dress rehearsal (lands queued chips: data race, UAF guards).
 
