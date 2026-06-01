@@ -22,6 +22,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_comb.cpp
     unit/audio/test_formant.cpp
     unit/audio/test_onset_detector.cpp
+    unit/audio/test_word_aligner.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp

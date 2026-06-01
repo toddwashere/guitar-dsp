@@ -19,6 +19,7 @@ add_library(guitar_dsp_audio STATIC
     audio/Comb.cpp
     audio/Formant.cpp
     audio/OnsetDetector.cpp
+    audio/WordAligner.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
