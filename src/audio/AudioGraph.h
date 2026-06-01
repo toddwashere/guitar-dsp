@@ -31,6 +31,7 @@ public:
     Mixer& mixer() { return mixer_; }
     TTSClipPlayer& ttsClipPlayer() { return ttsClipPlayer_; }
     NoteSteppedTTSPlayer& noteSteppedPlayer() { return noteSteppedPlayer_; }
+    const NoteSteppedTTSPlayer& noteSteppedPlayer() const { return noteSteppedPlayer_; }
     ChannelVocoder& vocoder() { return vocoder_; }
     Carousel& carousel() { return carousel_; }
 

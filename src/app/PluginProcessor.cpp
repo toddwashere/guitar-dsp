@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <sstream>
+#include <string>
 
 #include <juce_events/juce_events.h>
 
@@ -132,6 +134,15 @@ void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
     if (midiRouter_) midiRouter_->setPreferredDeviceName(name);
 }
 
+std::vector<std::string> PluginProcessor::activeSceneWords() const {
+    const auto cfg = sceneEngine_.activeTtsConfig();
+    std::vector<std::string> words;
+    std::istringstream iss(cfg.text);
+    std::string w;
+    while (iss >> w) words.push_back(w);
+    return words;
+}
+
 void PluginProcessor::enqueueSayText(const std::string& text,
                                       const std::string& voiceId) {
     if (text.empty() || !appleTtsSource_ || !applePrewarmer_) return;
@@ -186,9 +197,13 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 ? audio::AudioGraph::WetSource::Carousel
                 : audio::AudioGraph::WetSource::Vocoder);
             if (carouselCfg.enabled) {
-                // Instrument scene: no TTS clip plays under it.
+                // Instrument scene: no TTS clip plays under it. Clear both TTS
+                // players + revert the modulator so a prior note-triggered scene
+                // can't keep speaking.
                 currentTtsClipKey_.clear();
+                graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
                 graph_.ttsClipPlayer().setClip(nullptr);
+                graph_.noteSteppedPlayer().setClip(nullptr);
                 return;
             }
 
@@ -203,7 +218,11 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             currentTtsClipKey_ = key;
 
             if (key.empty()) {
+                // No-TTS vocoder scene (e.g. clean): silence both players +
+                // revert the modulator so a prior note-triggered scene stops.
+                graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
                 graph_.ttsClipPlayer().setClip(nullptr);
+                graph_.noteSteppedPlayer().setClip(nullptr);
                 return;
             }
 
@@ -235,7 +254,28 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 clip = audio::synthesizeWithFallback(cfg, registry, keyFor);
             }
 
-            graph_.ttsClipPlayer().setClip(clip);  // nullptr is OK (silences)
+            // Route the clip per the scene's tts.trigger. "note" → segment into
+            // words and feed the note-stepped player (word-per-pluck). Anything
+            // else (default "auto") → linear whole-clip playback.
+            if (cfg.trigger == "note" && clip && !clip->samples.empty()) {
+                // WordAligner needs a mutable copy (TTSClipPtr is shared<const>).
+                auto seg = std::make_shared<audio::TTSClip>(*clip);
+                std::vector<std::string> words;
+                {
+                    std::istringstream iss(cfg.text.empty() ? clip->name : cfg.text);
+                    std::string w;
+                    while (iss >> w) words.push_back(w);
+                }
+                if (!words.empty())
+                    seg->words = audio::WordAligner::align(seg->samples, words,
+                                                           seg->sampleRate);
+                graph_.noteSteppedPlayer().setClip(seg);
+                graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
+                graph_.ttsClipPlayer().setClip(nullptr);
+            } else {
+                graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
+                graph_.ttsClipPlayer().setClip(clip);  // nullptr is OK (silences)
+            }
         });
     }
 

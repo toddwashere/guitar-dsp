@@ -3,6 +3,8 @@
 #include <array>
 #include <atomic>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -11,6 +13,7 @@
 #include "audio/PiperTTSSource.h"
 #include "audio/PrebakedTTSSource.h"
 #include "audio/TTSPrewarmer.h"
+#include "audio/WordAligner.h"
 #include "midi/FCB1010Mapping.h"
 #include "midi/MidiRouter.h"
 #include "scenes/SceneEngine.h"
@@ -65,6 +68,13 @@ public:
     scenes::SceneEngine& sceneEngine() { return sceneEngine_; }
 
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
+
+    // Current spoken word index for the active note-triggered scene (-1 idle).
+    int currentSpokenWordIndex() const noexcept {
+        return graph_.noteSteppedPlayer().currentWordIndex();
+    }
+    // The active scene's words (split on whitespace). Message thread.
+    std::vector<std::string> activeSceneWords() const;
 
     // Apple-TTS "type and say" plumbing for the message-thread UI.
     //
