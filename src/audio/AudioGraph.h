@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "Carousel.h"
@@ -47,6 +48,23 @@ public:
         modulatorSource_.store(static_cast<int>(s), std::memory_order_relaxed);
     }
 
+    // --- Diagnostic isolation toggles -----------------------------------
+    // For troubleshooting vocoder intelligibility by ear. Message-thread
+    // setters, audio-thread reads; all allocation/lock-free.
+    //   BypassVocoder: route the raw modulator (TTS) straight to the wet
+    //                  bus, skipping the vocoder — confirms the source.
+    //   NoiseCarrier:  replace the guitar carrier with broadband white
+    //                  noise — confirms whether the sparse guitar carrier
+    //                  is what's starving the formants.
+    //   SibilanceOff:  force the vocoder's sibilance/noise path to zero —
+    //                  confirms whether that path is the "maraca" sound.
+    void setDiagBypassVocoder(bool on) noexcept { diagBypassVocoder_.store(on, std::memory_order_relaxed); }
+    void setDiagNoiseCarrier(bool on)  noexcept { diagNoiseCarrier_.store(on,  std::memory_order_relaxed); }
+    void setDiagSibilanceOff(bool on)  noexcept { diagSibilanceOff_.store(on,  std::memory_order_relaxed); }
+    bool diagBypassVocoder() const noexcept { return diagBypassVocoder_.load(std::memory_order_relaxed); }
+    bool diagNoiseCarrier()  const noexcept { return diagNoiseCarrier_.load(std::memory_order_relaxed); }
+    bool diagSibilanceOff()  const noexcept { return diagSibilanceOff_.load(std::memory_order_relaxed); }
+
 private:
     InputStage inputStage_;
     Mixer mixer_;
@@ -58,8 +76,14 @@ private:
     std::atomic<int> wetSource_ {static_cast<int>(WetSource::Vocoder)};
     std::atomic<int> modulatorSource_ {static_cast<int>(ModulatorSource::Linear)};
 
+    std::atomic<bool> diagBypassVocoder_ {false};
+    std::atomic<bool> diagNoiseCarrier_  {false};
+    std::atomic<bool> diagSibilanceOff_  {false};
+    std::uint32_t     diagNoiseState_ {0x9E3779B9u};  // carrier-noise xorshift state
+
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;
+    std::vector<float> carrierBuffer_;  // scratch for the noise-carrier diagnostic
 };
 
 } // namespace guitar_dsp::audio

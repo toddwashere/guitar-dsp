@@ -18,6 +18,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
 
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     wetBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
+    carrierBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
 
     // Default mixer to fully dry until later phases install branches.
     mixer_.setDryWet(0.0f);
@@ -35,6 +36,7 @@ void AudioGraph::reset() {
     carousel_.reset();
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
     std::fill(wetBuffer_.begin(), wetBuffer_.end(), 0.0f);
+    std::fill(carrierBuffer_.begin(), carrierBuffer_.end(), 0.0f);
 }
 
 void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
@@ -60,8 +62,28 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
         } else {
             ttsClipPlayer_.process(wetBuffer_.data(), numSamples);
         }
-        vocoder_.process(postInputBuffer_.data(), wetBuffer_.data(),
-                         wetBuffer_.data(), numSamples);
+
+        if (diagBypassVocoder_.load(std::memory_order_relaxed)) {
+            // Diagnostic: skip vocoding entirely. wetBuffer_ already holds the
+            // raw modulator, so the operator auditions the TTS source directly.
+        } else {
+            // Carrier = guitar, or (diagnostic) broadband white noise so every
+            // band has energy to modulate.
+            const float* carrier = postInputBuffer_.data();
+            if (diagNoiseCarrier_.load(std::memory_order_relaxed)) {
+                for (std::size_t i = 0; i < numSamples; ++i) {
+                    diagNoiseState_ ^= diagNoiseState_ << 13;
+                    diagNoiseState_ ^= diagNoiseState_ >> 17;
+                    diagNoiseState_ ^= diagNoiseState_ << 5;
+                    carrierBuffer_[i] =
+                        0.5f * ((static_cast<float>(diagNoiseState_) / 2147483648.0f) - 1.0f);
+                }
+                carrier = carrierBuffer_.data();
+            }
+            vocoder_.setSibilance(
+                diagSibilanceOff_.load(std::memory_order_relaxed) ? 0.0f : 0.5f);
+            vocoder_.process(carrier, wetBuffer_.data(), wetBuffer_.data(), numSamples);
+        }
     }
 
     // Mixer: dry = post-input guitar, wet = selected branch output.

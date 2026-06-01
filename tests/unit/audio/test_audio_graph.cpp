@@ -123,6 +123,98 @@ TEST_CASE("AudioGraph: carousel wet-source transforms the guitar",
     REQUIRE(peak > 0.3f);
 }
 
+TEST_CASE("AudioGraph: noise-carrier diagnostic lets a silent guitar vocode",
+          "[audio][graph][diag]") {
+    using guitar_dsp::audio::TTSClip;
+
+    auto runPeak = [](bool noiseCarrier) {
+        AudioGraph g;
+        g.prepare(48000.0, 512);
+        g.mixer().setDryWet(1.0f); g.mixer().setMasterGainDb(0.0f); g.mixer().reset();
+
+        auto clip = std::make_shared<TTSClip>();
+        clip->sampleRate = 48000.0;
+        clip->samples.resize(48000);
+        for (int i = 0; i < 48000; ++i)
+            clip->samples[static_cast<size_t>(i)] =
+                0.6f * std::sin(2.0f * 3.14159265f * 800.0f * i / 48000.0f);
+        g.ttsClipPlayer().setClip(clip);
+        g.setDiagNoiseCarrier(noiseCarrier);
+        // Isolate the *tonal* path so this measures the carrier's contribution
+        // only: the sibilance/noise path emits output regardless of the carrier
+        // (that's the very leak this diagnostic helps reveal).
+        g.setDiagSibilanceOff(true);
+
+        std::vector<float> in(48000, 0.0f), out(48000, 0.0f);  // silent guitar
+        for (std::size_t i = 0; i < in.size(); i += 512) {
+            const auto n = std::min<std::size_t>(512, in.size() - i);
+            g.process(in.data() + i, out.data() + i, n);
+        }
+        float peak = 0.0f;
+        for (int i = 12000; i < 36000; ++i) peak = std::max(peak, std::fabs(out[static_cast<size_t>(i)]));
+        return peak;
+    };
+
+    const float off = runPeak(false);
+    const float on  = runPeak(true);
+    REQUIRE(off < 0.01f);          // silent guitar carrier -> near-no tonal output
+    REQUIRE(on  > 0.02f);          // noise carrier -> audible vocoded speech
+    REQUIRE(on  > 4.0f * off);
+}
+
+TEST_CASE("AudioGraph: bypass-vocoder diagnostic routes the raw modulator",
+          "[audio][graph][diag]") {
+    using guitar_dsp::audio::TTSClip;
+
+    AudioGraph g;
+    g.prepare(48000.0, 512);
+    g.mixer().setDryWet(1.0f); g.mixer().setMasterGainDb(0.0f); g.mixer().reset();
+
+    auto clip = std::make_shared<TTSClip>();
+    clip->sampleRate = 48000.0;
+    clip->samples.resize(48000);
+    for (int i = 0; i < 48000; ++i)
+        clip->samples[static_cast<size_t>(i)] =
+            0.5f * std::sin(2.0f * 3.14159265f * 300.0f * i / 48000.0f);
+    g.ttsClipPlayer().setClip(clip);
+    g.setDiagBypassVocoder(true);
+
+    std::vector<float> in(48000, 0.0f), out(48000, 0.0f);  // silent guitar
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const auto n = std::min<std::size_t>(512, in.size() - i);
+        g.process(in.data() + i, out.data() + i, n);
+    }
+    float peak = 0.0f;
+    for (int i = 6000; i < 36000; ++i) peak = std::max(peak, std::fabs(out[static_cast<size_t>(i)]));
+    REQUIRE(peak > 0.3f);  // raw ~0.5-amp modulator passes through (would be ~0 if vocoded)
+    for (float x : out) REQUIRE(std::isfinite(x));
+}
+
+TEST_CASE("AudioGraph: diagnostic toggles are realtime-safe",
+          "[audio][graph][diag][realtime]") {
+    using guitar_dsp::audio::TTSClip;
+
+    AudioGraph g;
+    g.prepare(48000.0, 512);
+    auto clip = std::make_shared<TTSClip>();
+    clip->sampleRate = 48000.0;
+    clip->samples.assign(48000, 0.2f);
+    g.ttsClipPlayer().setClip(clip);
+    g.setDiagNoiseCarrier(true);
+    g.setDiagSibilanceOff(true);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(512), out(512);
+    gen.sine(440.0f, 0.4f, in.data(), in.size());
+
+    RealtimeSentinel sentinel;
+    sentinel.markCurrentThreadAsRealtime();
+    for (int i = 0; i < 300; ++i)
+        g.process(in.data(), out.data(), out.size());
+    sentinel.unmarkCurrentThreadAsRealtime();
+    REQUIRE(sentinel.violations() == 0);
+}
+
 TEST_CASE("AudioGraph: note-stepped modulator vocodes a word on a pluck",
           "[audio][graph][notestep]") {
     using guitar_dsp::audio::TTSClip;
