@@ -1,11 +1,12 @@
 {
   "id": 6,
-  "name": "Speaking A — apple",
+  "name": "Speaking A — whole clip (apple)",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
   "tts": {
     "source": "apple",
     "text": "Welcome to the talk. The guitar is now speaking.",
-    "voice": "com.apple.voice.compact.en-US.Samantha"
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "trigger": "auto"
   }
 }

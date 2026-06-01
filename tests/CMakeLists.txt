@@ -43,6 +43,7 @@ add_executable(guitar_dsp_tests
     integration/test_scene_hot_reload.cpp
     integration/test_fallback_chain.cpp
     integration/test_carousel_scene.cpp
+    integration/test_note_triggered_speech.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
