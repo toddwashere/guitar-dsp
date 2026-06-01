@@ -14,6 +14,7 @@ add_library(guitar_dsp_audio STATIC
     audio/Crusher.cpp
     audio/CarouselMod.cpp
     audio/Carousel.cpp
+    audio/PitchShifter.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
