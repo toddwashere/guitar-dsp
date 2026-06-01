@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "DiagToggleBar.h"
 #include "DiagnosticPanel.h"
 #include "MidiDevicePicker.h"
 #include "Oscilloscope.h"
@@ -33,6 +34,7 @@ private:
     DiagnosticPanel    diagnosticPanel_;
     SceneIndicator     sceneIndicator_;
     WordReadout        wordReadout_;
+    DiagToggleBar      diagToggleBar_;
     MidiDevicePicker   midiDevicePicker_;
     SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;

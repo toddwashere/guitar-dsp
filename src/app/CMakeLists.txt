@@ -27,6 +27,7 @@ target_sources(guitar_dsp_app PRIVATE
     PluginProcessor.cpp
     PluginEditor.cpp
     DiagnosticPanel.cpp
+    DiagToggleBar.cpp
     Oscilloscope.cpp
     SceneIndicator.cpp
     SpectrumAnalyzer.cpp

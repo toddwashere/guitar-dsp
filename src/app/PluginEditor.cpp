@@ -8,16 +8,18 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       diagnosticPanel_(p),
       sceneIndicator_(p),
       wordReadout_(p),
+      diagToggleBar_(p),
       midiDevicePicker_(p),
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
-    setSize(720, 572);
+    setSize(720, 598);
     setResizable(true, true);
-    setResizeLimits(520, 400, 1800, 1200);
+    setResizeLimits(520, 426, 1800, 1200);
     addAndMakeVisible(diagnosticPanel_);
     addAndMakeVisible(sceneIndicator_);
     addAndMakeVisible(wordReadout_);
+    addAndMakeVisible(diagToggleBar_);
     addAndMakeVisible(midiDevicePicker_);
     addAndMakeVisible(sayPanel_);
     addAndMakeVisible(oscilloscope_);
@@ -35,6 +37,7 @@ void PluginEditor::resized() {
     diagnosticPanel_.setBounds(bounds.removeFromTop(62));
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
     wordReadout_.setBounds(bounds.removeFromTop(44));
+    diagToggleBar_.setBounds(bounds.removeFromTop(26));
     midiDevicePicker_.setBounds(bounds.removeFromTop(28));
     sayPanel_.setBounds(bounds.removeFromTop(40));
     const int remaining = bounds.getHeight();
@@ -45,13 +48,23 @@ void PluginEditor::resized() {
 bool PluginEditor::keyPressed(const juce::KeyPress& key, juce::Component*) {
     const auto kc = key.getKeyCode();
 
-    int sceneId = -1;
-    if (kc >= '1' && kc <= '9')      sceneId = kc - '1';   // 1 -> 0, 9 -> 8
-    else if (kc == '0')              sceneId = 9;          // 0 -> 9
-    if (sceneId < 0) return false;
+    // Digit = scene id: '1' -> scene 1 ... '9' -> scene 9, '0' -> scene 0.
+    // Matches the on-screen slot labels and the FCB1010's identity
+    // program-change -> scene mapping (no more off-by-one).
+    if (kc >= '0' && kc <= '9') {
+        processor_.sceneEngine().activateScene(kc - '0');
+        return true;
+    }
 
-    processor_.sceneEngine().activateScene(sceneId);
-    return true;
+    // Vocoder diagnostic toggles (case-insensitive). Let the operator isolate
+    // by ear why vocoded speech is unintelligible.
+    switch (key.getTextCharacter()) {
+        case 'v': case 'V': processor_.toggleDiagBypassVocoder(); return true;
+        case 'n': case 'N': processor_.toggleDiagNoiseCarrier();  return true;
+        case 's': case 'S': processor_.toggleDiagSibilanceOff();  return true;
+        default: break;
+    }
+    return false;
 }
 
 } // namespace guitar_dsp

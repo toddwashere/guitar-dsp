@@ -76,6 +76,16 @@ public:
     // The active scene's words (split on whitespace). Message thread.
     std::vector<std::string> activeSceneWords() const;
 
+    // --- Vocoder diagnostic toggles (message thread) --------------------
+    // Forward to the AudioGraph. Used by the DiagToggleBar UI + V/N/S keys
+    // to isolate, by ear, why vocoded speech is unintelligible.
+    void toggleDiagBypassVocoder() noexcept { graph_.setDiagBypassVocoder(!graph_.diagBypassVocoder()); }
+    void toggleDiagNoiseCarrier()  noexcept { graph_.setDiagNoiseCarrier(!graph_.diagNoiseCarrier()); }
+    void toggleDiagSibilanceOff()  noexcept { graph_.setDiagSibilanceOff(!graph_.diagSibilanceOff()); }
+    bool diagBypassVocoder() const noexcept { return graph_.diagBypassVocoder(); }
+    bool diagNoiseCarrier()  const noexcept { return graph_.diagNoiseCarrier(); }
+    bool diagSibilanceOff()  const noexcept { return graph_.diagSibilanceOff(); }
+
     // Apple-TTS "type and say" plumbing for the message-thread UI.
     //
     // enqueueSayText() kicks off background synthesis via the existing
