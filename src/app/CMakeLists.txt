@@ -32,6 +32,7 @@ target_sources(guitar_dsp_app PRIVATE
     SpectrumAnalyzer.cpp
     SayPanel.cpp
     MidiDevicePicker.cpp
+    WordReadout.cpp
 )
 
 target_compile_definitions(guitar_dsp_app PRIVATE
