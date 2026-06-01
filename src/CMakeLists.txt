@@ -20,6 +20,7 @@ add_library(guitar_dsp_audio STATIC
     audio/Formant.cpp
     audio/OnsetDetector.cpp
     audio/WordAligner.cpp
+    audio/NoteSteppedTTSPlayer.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
