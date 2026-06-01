@@ -1,0 +1,14 @@
+{
+  "id": 3,
+  "name": "Carousel — piano-ish",
+  "color": "#7eb8de",
+  "mixer": { "masterGainDb": -4.0, "dryWet": 1.0, "transitionMs": 20 },
+  "carousel": {
+    "enabled": true,
+    "pitch": { "semitones": 12, "mix": 0.45, "grainMs": 30 },
+    "comb": { "freqHz": 220, "feedback": 0.6, "mix": 0.5 },
+    "filter": { "mode": "lowpass", "cutoffHz": 4000, "resonance": 0.3, "mod": "static" },
+    "reverb": { "roomSize": 0.3, "wet": 0.15 },
+    "outputTrimDb": -2.0
+  }
+}
