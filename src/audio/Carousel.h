@@ -7,6 +7,10 @@
 
 #include "Crusher.h"
 #include "CarouselMod.h"
+#include "PitchShifter.h"
+#include "Harmonizer.h"
+#include "Comb.h"
+#include "Formant.h"
 #include "scenes/Scene.h"
 
 namespace guitar_dsp::audio {
@@ -48,6 +52,11 @@ private:
     Crusher                                  crusher_;
     EnvelopeFollower                         env_;
     Lfo                                      lfo_;
+
+    PitchShifter pitch_;
+    Harmonizer   harm_;
+    Comb         comb_;
+    Formant      formant_;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> driveGain_;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> trimGain_;

@@ -197,6 +197,26 @@ TEST_CASE("Carousel: output limiter bounds extreme presets to [-1,1]",
     }
 }
 
+TEST_CASE("Carousel: harmonizer raises pitched energy (choir-ish)",
+          "[audio][carousel][pitch]") {
+    Carousel c;
+    c.prepare(48000.0, 512);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.harmVoiceCount = 2;
+    cfg.harmSemitones[0] = 12; cfg.harmSemitones[1] = 7;
+    cfg.harmMix = 0.9f;
+    c.setConfig(cfg);
+
+    auto in = tone(4096, 196.0f);
+    std::vector<float> out(4096, 0.0f);
+    for (int blk = 0; blk < 4; ++blk) c.process(in.data(), out.data(), out.size());
+    for (float x : out) { REQUIRE(std::isfinite(x)); REQUIRE(std::fabs(x) <= 1.0f); }
+    float peak = 0.0f;
+    for (float x : out) peak = std::max(peak, std::fabs(x));
+    REQUIRE(peak > 0.05f);
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);

@@ -38,6 +38,11 @@ void Carousel::prepare(double sampleRate, int blockSize) {
     chorus_.prepare(spec);
     reverb_.prepare(spec);
     crusher_.reset();
+    const int maxGrain = static_cast<int>(sampleRate * 0.1);  // 100 ms
+    pitch_.prepare(sampleRate, maxGrain);
+    harm_.prepare(sampleRate, maxGrain);
+    comb_.prepare(sampleRate, maxGrain);
+    formant_.prepare(sampleRate);
     env_.prepare(sampleRate);
     lfo_.prepare(sampleRate);
 
@@ -54,6 +59,10 @@ void Carousel::reset() {
     chorus_.reset();
     reverb_.reset();
     crusher_.reset();
+    pitch_.reset();
+    harm_.reset();
+    comb_.reset();
+    formant_.reset();
     env_.reset();
     lfo_.reset();
 }
@@ -67,6 +76,11 @@ void Carousel::applyConfig(const scenes::CarouselConfig& cfg) noexcept {
     active_ = cfg;
     crusher_.setBits(cfg.crusherBits);
     crusher_.setDownsample(cfg.crusherDownsample);
+    pitch_.setGrainSamples(static_cast<int>(cfg.pitchGrainMs * 0.001 * sampleRate_));
+    pitch_.setRatio(std::pow(2.0f, cfg.pitchSemitones / 12.0f));
+    harm_.setVoices(cfg.harmSemitones, cfg.harmDetuneCents,
+                    cfg.harmVoiceCount, cfg.pitchGrainMs);
+    harm_.setMix(juce::jlimit(0.0f, 1.0f, cfg.harmMix));
     driveGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.drive));
     trimGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.outputTrimDb));
 
@@ -107,7 +121,14 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
     const bool filterOn = active_.filterMode != scenes::CarouselConfig::FilterMode::Off;
     using FMod = scenes::CarouselConfig::FilterMod;
     for (std::size_t i = 0; i < numSamples; ++i) {
-        float x = in[i] * driveGain_.getNextValue() * active_.shaperAmount;
+        float v = in[i];
+        if (active_.harmVoiceCount > 0) {
+            v = harm_.processSample(v);
+        } else if (active_.pitchSemitones != 0.0f) {
+            const float shifted = pitch_.processSample(v);
+            v = (1.0f - active_.pitchMix) * v + active_.pitchMix * shifted;
+        }
+        float x = v * driveGain_.getNextValue() * active_.shaperAmount;
         x = shape(x, active_.shaper);
         x = crusher_.processSample(x);
 
