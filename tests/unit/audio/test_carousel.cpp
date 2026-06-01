@@ -267,6 +267,45 @@ TEST_CASE("Carousel: full pitch+comb+formant preset is allocation-free",
     for (float x : out) { REQUIRE(std::isfinite(x)); REQUIRE(std::fabs(x) <= 1.0f); }
 }
 
+TEST_CASE("Carousel: choir + piano presets stay finite and bounded",
+          "[audio][carousel][pitch]") {
+    auto runPreset = [](const CarouselConfig& cfg) {
+        Carousel c;
+        c.prepare(48000.0, 512);
+        c.setConfig(cfg);
+        std::vector<float> in(512), out(512);
+        for (int blk = 0; blk < 80; ++blk) {
+            const float amp = 0.8f * std::exp(-blk / 30.0f);
+            for (int i = 0; i < 512; ++i)
+                in[static_cast<size_t>(i)] =
+                    amp * std::sin(2.0f*3.14159265f*146.83f*(blk*512+i)/48000.0f);
+            c.process(in.data(), out.data(), out.size());
+            for (float x : out) {
+                REQUIRE(std::isfinite(x));
+                REQUIRE(std::fabs(x) <= 1.0f);
+            }
+        }
+    };
+
+    CarouselConfig choir;
+    choir.enabled = true;
+    choir.harmVoiceCount = 3;
+    choir.harmSemitones[0] = 12; choir.harmSemitones[1] = 7; choir.harmSemitones[2] = 0;
+    choir.harmDetuneCents[2] = 6; choir.harmMix = 0.85f;
+    choir.formantVowel = CarouselConfig::Vowel::Ah; choir.formantAmount = 0.6f;
+    choir.reverbRoomSize = 0.7f; choir.reverbWet = 0.4f;
+    runPreset(choir);
+
+    CarouselConfig piano;
+    piano.enabled = true;
+    piano.pitchSemitones = 12.0f; piano.pitchMix = 0.5f; piano.pitchGrainMs = 30.0f;
+    piano.combFreqHz = 220.0f; piano.combFeedback = 0.6f; piano.combMix = 0.5f;
+    piano.filterMode = CarouselConfig::FilterMode::LowPass;
+    piano.filterCutoffHz = 4000.0f; piano.filterResonance = 0.3f;
+    piano.reverbRoomSize = 0.3f; piano.reverbWet = 0.15f;
+    runPreset(piano);
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);
