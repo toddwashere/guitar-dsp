@@ -7,6 +7,13 @@
 
 namespace guitar_dsp::audio {
 
+// One spoken word and the sample range it occupies within TTSClip::samples.
+struct WordSegment {
+    std::string word;
+    std::size_t startSample = 0;   // inclusive
+    std::size_t endSample   = 0;   // exclusive
+};
+
 // In-memory mono TTS clip. Owned by an `ITTSSource`, consumed by
 // `TTSClipPlayer` on the audio thread. The samples vector is resized
 // only off the audio thread.
@@ -14,6 +21,7 @@ struct TTSClip {
     std::string  name;             // for debug/UI
     double       sampleRate = 48000.0;
     std::vector<float> samples;    // mono float32, at sampleRate
+    std::vector<WordSegment> words;   // empty = not segmented
 
     bool empty() const noexcept { return samples.empty(); }
     std::size_t lengthSamples() const noexcept { return samples.size(); }

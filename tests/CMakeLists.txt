@@ -13,6 +13,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_apple_tts_source.cpp
     unit/audio/test_piper_tts_source.cpp
     unit/audio/test_tts_prewarmer.cpp
+    unit/audio/test_word_segment.cpp
     unit/audio/test_crusher.cpp
     unit/audio/test_carousel_mod.cpp
     unit/audio/test_carousel.cpp
