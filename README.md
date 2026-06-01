@@ -31,9 +31,31 @@ GUITAR_DSP_REGENERATE_GOLDENS=1 ctest --test-dir build --output-on-failure -R go
 
 ## Project status
 
-This branch implements **Phase 4b: Instrument Carousel (full)** — all five carousel patches, including the pitch/harmony choir + piano, now process the live guitar. Phase 4b adds bespoke `PitchShifter`, `Harmonizer`, `Comb`, and `Formant` stages (fixed-ratio granular pitch, no MIDI, no pitch tracking). Carousel scenes 1–5
-now process the live guitar through a pedal-style effects chain (`audio::Carousel`)
-— no MIDI notes; each scene reshapes timbre via a parameterized chain:
+This branch implements **Phase 5a: note-triggered word-by-word speech** — the
+core "While My Guitar Gently Speaks" effect, presented as a live progression of
+how the speaking guitar evolved:
+
+- **Scene 6 — whole clip (the "before"):** activating the scene plays the entire
+  TTS phrase through the vocoder, as in Phase 3. The original speak-on-activate.
+- **Scenes 7 & 8 — word-by-word (the "after"/finale):** the phrase is pre-split
+  into per-word audio segments and **each plucked note speaks the next word**,
+  auto-looping after the last word. Nothing speaks until you play, so the
+  performer paces the whole sentence note by note.
+
+The whole-clip scene sits at a lower number than the word-by-word scenes, so
+stepping up the FCB1010 walks the audience through the evolution. Pieces:
+`audio::OnsetDetector` (note-attack detection on the clean guitar),
+`audio::WordAligner` (uniform energy-gap word segmentation — same for all three
+TTS backends), and `audio::NoteSteppedTTSPlayer` (one word per onset, feeding the
+vocoder modulator). A scene's `tts.trigger` selects `"auto"` (whole clip — the
+default, preserving Phase-3 behavior) vs `"note"` (word-by-word). A minimal
+on-screen word readout shows the current word.
+
+### Instrument Carousel (Phases 4 + 4b)
+
+Carousel scenes 1–5 process the live guitar through a pedal-style effects chain
+(`audio::Carousel`) — no MIDI notes; each scene reshapes timbre via a
+parameterized chain:
 
 | Key | Scene | Effect |
 |-----|-------|--------|
