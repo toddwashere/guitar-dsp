@@ -239,6 +239,34 @@ TEST_CASE("Carousel: comb adds resonant ring (piano-ish)", "[audio][carousel]") 
     for (float x : tail) { REQUIRE(std::isfinite(x)); REQUIRE(std::fabs(x) <= 1.0f); }
 }
 
+TEST_CASE("Carousel: full pitch+comb+formant preset is allocation-free",
+          "[audio][carousel][rt]") {
+    Carousel c;
+    c.prepare(48000.0, 512);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.harmVoiceCount = 3;
+    cfg.harmSemitones[0] = 12; cfg.harmSemitones[1] = 7; cfg.harmSemitones[2] = 0;
+    cfg.harmDetuneCents[2] = 6;
+    cfg.harmMix = 0.8f;
+    cfg.combFreqHz = 196.0f; cfg.combFeedback = 0.5f; cfg.combMix = 0.4f;
+    cfg.formantVowel = CarouselConfig::Vowel::Ah; cfg.formantAmount = 0.6f;
+    cfg.reverbRoomSize = 0.6f; cfg.reverbWet = 0.3f;
+    c.setConfig(cfg);
+
+    auto in = tone(512, 196.0f);
+    std::vector<float> out(512, 0.0f);
+    c.process(in.data(), out.data(), out.size());   // pick up config
+
+    RealtimeSentinel sentinel;
+    sentinel.markCurrentThreadAsRealtime();
+    for (int blk = 0; blk < 50; ++blk)
+        c.process(in.data(), out.data(), out.size());
+    sentinel.unmarkCurrentThreadAsRealtime();
+    REQUIRE(sentinel.violations() == 0);
+    for (float x : out) { REQUIRE(std::isfinite(x)); REQUIRE(std::fabs(x) <= 1.0f); }
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);

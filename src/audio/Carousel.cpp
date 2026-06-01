@@ -84,6 +84,8 @@ void Carousel::applyConfig(const scenes::CarouselConfig& cfg) noexcept {
     comb_.setFreqHz(cfg.combFreqHz);
     comb_.setFeedback(cfg.combFeedback);
     comb_.setMix(juce::jlimit(0.0f, 1.0f, cfg.combMix));
+    formant_.setVowel(cfg.formantVowel);
+    formant_.setAmount(juce::jlimit(0.0f, 1.0f, cfg.formantAmount));
     driveGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.drive));
     trimGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.outputTrimDb));
 
@@ -148,6 +150,9 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
             }
             x = filter_.processSample(0, x);
         }
+
+        if (active_.formantVowel != scenes::CarouselConfig::Vowel::None)
+            x = formant_.processSample(x);
 
         x *= trimGain_.getNextValue();
         out[i] = x;
