@@ -8,6 +8,7 @@
 #include "ChannelVocoder.h"
 #include "InputStage.h"
 #include "Mixer.h"
+#include "NoteSteppedTTSPlayer.h"
 #include "TTSClipPlayer.h"
 
 namespace guitar_dsp::audio {
@@ -29,6 +30,7 @@ public:
     InputStage& input() { return inputStage_; }
     Mixer& mixer() { return mixer_; }
     TTSClipPlayer& ttsClipPlayer() { return ttsClipPlayer_; }
+    NoteSteppedTTSPlayer& noteSteppedPlayer() { return noteSteppedPlayer_; }
     ChannelVocoder& vocoder() { return vocoder_; }
     Carousel& carousel() { return carousel_; }
 
@@ -38,14 +40,22 @@ public:
         wetSource_.store(static_cast<int>(s), std::memory_order_relaxed);
     }
 
+    enum class ModulatorSource { Linear, NoteStepped };
+    // Message-thread: choose which TTS player feeds the vocoder modulator.
+    void setModulatorSource(ModulatorSource s) noexcept {
+        modulatorSource_.store(static_cast<int>(s), std::memory_order_relaxed);
+    }
+
 private:
     InputStage inputStage_;
     Mixer mixer_;
     TTSClipPlayer ttsClipPlayer_;
+    NoteSteppedTTSPlayer noteSteppedPlayer_;
     ChannelVocoder vocoder_;
     Carousel carousel_;
 
     std::atomic<int> wetSource_ {static_cast<int>(WetSource::Vocoder)};
+    std::atomic<int> modulatorSource_ {static_cast<int>(ModulatorSource::Linear)};
 
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;

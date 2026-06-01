@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <vector>
 
 using guitar_dsp::audio::AudioGraph;
@@ -120,4 +121,30 @@ TEST_CASE("AudioGraph: carousel wet-source transforms the guitar",
     for (float x : out) peak = std::max(peak, std::fabs(x));
     REQUIRE(peak <= 1.05f);
     REQUIRE(peak > 0.3f);
+}
+
+TEST_CASE("AudioGraph: note-stepped modulator vocodes a word on a pluck",
+          "[audio][graph][notestep]") {
+    using guitar_dsp::audio::TTSClip;
+
+    AudioGraph g;
+    g.prepare(48000.0, 1024);
+    g.mixer().setDryWet(1.0f); g.mixer().setMasterGainDb(0.0f); g.mixer().reset();
+
+    auto clip = std::make_shared<TTSClip>();
+    clip->sampleRate = 48000.0;
+    clip->samples.assign(2000, 0.4f);
+    clip->words = { {"word", 0, 2000} };
+    g.noteSteppedPlayer().setClip(clip);
+    g.setModulatorSource(AudioGraph::ModulatorSource::NoteStepped);
+
+    std::vector<float> in(1024), out(1024);
+    for (int i = 0; i < 1024; ++i)
+        in[static_cast<size_t>(i)] = 0.8f * std::sin(2.0f*3.14159265f*110.0f*i/48000.0f);
+
+    g.process(in.data(), out.data(), out.size());
+    float peak = 0.0f;
+    for (float x : out) peak = std::max(peak, std::fabs(x));
+    REQUIRE(peak > 1e-3f);
+    for (float x : out) REQUIRE(std::isfinite(x));
 }

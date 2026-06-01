@@ -10,6 +10,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     inputStage_.prepare(sampleRate, blockSize);
     mixer_.prepare(sampleRate, blockSize);
     ttsClipPlayer_.prepare(sampleRate, blockSize);
+    noteSteppedPlayer_.prepare(sampleRate, blockSize);
     vocoder_.prepare(sampleRate, blockSize);
     vocoder_.setWetLevel(1.0f);
     vocoder_.setSibilance(0.5f);
@@ -29,6 +30,7 @@ void AudioGraph::reset() {
     inputStage_.reset();
     mixer_.reset();
     ttsClipPlayer_.reset();
+    noteSteppedPlayer_.reset();
     vocoder_.reset();
     carousel_.reset();
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
@@ -48,8 +50,16 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
         // Carousel branch: transform the guitar directly into the wet buffer.
         carousel_.process(postInputBuffer_.data(), wetBuffer_.data(), numSamples);
     } else {
-        // Vocoder branch: modulator = TTS playback, carrier = post-input guitar.
-        ttsClipPlayer_.process(wetBuffer_.data(), numSamples);
+        // Vocoder branch: modulator from the selected TTS player, carrier =
+        // post-input guitar.
+        if (modulatorSource_.load(std::memory_order_relaxed)
+                == static_cast<int>(ModulatorSource::NoteStepped)) {
+            // Onset source = clean guitar (postInputBuffer_); writes modulator.
+            noteSteppedPlayer_.process(postInputBuffer_.data(),
+                                       wetBuffer_.data(), numSamples);
+        } else {
+            ttsClipPlayer_.process(wetBuffer_.data(), numSamples);
+        }
         vocoder_.process(postInputBuffer_.data(), wetBuffer_.data(),
                          wetBuffer_.data(), numSamples);
     }
