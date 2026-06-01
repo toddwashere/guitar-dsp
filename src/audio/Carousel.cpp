@@ -81,6 +81,9 @@ void Carousel::applyConfig(const scenes::CarouselConfig& cfg) noexcept {
     harm_.setVoices(cfg.harmSemitones, cfg.harmDetuneCents,
                     cfg.harmVoiceCount, cfg.pitchGrainMs);
     harm_.setMix(juce::jlimit(0.0f, 1.0f, cfg.harmMix));
+    comb_.setFreqHz(cfg.combFreqHz);
+    comb_.setFeedback(cfg.combFeedback);
+    comb_.setMix(juce::jlimit(0.0f, 1.0f, cfg.combMix));
     driveGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.drive));
     trimGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.outputTrimDb));
 
@@ -131,6 +134,7 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
         float x = v * driveGain_.getNextValue() * active_.shaperAmount;
         x = shape(x, active_.shaper);
         x = crusher_.processSample(x);
+        if (active_.combFreqHz > 0.0f) x = comb_.processSample(x);
 
         if (filterOn) {
             if (active_.filterMod == FMod::Envelope) {

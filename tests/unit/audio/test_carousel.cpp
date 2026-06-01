@@ -217,6 +217,28 @@ TEST_CASE("Carousel: harmonizer raises pitched energy (choir-ish)",
     REQUIRE(peak > 0.05f);
 }
 
+TEST_CASE("Carousel: comb adds resonant ring (piano-ish)", "[audio][carousel]") {
+    Carousel c;
+    c.prepare(48000.0, 512);
+    CarouselConfig cfg;
+    cfg.enabled = true;
+    cfg.combFreqHz = 220.0f;
+    cfg.combFeedback = 0.7f;
+    cfg.combMix = 0.8f;
+    c.setConfig(cfg);
+
+    auto in = tone(512, 220.0f);
+    std::vector<float> out(512, 0.0f);
+    c.process(in.data(), out.data(), out.size());
+
+    std::vector<float> silence(512, 0.0f), tail(512, 0.0f);
+    c.process(silence.data(), tail.data(), tail.size());
+    float tailPeak = 0.0f;
+    for (float x : tail) tailPeak = std::max(tailPeak, std::fabs(x));
+    REQUIRE(tailPeak > 1e-3f);
+    for (float x : tail) { REQUIRE(std::isfinite(x)); REQUIRE(std::fabs(x) <= 1.0f); }
+}
+
 TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     Carousel c;
     c.prepare(48000.0, 512);
