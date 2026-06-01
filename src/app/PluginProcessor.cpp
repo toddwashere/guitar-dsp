@@ -254,6 +254,21 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 clip = audio::synthesizeWithFallback(cfg, registry, keyFor);
             }
 
+            // If the prewarmer cache held a *failure* (nullptr) — e.g. a live
+            // engine like Piper isn't installed — the branches above yield no
+            // clip and would leave the scene silent. Walk to the scene's
+            // declared fallback source directly so it still speaks. We do NOT
+            // re-invoke the live primary here (the prewarmer already tried it),
+            // and we never synthesize apple on the message thread (that would
+            // deadlock AVSpeechSynthesizer). The fallback is normally a
+            // prebaked file load, which is message-thread-safe.
+            if (!clip && !cfg.fallback.empty() && cfg.fallback != "apple") {
+                if (auto it = registry.find(cfg.fallback);
+                        it != registry.end() && it->second) {
+                    clip = it->second->synthesize(keyFor(cfg.fallback));
+                }
+            }
+
             // Route the clip per the scene's tts.trigger. "note" → segment into
             // words and feed the note-stepped player (word-per-pluck). Anything
             // else (default "auto") → linear whole-clip playback.
