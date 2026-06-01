@@ -66,3 +66,49 @@ TEST_CASE("integration: each carousel preset transforms the guitar, stays finite
         REQUIRE(energy(out) != energy(clean));
     }
 }
+
+TEST_CASE("integration: choir + piano presets transform guitar, stay bounded",
+          "[integration][carousel][pitch]") {
+    AudioGraph g;
+    g.prepare(48000.0, 1024);
+
+    std::vector<float> in(1024);
+    for (int i = 0; i < 1024; ++i) {
+        const float amp = 0.8f * std::exp(-i / 6000.0f);
+        in[static_cast<size_t>(i)] = amp * std::sin(2.0f*3.14159265f*146.83f*i/48000.0f);
+    }
+
+    g.setWetSource(AudioGraph::WetSource::Vocoder);
+    g.mixer().setDryWet(0.0f); g.mixer().setMasterGainDb(0.0f); g.mixer().reset();
+    std::vector<float> clean(1024, 0.0f);
+    g.process(in.data(), clean.data(), clean.size());
+    double cleanE = 0.0; for (float v : clean) cleanE += static_cast<double>(v)*v;
+
+    CarouselConfig choir;
+    choir.enabled = true;
+    choir.harmVoiceCount = 3;
+    choir.harmSemitones[0] = 12; choir.harmSemitones[1] = 7; choir.harmSemitones[2] = 0;
+    choir.harmMix = 0.85f;
+    choir.formantVowel = CarouselConfig::Vowel::Ah; choir.formantAmount = 0.6f;
+
+    CarouselConfig piano;
+    piano.enabled = true;
+    piano.pitchSemitones = 12.0f; piano.pitchMix = 0.5f;
+    piano.combFreqHz = 220.0f; piano.combFeedback = 0.6f; piano.combMix = 0.5f;
+
+    for (const auto& cfg : { choir, piano }) {
+        g.carousel().setConfig(cfg);
+        g.setWetSource(AudioGraph::WetSource::Carousel);
+        g.mixer().setDryWet(1.0f); g.mixer().reset();
+        std::vector<float> out(1024, 0.0f);
+        g.process(in.data(), out.data(), out.size());
+        g.process(in.data(), out.data(), out.size());
+        double e = 0.0;
+        for (float x : out) {
+            REQUIRE(std::isfinite(x));
+            REQUIRE(std::fabs(x) <= 1.0f);
+            e += static_cast<double>(x)*x;
+        }
+        REQUIRE(e != cleanE);
+    }
+}
