@@ -15,6 +15,7 @@ add_library(guitar_dsp_audio STATIC
     audio/CarouselMod.cpp
     audio/Carousel.cpp
     audio/PitchShifter.cpp
+    audio/Harmonizer.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
