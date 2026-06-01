@@ -1,0 +1,13 @@
+{
+  "id": 32,
+  "name": "Carousel pitch fixture",
+  "color": "#b48ce3",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 1.0, "transitionMs": 40 },
+  "carousel": {
+    "enabled": true,
+    "pitch": { "semitones": 12, "mix": 0.5, "grainMs": 40 },
+    "harmonizer": { "intervals": [12, 7, 0], "detuneCents": [0, 0, 6], "mix": 0.7 },
+    "comb": { "freqHz": 220, "feedback": 0.6, "mix": 0.5 },
+    "formant": { "vowel": "ah", "amount": 0.6 }
+  }
+}

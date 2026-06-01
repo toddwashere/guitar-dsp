@@ -127,6 +127,43 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
                 cc.reverbRoomSize = getF(rv, "roomSize", cc.reverbRoomSize);
                 cc.reverbWet      = getF(rv, "wet", cc.reverbWet);
             }
+            if (auto* p = c->hasProperty("pitch")
+                            ? c->getProperty("pitch").getDynamicObject() : nullptr) {
+                cc.pitchSemitones = getF(p, "semitones", cc.pitchSemitones);
+                cc.pitchMix       = getF(p, "mix", cc.pitchMix);
+                cc.pitchGrainMs   = getF(p, "grainMs", cc.pitchGrainMs);
+            }
+            if (auto* h = c->hasProperty("harmonizer")
+                            ? c->getProperty("harmonizer").getDynamicObject() : nullptr) {
+                cc.harmMix = getF(h, "mix", cc.harmMix);
+                if (auto* iv = h->getProperty("intervals").getArray()) {
+                    const int n = juce::jmin((int) iv->size(),
+                                             CarouselConfig::kMaxHarmVoices);
+                    cc.harmVoiceCount = n;
+                    for (int i = 0; i < n; ++i)
+                        cc.harmSemitones[i] = static_cast<int>((*iv)[i]);
+                }
+                if (auto* dt = h->getProperty("detuneCents").getArray()) {
+                    const int n = juce::jmin((int) dt->size(),
+                                             CarouselConfig::kMaxHarmVoices);
+                    for (int i = 0; i < n; ++i)
+                        cc.harmDetuneCents[i] = static_cast<int>((*dt)[i]);
+                }
+            }
+            if (auto* cb = c->hasProperty("comb")
+                             ? c->getProperty("comb").getDynamicObject() : nullptr) {
+                cc.combFreqHz   = getF(cb, "freqHz", cc.combFreqHz);
+                cc.combFeedback = getF(cb, "feedback", cc.combFeedback);
+                cc.combMix      = getF(cb, "mix", cc.combMix);
+            }
+            if (auto* fo = c->hasProperty("formant")
+                             ? c->getProperty("formant").getDynamicObject() : nullptr) {
+                const auto v = fo->getProperty("vowel").toString();
+                if (v == "ah")      cc.formantVowel = CarouselConfig::Vowel::Ah;
+                else if (v == "oh") cc.formantVowel = CarouselConfig::Vowel::Oh;
+                else if (v == "ee") cc.formantVowel = CarouselConfig::Vowel::Ee;
+                cc.formantAmount = getF(fo, "amount", cc.formantAmount);
+            }
         }
     }
 

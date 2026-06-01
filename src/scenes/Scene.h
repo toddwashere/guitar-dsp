@@ -46,6 +46,26 @@ struct CarouselConfig {
     float reverbRoomSize = 0.0f;   // 0 = bypass
     float reverbWet      = 0.0f;
 
+    // --- Phase 4b: pitch / harmony stages (all bypass at the listed default) ---
+    static constexpr int kMaxHarmVoices = 4;
+
+    float pitchSemitones = 0.0f;   // 0 = bypass single-voice pitch shift
+    float pitchMix       = 0.0f;   // dry/shifted blend (0=dry .. 1=shifted)
+    float pitchGrainMs   = 40.0f;  // granular window size
+
+    int   harmVoiceCount = 0;      // 0 = bypass harmonizer
+    int   harmSemitones[kMaxHarmVoices]   = {0, 0, 0, 0};
+    int   harmDetuneCents[kMaxHarmVoices] = {0, 0, 0, 0};
+    float harmMix        = 0.0f;   // dry/harmonized blend
+
+    float combFreqHz   = 0.0f;     // 0 = bypass comb
+    float combFeedback = 0.0f;
+    float combMix      = 0.0f;
+
+    enum class Vowel { None, Ah, Oh, Ee };
+    Vowel formantVowel  = Vowel::None;  // None = bypass formant
+    float formantAmount = 0.0f;
+
     float outputTrimDb = 0.0f;
 };
 

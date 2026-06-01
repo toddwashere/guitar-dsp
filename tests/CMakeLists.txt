@@ -22,6 +22,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_tts_text.cpp
     unit/scenes/test_scene_library_tts_fallback.cpp
     unit/scenes/test_scene_library_carousel.cpp
+    unit/scenes/test_scene_library_carousel_pitch.cpp
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
     unit/midi/test_fcb1010_mapping.cpp
