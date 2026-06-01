@@ -72,6 +72,8 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
                 s.tts.voice = t->getProperty("voice").toString().toStdString();
             if (t->hasProperty("fallback"))
                 s.tts.fallback = t->getProperty("fallback").toString().toStdString();
+            if (t->hasProperty("trigger"))
+                s.tts.trigger = t->getProperty("trigger").toString().toStdString();
         }
     }
 

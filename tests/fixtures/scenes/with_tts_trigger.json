@@ -1,0 +1,7 @@
+{
+  "id": 33,
+  "name": "Note-triggered fixture",
+  "color": "#a64dff",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 0.9, "transitionMs": 20 },
+  "tts": { "source": "prebaked", "clip": "mid_talk", "text": "hello there world", "trigger": "note" }
+}

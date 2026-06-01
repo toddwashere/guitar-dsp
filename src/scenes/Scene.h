@@ -17,6 +17,7 @@ struct TtsConfig {
     std::string text;     // text passed to live sources (apple, piper)
     std::string voice;    // optional voice id for live sources
     std::string fallback; // source name to try if primary fails ("" = none)
+    std::string trigger;  // "auto"/"" (whole clip, default) | "note" (per-note word stepping)
 };
 
 struct CarouselConfig {
