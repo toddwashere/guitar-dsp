@@ -831,7 +831,7 @@ TEST_CASE("SceneLibrary: missing tts.trigger leaves empty", "[scenes][library][t
 - [ ] **Step 5: Update `src/scenes/Scene.h`** — add `trigger` to `TtsConfig`, after `fallback`:
 
 ```cpp
-    std::string trigger;  // "note" (per-note word stepping) | "auto"/"" (linear)
+    std::string trigger;  // "auto"/"" (whole clip, default) | "note" (per-note word stepping)
 ```
 
 - [ ] **Step 6: Update `src/scenes/SceneLibrary.cpp`** — in the existing `tts` parse block, after the `fallback` line, add:
@@ -1016,8 +1016,9 @@ std::vector<std::string> PluginProcessor::activeSceneWords() const {
 - [ ] **Step 3: Extend the scene-change callAsync in `processBlock`.** Find the block (after the carousel early-return added in Phase 4) where `cfg = sceneEngine_.activeTtsConfig()` and the clip is built via `synthesizeWithFallback` and `graph_.ttsClipPlayer().setClip(clip)`. After the `clip` is obtained and BEFORE the existing `graph_.ttsClipPlayer().setClip(clip)`, insert the note-triggered routing:
 
 ```cpp
-            const bool noteTriggered =
-                (cfg.trigger == "note" || cfg.trigger.empty());
+            // Whole-clip is the default (preserves Phase-3 behavior); only an
+            // explicit "note" trigger opts a scene into word-by-word stepping.
+            const bool noteTriggered = (cfg.trigger == "note");
 
             if (noteTriggered && clip && !clip->samples.empty()) {
                 // Segment the clip into words on the message thread, then route
@@ -1206,7 +1207,7 @@ git commit -m "feat(ui): WordReadout shows the word the guitar is speaking"
 
 ---
 
-## Task 9: Note-trigger the speaking scenes + integration test (TDD)
+## Task 9: Speaking-scene trigger modes (whole-clip → word-by-word) + integration test (TDD)
 
 **Files:**
 - Modify: `assets/scenes/06_speaking_a.json`
@@ -1273,29 +1274,32 @@ TEST_CASE("integration: plucks step through words and loop",
 Run: `cmake --build build --target guitar_dsp_tests && ctest --test-dir build --output-on-failure -R "plucks step through words"`
 Expected: PASS (Tasks 4 + 6 already implement the behavior; this is the end-to-end guard).
 
-- [ ] **Step 4: Add `"trigger": "note"` to the three speaking scenes.**
+- [ ] **Step 4: Set the trigger modes to illustrate the progression.** Scene 6
+stays **whole clip** (the preserved "before", at the lower scene number); scenes
+7 & 8 opt into **word-by-word** (the "after").
 
-`assets/scenes/06_speaking_a.json` — add `"trigger": "note"` to the `tts` block:
+`assets/scenes/06_speaking_a.json` — explicit `"trigger": "auto"` (whole clip),
+relabeled so the progression reads clearly:
 ```json
 {
   "id": 6,
-  "name": "Speaking A — apple",
+  "name": "Speaking A — whole clip (apple)",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
   "tts": {
     "source": "apple",
     "text": "Welcome to the talk. The guitar is now speaking.",
     "voice": "com.apple.voice.compact.en-US.Samantha",
-    "trigger": "note"
+    "trigger": "auto"
   }
 }
 ```
 
-`assets/scenes/07_speaking_b.json`:
+`assets/scenes/07_speaking_b.json` — word-by-word:
 ```json
 {
   "id": 7,
-  "name": "Speaking B — piper",
+  "name": "Speaking B — word-by-word (piper)",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
   "tts": {
@@ -1315,7 +1319,7 @@ later via hot-reload if the clip says something different):
 ```json
 {
   "id": 8,
-  "name": "Speaking finale — gently weeps",
+  "name": "Speaking finale — word-by-word (gently weeps)",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -2.0, "dryWet": 0.9, "transitionMs": 30 },
   "tts": {
@@ -1341,7 +1345,7 @@ Expected: 3 "ok" lines; clean build.
 git add tests/integration/test_note_triggered_speech.cpp tests/CMakeLists.txt \
         assets/scenes/06_speaking_a.json assets/scenes/07_speaking_b.json \
         assets/scenes/08_speaking_finale.json
-git commit -m "feat(scenes): speaking scenes 6/7/8 are note-triggered + integration test"
+git commit -m "feat(scenes): scene 6 whole-clip, 7/8 word-by-word (progression) + integration test"
 ```
 
 ---
@@ -1357,17 +1361,25 @@ git commit -m "feat(scenes): speaking scenes 6/7/8 are note-triggered + integrat
 ## Project status
 
 This branch implements **Phase 5a: note-triggered word-by-word speech** — the
-core "While My Guitar Gently Speaks" effect. In a speaking scene (`6`–`8`), the
-TTS phrase is pre-split into per-word audio segments and **each plucked note
-speaks the next word** through the vocoder, auto-looping after the last word.
-Nothing speaks until you play, so the performer paces the whole sentence.
+core "While My Guitar Gently Speaks" effect, presented as a live progression of
+how the speaking guitar evolved:
+
+- **Scene 6 — whole clip (the "before"):** activating the scene plays the entire
+  TTS phrase through the vocoder, as in Phase 3. The original speak-on-activate.
+- **Scenes 7 & 8 — word-by-word (the "after"/finale):** the phrase is pre-split
+  into per-word audio segments and **each plucked note speaks the next word**,
+  auto-looping after the last word. Nothing speaks until you play, so the
+  performer paces the whole sentence note by note.
+
+The whole-clip scene sits at a lower number than the word-by-word scenes, so
+stepping up the FCB1010 walks the audience through the evolution.
 
 Pieces: `audio::OnsetDetector` (note-attack detection on the clean guitar),
 `audio::WordAligner` (uniform energy-gap word segmentation — same for all three
 TTS backends), and `audio::NoteSteppedTTSPlayer` (one word per onset, feeding the
-vocoder modulator). A scene's `tts.trigger` selects `"note"` (default) vs
-`"auto"` (the original linear playback). A minimal on-screen word readout shows
-the current word.
+vocoder modulator). A scene's `tts.trigger` selects `"auto"` (whole clip — the
+default, preserving Phase-3 behavior) vs `"note"` (word-by-word). A minimal
+on-screen word readout shows the current word.
 ```
 
 Then update the "Subsequent phases" list — replace the Phase 5 bullet with:
@@ -1404,10 +1416,12 @@ Expected: all pass; 4 pre-existing opt-in tests skipped. New count ≈ 130 + ~18
 ```bash
 open "build/src/app/guitar_dsp_app_artefacts/Release/Standalone/Guitar DSP.app"
 ```
-Verify with a signal at the input:
-- Activate scene 6/7/8 (keys `7`/`8`/`9`). No speech until you pluck.
-- Each pluck speaks the next word (vocoded) and the WordReadout advances.
-- After the last word, the next pluck loops back to word 0.
+Verify with a signal at the input (illustrating the progression):
+- **Scene 6** (key `7`) = whole clip: the full phrase speaks on activation
+  (the original Phase-3 behavior), no plucking required.
+- **Scenes 7 & 8** (keys `8`/`9`) = word-by-word: silent until you pluck; each
+  pluck speaks the next word (vocoded) and the WordReadout advances; after the
+  last word the next pluck loops back to word 0.
 - Instrument scenes (`2`–`6`) and clean/panic unaffected; no clicks/crashes.
 
 State explicitly whether audio was actually auditioned or only build/tests

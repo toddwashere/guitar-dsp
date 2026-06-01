@@ -110,19 +110,35 @@ polls `processor`'s exposed current word index + the active scene's word list on
 a timer and shows the current word as large text. This is the demoable payoff for
 5a; Phase 5b replaces it with the full-screen karaoke + spectrogram.
 
-## 4. Scene config — `tts.trigger`
+## 4. Scene config — `tts.trigger` + the whole-clip → word-by-word progression
 
 Add a `trigger` field to the scene `tts` block (`src/scenes/Scene.h` `TtsConfig`):
 ```cpp
-std::string trigger;  // "note" (default for speaking scenes) | "auto" (linear)
+std::string trigger;  // "auto"/"" (whole clip, default) | "note" (word-by-word)
 ```
-- `"note"` (or empty for a scene that has TTS) → route the modulator through
-  `NoteSteppedTTSPlayer`.
-- `"auto"` → keep today's linear `TTSClipPlayer` behavior (preserves existing
-  Phase-3 tests and the type-and-say overlay).
+- `"auto"` **or empty (the default)** → today's linear `TTSClipPlayer` behavior:
+  the whole clip plays through on scene activation. This **preserves the original
+  Phase-3 speaking behavior** unchanged and keeps existing tests + the type-and-say
+  overlay working. Defaulting to whole-clip is the conservative, backward-
+  compatible choice ("balance stability with real-time").
+- `"note"` → route the modulator through `NoteSteppedTTSPlayer` (one word per
+  pluck). Opt-in only.
 
-Parsed defensively in `SceneLibrary.cpp` like the other `tts` fields. Demo
-speaking scenes 6/7/8 set `"trigger": "note"`.
+**Illustrating the progression.** The two modes coexist as live, switchable
+scenes, with the **whole-clip version at a lower scene number than the
+word-by-word version** so that stepping up the scenes demonstrates the
+evolution:
+
+| Scene | Mode | Role |
+|---|---|---|
+| 6 — Speaking A | **whole clip** (`trigger: "auto"`) | the "before": the original Phase-3 speak-on-activate |
+| 7 — Speaking B | **word-by-word** (`trigger: "note"`) | the "after": one word per pluck |
+| 8 — Speaking finale | **word-by-word** (`trigger: "note"`) | the showpiece end goal |
+
+`trigger` is parsed defensively in `SceneLibrary.cpp` like the other `tts`
+fields. No extra scene slots are consumed — the three existing speaking slots
+hold both modes. (Other effects-bank slots remain available if a future phase
+wants more contrast scenes.)
 
 ## 5. AudioGraph wiring
 
