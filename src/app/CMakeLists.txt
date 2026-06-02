@@ -31,6 +31,7 @@ target_sources(guitar_dsp_app PRIVATE
     Oscilloscope.cpp
     SceneIndicator.cpp
     SpectrumAnalyzer.cpp
+    VocoderPanel.cpp
     SayPanel.cpp
     MidiDevicePicker.cpp
     WordReadout.cpp

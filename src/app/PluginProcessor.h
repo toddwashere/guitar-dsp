@@ -86,6 +86,15 @@ public:
     bool diagNoiseCarrier()  const noexcept { return graph_.diagNoiseCarrier(); }
     bool diagSibilanceOff()  const noexcept { return graph_.diagSibilanceOff(); }
 
+    // --- Live vocoder controls (message thread) -------------------------
+    // Drive the VocoderPanel sliders. Forward to the AudioGraph.
+    void setVocoderMakeup(float linear) noexcept { graph_.setVocoderMakeup(linear); }
+    void setVocoderCarrierNoise(float mix) noexcept { graph_.setVocoderCarrierNoise(mix); }
+    void setVocoderSibilance(float v) noexcept { graph_.setVocoderSibilance(v); }
+    float vocoderMakeup() const noexcept { return graph_.vocoderMakeup(); }
+    float vocoderCarrierNoise() const noexcept { return graph_.vocoderCarrierNoise(); }
+    float vocoderSibilance() const noexcept { return graph_.vocoderSibilance(); }
+
     // Apple-TTS "type and say" plumbing for the message-thread UI.
     //
     // enqueueSayText() kicks off background synthesis via the existing

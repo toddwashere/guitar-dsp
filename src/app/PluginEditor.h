@@ -10,6 +10,7 @@
 #include "SayPanel.h"
 #include "SceneIndicator.h"
 #include "SpectrumAnalyzer.h"
+#include "VocoderPanel.h"
 #include "WordReadout.h"
 
 namespace guitar_dsp {
@@ -35,6 +36,7 @@ private:
     SceneIndicator     sceneIndicator_;
     WordReadout        wordReadout_;
     DiagToggleBar      diagToggleBar_;
+    VocoderPanel       vocoderPanel_;
     MidiDevicePicker   midiDevicePicker_;
     SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;

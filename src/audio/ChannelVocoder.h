@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -36,6 +37,23 @@ public:
     void setWetLevel(float v) override;
     void setSibilance(float v) override;
 
+    // Output makeup gain (linear). The per-band carrier*envelope product is
+    // ~15-20 dB quieter than the modulator, so vocoded speech is inaudible
+    // without makeup. A tanh soft-limiter on the output bounds it to <±1 for
+    // ear safety regardless of this value. Message thread; audio-thread read.
+    void setOutputGain(float linear) noexcept {
+        outputGain_.store(linear, std::memory_order_relaxed);
+    }
+    float outputGain() const noexcept { return outputGain_.load(std::memory_order_relaxed); }
+
+    // Broadband carrier floor 0..1 — mixes white noise into the carrier
+    // before the filterbank so a sparse clean-guitar note still excites every
+    // band (the formant regions a single note leaves empty). Message thread.
+    void setCarrierNoise(float mix) noexcept {
+        carrierNoiseMix_.store(mix, std::memory_order_relaxed);
+    }
+    float carrierNoise() const noexcept { return carrierNoiseMix_.load(std::memory_order_relaxed); }
+
 private:
     double sampleRate_ = 48000.0;
 
@@ -68,8 +86,17 @@ private:
     float wetLevel_   = 1.0f;
     float sibilance_  = 0.5f;
 
+    // Makeup gain + carrier broadband floor (atomic: set from the UI/message
+    // thread, read on the audio thread). Neutral by default so the raw
+    // vocoder is unchanged for unit tests; AudioGraph::prepare installs the
+    // app's audible defaults, and the VocoderPanel sliders tune them live.
+    std::atomic<float> outputGain_     {1.0f};
+    std::atomic<float> carrierNoiseMix_{0.0f};
+
     // Sibilance noise generator state (white noise via xorshift).
     std::uint32_t noiseState_ = 0xC0FFEE01u;
+    // Separate noise stream for the carrier floor (decorrelated from sibilance).
+    std::uint32_t carrierNoiseState_ = 0x1234ABCDu;
 
     void recomputeCoefficients();
     static float singleBiquad(float x,

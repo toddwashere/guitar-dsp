@@ -86,9 +86,18 @@ void ChannelVocoder::process(const float* carrier,
                              float* output,
                              std::size_t numSamples) {
     const float oneMinusEnv = 1.0f - envelopeCoef_;
+    const float outputGain   = outputGain_.load(std::memory_order_relaxed);
+    const float carrierNoise = carrierNoiseMix_.load(std::memory_order_relaxed);
 
     for (std::size_t i = 0; i < numSamples; ++i) {
-        const float c = carrier[i];
+        // Broadband carrier floor: mix white noise into the carrier so a
+        // sparse clean-guitar note still excites every band (the formant
+        // regions a single note's harmonics leave empty).
+        carrierNoiseState_ ^= carrierNoiseState_ << 13;
+        carrierNoiseState_ ^= carrierNoiseState_ >> 17;
+        carrierNoiseState_ ^= carrierNoiseState_ << 5;
+        const float cNoise = (static_cast<float>(carrierNoiseState_) / 2147483648.0f) - 1.0f;
+        const float c = carrier[i] + carrierNoise * cNoise;
         const float m = modulator[i];
 
         float sum = 0.0f;
@@ -117,7 +126,10 @@ void ChannelVocoder::process(const float* carrier,
         const float noise = (static_cast<float>(noiseState_) / 2147483648.0f) - 1.0f;
         const float sibContrib = noise * sibEnvelope * sibilance_;
 
-        output[i] = (sum + sibContrib) * wetLevel_;
+        // Apply makeup gain, then a tanh soft-limiter so the output can never
+        // exceed ±1 no matter how high the makeup knob is driven (ear safety).
+        const float y = (sum + sibContrib) * wetLevel_ * outputGain;
+        output[i] = std::tanh(y);
     }
 }
 

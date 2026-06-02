@@ -14,6 +14,11 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     vocoder_.prepare(sampleRate, blockSize);
     vocoder_.setWetLevel(1.0f);
     vocoder_.setSibilance(0.5f);
+    // Audible vocoder defaults: the raw carrier*envelope product is ~15 dB
+    // too quiet, and a clean guitar note is too sparse to carry formants.
+    // Makeup gain + a broadband carrier floor fix both (tune live in the UI).
+    vocoder_.setOutputGain(5.0f);     // ~ +14 dB, tanh-limited downstream
+    vocoder_.setCarrierNoise(0.30f);
     carousel_.prepare(sampleRate, blockSize);
 
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
@@ -81,7 +86,9 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
                 carrier = carrierBuffer_.data();
             }
             vocoder_.setSibilance(
-                diagSibilanceOff_.load(std::memory_order_relaxed) ? 0.0f : 0.5f);
+                diagSibilanceOff_.load(std::memory_order_relaxed)
+                    ? 0.0f
+                    : vocoderSibilance_.load(std::memory_order_relaxed));
             vocoder_.process(carrier, wetBuffer_.data(), wetBuffer_.data(), numSamples);
         }
     }

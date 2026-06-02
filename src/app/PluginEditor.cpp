@@ -9,17 +9,19 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       sceneIndicator_(p),
       wordReadout_(p),
       diagToggleBar_(p),
+      vocoderPanel_(p),
       midiDevicePicker_(p),
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
-    setSize(720, 598);
+    setSize(720, 684);
     setResizable(true, true);
-    setResizeLimits(520, 426, 1800, 1200);
+    setResizeLimits(520, 512, 1800, 1200);
     addAndMakeVisible(diagnosticPanel_);
     addAndMakeVisible(sceneIndicator_);
     addAndMakeVisible(wordReadout_);
     addAndMakeVisible(diagToggleBar_);
+    addAndMakeVisible(vocoderPanel_);
     addAndMakeVisible(midiDevicePicker_);
     addAndMakeVisible(sayPanel_);
     addAndMakeVisible(oscilloscope_);
@@ -38,6 +40,7 @@ void PluginEditor::resized() {
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
     wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
+    vocoderPanel_.setBounds(bounds.removeFromTop(86));
     midiDevicePicker_.setBounds(bounds.removeFromTop(28));
     sayPanel_.setBounds(bounds.removeFromTop(40));
     const int remaining = bounds.getHeight();

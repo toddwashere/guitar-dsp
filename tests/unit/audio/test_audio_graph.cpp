@@ -144,6 +144,9 @@ TEST_CASE("AudioGraph: noise-carrier diagnostic lets a silent guitar vocode",
         // only: the sibilance/noise path emits output regardless of the carrier
         // (that's the very leak this diagnostic helps reveal).
         g.setDiagSibilanceOff(true);
+        // Disable the built-in broadband carrier floor so the only carrier
+        // energy comes from the diagnostic toggle under test.
+        g.setVocoderCarrierNoise(0.0f);
 
         std::vector<float> in(48000, 0.0f), out(48000, 0.0f);  // silent guitar
         for (std::size_t i = 0; i < in.size(); i += 512) {

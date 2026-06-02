@@ -65,6 +65,19 @@ public:
     bool diagNoiseCarrier()  const noexcept { return diagNoiseCarrier_.load(std::memory_order_relaxed); }
     bool diagSibilanceOff()  const noexcept { return diagSibilanceOff_.load(std::memory_order_relaxed); }
 
+    // --- Live vocoder controls (message thread) -------------------------
+    // Makeup gain (linear) + broadband carrier floor live on the vocoder;
+    // sibilance base lives here because the SibilanceOff diagnostic overrides
+    // it per block. These drive the VocoderPanel sliders.
+    void setVocoderMakeup(float linear) noexcept { vocoder_.setOutputGain(linear); }
+    void setVocoderCarrierNoise(float mix) noexcept { vocoder_.setCarrierNoise(mix); }
+    void setVocoderSibilance(float v) noexcept {
+        vocoderSibilance_.store(v, std::memory_order_relaxed);
+    }
+    float vocoderMakeup() const noexcept { return vocoder_.outputGain(); }
+    float vocoderCarrierNoise() const noexcept { return vocoder_.carrierNoise(); }
+    float vocoderSibilance() const noexcept { return vocoderSibilance_.load(std::memory_order_relaxed); }
+
 private:
     InputStage inputStage_;
     Mixer mixer_;
@@ -80,6 +93,8 @@ private:
     std::atomic<bool> diagNoiseCarrier_  {false};
     std::atomic<bool> diagSibilanceOff_  {false};
     std::uint32_t     diagNoiseState_ {0x9E3779B9u};  // carrier-noise xorshift state
+
+    std::atomic<float> vocoderSibilance_ {0.5f};  // base sibilance (diag can override to 0)
 
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;

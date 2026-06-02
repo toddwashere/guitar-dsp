@@ -84,6 +84,63 @@ TEST_CASE("ChannelVocoder: zero allocations on audio thread", "[audio][vocoder][
     REQUIRE(sentinel.violations() == 0);
 }
 
+TEST_CASE("ChannelVocoder: makeup gain raises output level", "[audio][vocoder]") {
+    SyntheticGuitar gen{48000.0};
+    constexpr int N = 4800;
+    // Small-signal amplitudes so we measure in the tanh limiter's linear
+    // region (loud matched tones would already saturate at gain 1).
+    std::vector<float> carrier(N), modulator(N), out(N);
+    gen.sine(800.0f, 0.02f, carrier.data(),   N);
+    gen.sine(800.0f, 0.02f, modulator.data(), N);
+
+    auto rms = [](const float* p, int n) {
+        double s = 0.0;
+        for (int i = 0; i < n; ++i) s += p[i] * p[i];
+        return std::sqrt(s / n);
+    };
+    auto run = [&](float gain) {
+        ChannelVocoder voc;
+        voc.prepare(48000.0, 512);
+        voc.setWetLevel(1.0f); voc.setSibilance(0.0f); voc.setCarrierNoise(0.0f);
+        voc.setOutputGain(gain);
+        voc.process(carrier.data(), modulator.data(), out.data(), N);
+        return rms(out.data() + N / 2, N / 2);  // skip the filter warm-up
+    };
+
+    const double low  = run(1.0f);
+    const double high = run(4.0f);
+    INFO("low=" << low << " high=" << high);
+    REQUIRE(high > low * 2.0);   // louder (sub-4x due to the tanh limiter)
+}
+
+TEST_CASE("ChannelVocoder: carrier noise floor lets a silent carrier vocode",
+          "[audio][vocoder]") {
+    SyntheticGuitar gen{48000.0};
+    constexpr int N = 4800;
+    std::vector<float> carrier(N, 0.0f), modulator(N), out(N);  // silent carrier
+    gen.sine(800.0f, 0.5f, modulator.data(), N);
+
+    auto rms = [](const float* p, int n) {
+        double s = 0.0;
+        for (int i = 0; i < n; ++i) s += p[i] * p[i];
+        return std::sqrt(s / n);
+    };
+    auto run = [&](float carrierNoise) {
+        ChannelVocoder voc;
+        voc.prepare(48000.0, 512);
+        voc.setWetLevel(1.0f); voc.setSibilance(0.0f); voc.setOutputGain(1.0f);
+        voc.setCarrierNoise(carrierNoise);
+        voc.process(carrier.data(), modulator.data(), out.data(), N);
+        return rms(out.data() + N / 2, N / 2);
+    };
+
+    const double noFloor   = run(0.0f);
+    const double withFloor = run(0.5f);
+    INFO("noFloor=" << noFloor << " withFloor=" << withFloor);
+    REQUIRE(noFloor   < 1e-3);          // silent carrier, no floor -> ~silence
+    REQUIRE(withFloor > noFloor * 10);  // floor excites the bands -> audible
+}
+
 TEST_CASE("ChannelVocoder: sibilance noise activates with high-band modulator energy",
           "[audio][vocoder]") {
     ChannelVocoder voc;
