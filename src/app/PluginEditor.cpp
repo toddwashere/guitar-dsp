@@ -22,7 +22,8 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(wordReadout_);
     addAndMakeVisible(diagToggleBar_);
     addAndMakeVisible(vocoderPanel_);
-    addAndMakeVisible(midiDevicePicker_);
+    if (processor_.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+        addAndMakeVisible(midiDevicePicker_);
     addAndMakeVisible(sayPanel_);
     addAndMakeVisible(oscilloscope_);
     addAndMakeVisible(spectrumAnalyzer_);
@@ -41,7 +42,8 @@ void PluginEditor::resized() {
     wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     vocoderPanel_.setBounds(bounds.removeFromTop(86));
-    midiDevicePicker_.setBounds(bounds.removeFromTop(28));
+    if (midiDevicePicker_.isVisible())
+        midiDevicePicker_.setBounds(bounds.removeFromTop(28));
     sayPanel_.setBounds(bounds.removeFromTop(40));
     const int remaining = bounds.getHeight();
     oscilloscope_.setBounds(bounds.removeFromTop(remaining / 2));
