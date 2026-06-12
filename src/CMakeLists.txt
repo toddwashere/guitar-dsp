@@ -53,6 +53,7 @@ target_link_libraries(guitar_dsp_scenes PUBLIC juce::juce_core)
 
 add_library(guitar_dsp_midi STATIC
     midi/FCB1010Mapping.cpp
+    midi/HostMidiSceneRouter.cpp
     midi/MidiRouter.cpp
 )
 
