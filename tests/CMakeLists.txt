@@ -36,6 +36,8 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_engine_carousel.cpp
     unit/midi/test_fcb1010_mapping.cpp
     unit/midi/test_host_midi_scene_router.cpp
+    unit/app/test_plugin_state.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     integration/test_scene_switch.cpp

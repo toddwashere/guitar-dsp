@@ -19,6 +19,8 @@
 #include "midi/MidiRouter.h"
 #include "scenes/SceneEngine.h"
 
+#include "PluginState.h"
+
 namespace guitar_dsp {
 
 class PluginProcessor : public juce::AudioProcessor {
@@ -46,8 +48,8 @@ public:
     const juce::String getProgramName(int) override { return {}; }
     void changeProgramName(int, const juce::String&) override {}
 
-    void getStateInformation(juce::MemoryBlock&) override {}
-    void setStateInformation(const void*, int) override {}
+    void getStateInformation(juce::MemoryBlock&) override;
+    void setStateInformation(const void*, int) override;
 
     // Diagnostics — read from the message thread (UI), written from the
     // audio thread. Peak values are linear (0..1+); convert to dBFS at the

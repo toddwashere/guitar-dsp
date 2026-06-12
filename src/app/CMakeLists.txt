@@ -24,6 +24,7 @@ juce_generate_juce_header(guitar_dsp_app)
 
 target_sources(guitar_dsp_app PRIVATE
     AssetLocator.cpp
+    PluginState.cpp
     PluginProcessor.cpp
     PluginEditor.cpp
     DiagnosticPanel.cpp

@@ -400,6 +400,25 @@ juce::AudioProcessorEditor* PluginProcessor::createEditor() {
     return new PluginEditor(*this);
 }
 
+void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
+    app::PluginStateData d;
+    d.sceneId      = sceneEngine_.getActiveSceneId();
+    d.makeup       = graph_.vocoderMakeup();
+    d.carrierNoise = graph_.vocoderCarrierNoise();
+    d.sibilance    = graph_.vocoderSibilance();
+    const auto json = app::PluginState::toJson(d);
+    dest.replaceAll(json.toRawUTF8(), json.getNumBytesAsUTF8());
+}
+
+void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
+    const juce::String json = juce::String::fromUTF8(static_cast<const char*>(data), sizeInBytes);
+    const auto d = app::PluginState::fromJson(json);
+    graph_.setVocoderMakeup(d.makeup);
+    graph_.setVocoderCarrierNoise(d.carrierNoise);
+    graph_.setVocoderSibilance(d.sibilance);
+    sceneEngine_.activateScene(d.sceneId);
+}
+
 } // namespace guitar_dsp
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
