@@ -29,6 +29,41 @@ To regenerate golden-file fixtures after an intentional DSP change:
 GUITAR_DSP_REGENERATE_GOLDENS=1 ctest --test-dir build --output-on-failure -R golden
 ```
 
+## Audio Unit (Logic Pro)
+
+The same app builds as an AUv2 plugin alongside the standalone:
+
+    cmake --build build   # builds Standalone + AU; COPY_PLUGIN_AFTER_BUILD installs the .component
+
+The `.component` is auto-installed to `~/Library/Audio/Plug-Ins/Components/`. It is
+a MIDI-capable **Music Effect** (AU type `aumf`), so in Logic it appears under the
+Audio Units for **GuitarDSP > Guitar DSP** — insert it on a guitar track; it accepts
+host MIDI for scene control.
+
+**Recording the processed/spoken output:** Bounce in Place the track, or route the
+track to a bus and record that bus onto another track.
+
+**Dev workflow (iterate fast, stay out of Logic):**
+- Do most work in the **Standalone** (rebuild + relaunch in seconds) and the test suite.
+- Validate the AU without Logic:
+  - `auval -v aumf GtAp GtDs`
+  - `pluginval --strictness-level 10 --validate-in-process "<path-to>/Guitar DSP.component"`
+    (install via `brew install --cask pluginval`). Note: pluginval's embedded `auval`
+    sub-test can time out on headless Apple-TTS synthesis — its own in-process tests
+    are the stability signal.
+- Logic caches the AU in-process — a rebuilt binary needs a **Logic restart** (or
+  remove + re-insert) to load. Only open Logic at milestones.
+- AUv2 runs in-process, so a plugin crash can take Logic down. Always pass pluginval's
+  stress tests before trusting it in a live session.
+
+**MIDI scene control in the plugin:** route the FCB1010 (Program Change) to the
+plugin's track in Logic; Program Change *n* selects scene *n*.
+
+**Apple TTS in a plugin host:** `AVSpeechSynthesizer` needs a pumped main run loop to
+deliver its audio callbacks. Logic provides one during playback, so Apple TTS works;
+fully headless hosts (e.g. `auval`) do not, and those scenes fall back to prebaked
+clips. Piper and prebaked clips work regardless.
+
 ## Project status
 
 This branch implements **Phase 5a: note-triggered word-by-word speech** — the
