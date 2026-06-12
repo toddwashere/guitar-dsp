@@ -1,6 +1,6 @@
 {
   "id": 6,
-  "name": "Speaking A — whole clip (apple)",
+  "name": "Speaking — Apple TTS (whole clip)",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
   "tts": {

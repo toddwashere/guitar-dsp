@@ -1,6 +1,6 @@
 {
   "id": 7,
-  "name": "Speaking B — word-by-word (piper)",
+  "name": "Speaking — Piper (word-by-word)",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.85, "transitionMs": 30 },
   "tts": {

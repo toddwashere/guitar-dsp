@@ -1,12 +1,12 @@
 {
   "id": 8,
-  "name": "Speaking finale — word-by-word (gently weeps)",
+  "name": "Speaking — Prebaked (finale)",
   "color": "#a64dff",
   "mixer": { "masterGainDb": -2.0, "dryWet": 0.9, "transitionMs": 30 },
   "tts": {
     "source": "prebaked",
     "clip": "08_gently_weeps",
-    "text": "While my guitar gently weeps",
+    "text": "And now my guitar gently speaks for me.",
     "trigger": "note",
     "clarity": 0.5
   }
