@@ -127,7 +127,12 @@ TTSClipPtr AppleTTSSource::synthesize(const std::string& text) {
         // live `state` (held by the block) and are harmless no-ops.
         {
             std::unique_lock<std::mutex> lock(state->mu);
-            const bool ok = state->cv.wait_for(lock, std::chrono::seconds(10),
+            // 3s cap: in a plugin host (esp. headless validators like auval),
+            // Apple TTS can stall indefinitely because AVSpeechSynthesizer's
+            // main-queue callbacks aren't being delivered. A short timeout
+            // makes the chain fall back to prebaked fast instead of hanging
+            // plugin load for 10s on every cold validation.
+            const bool ok = state->cv.wait_for(lock, std::chrono::seconds(3),
                                                [&state] { return state->done; });
             if (!ok || !state->gotAnyAudio) {
                 std::cerr << "[AppleTTSSource] synthesis failed or timed out for: "
