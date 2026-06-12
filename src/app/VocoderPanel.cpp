@@ -27,6 +27,13 @@ VocoderPanel::VocoderPanel(PluginProcessor& p) : processor_(p) {
     sibilance_.onValueChange = [this] {
         processor_.setVocoderSibilance(static_cast<float>(sibilance_.getValue()));
     };
+
+    configureSlider(clarity_, clarityLabel_, "Clarity");
+    clarity_.setRange(0.0, 1.0, 0.01);
+    clarity_.setValue(processor_.vocoderClarity(), juce::dontSendNotification);
+    clarity_.onValueChange = [this] {
+        processor_.setVocoderClarity(static_cast<float>(clarity_.getValue()));
+    };
 }
 
 void VocoderPanel::configureSlider(juce::Slider& s, juce::Label& l,
@@ -52,7 +59,7 @@ void VocoderPanel::paint(juce::Graphics& g) {
 void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
     area.removeFromTop(12);  // header band
-    const int rowH = area.getHeight() / 3;
+    const int rowH = area.getHeight() / 4;
     auto row = [&](juce::Slider& s, juce::Label& l) {
         auto r = area.removeFromTop(rowH);
         l.setBounds(r.removeFromLeft(86));
@@ -61,6 +68,7 @@ void VocoderPanel::resized() {
     row(makeup_,       makeupLabel_);
     row(carrierNoise_, carrierNoiseLabel_);
     row(sibilance_,    sibilanceLabel_);
+    row(clarity_,      clarityLabel_);
 }
 
 } // namespace guitar_dsp

@@ -193,6 +193,46 @@ TEST_CASE("AudioGraph: bypass-vocoder diagnostic routes the raw modulator",
     for (float x : out) REQUIRE(std::isfinite(x));
 }
 
+TEST_CASE("AudioGraph: clarity=1 plays the raw modulator over a silent carrier",
+          "[audio][graph][clarity]") {
+    using guitar_dsp::audio::TTSClip;
+
+    AudioGraph g;
+    g.prepare(48000.0, 512);
+    g.mixer().setDryWet(1.0f); g.mixer().setMasterGainDb(0.0f); g.mixer().reset();
+    g.setVocoderSibilance(0.0f);
+    g.setVocoderCarrierNoise(0.0f);  // make the vocoded path near-silent for a silent carrier
+
+    auto makeClip = []() {
+        auto clip = std::make_shared<TTSClip>();
+        clip->sampleRate = 48000.0;
+        clip->samples.resize(24000);
+        for (int i = 0; i < 24000; ++i)
+            clip->samples[static_cast<size_t>(i)] =
+                0.5f * std::sin(2.0f * 3.14159265f * 440.0f * i / 48000.0f);
+        return clip;
+    };
+
+    auto peakFor = [&](float clarity) {
+        g.ttsClipPlayer().setClip(makeClip());  // fresh clip per run (player consumes it)
+        g.setClarity(clarity);
+        std::vector<float> in(24000, 0.0f), out(24000, 0.0f);  // silent guitar
+        for (std::size_t i = 0; i < in.size(); i += 512) {
+            const auto n = std::min<std::size_t>(512, in.size() - i);
+            g.process(in.data() + i, out.data() + i, n);
+        }
+        float peak = 0.0f;
+        for (int i = 6000; i < 20000; ++i) peak = std::max(peak, std::fabs(out[static_cast<size_t>(i)]));
+        return peak;
+    };
+
+    const float vocoded   = peakFor(0.0f);  // current behavior: nothing to vocode -> ~silent
+    const float clarified = peakFor(1.0f);  // raw modulator passes through
+    INFO("vocoded=" << vocoded << " clarified=" << clarified);
+    REQUIRE(vocoded   < 0.05f);
+    REQUIRE(clarified > 0.30f);  // modulator at 0.5 amp pushed through makeup+tanh
+}
+
 TEST_CASE("AudioGraph: diagnostic toggles are realtime-safe",
           "[audio][graph][diag][realtime]") {
     using guitar_dsp::audio::TTSClip;

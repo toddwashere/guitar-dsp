@@ -20,8 +20,8 @@ private:
     void configureSlider(juce::Slider& s, juce::Label& l, const juce::String& name);
 
     PluginProcessor& processor_;
-    juce::Slider makeup_, carrierNoise_, sibilance_;
-    juce::Label  makeupLabel_, carrierNoiseLabel_, sibilanceLabel_;
+    juce::Slider makeup_, carrierNoise_, sibilance_, clarity_;
+    juce::Label  makeupLabel_, carrierNoiseLabel_, sibilanceLabel_, clarityLabel_;
 };
 
 } // namespace guitar_dsp

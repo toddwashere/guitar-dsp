@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -78,6 +79,16 @@ public:
     float vocoderCarrierNoise() const noexcept { return vocoder_.carrierNoise(); }
     float vocoderSibilance() const noexcept { return vocoderSibilance_.load(std::memory_order_relaxed); }
 
+    // "Speak clearly" mode — per-scene crossfade 0..1 between the vocoded wet
+    // signal (0, current behavior) and the raw TTS modulator (1, the unvocoded
+    // speech). At 1 the guitar still mixes in via the Mixer's dryWet — so you
+    // hear "dry TTS over the wet guitar." Foundation for the conversational-AI
+    // direction, where the AI voice needs to be intelligible.
+    void setClarity(float c) noexcept {
+        clarity_.store(std::clamp(c, 0.0f, 1.0f), std::memory_order_relaxed);
+    }
+    float clarity() const noexcept { return clarity_.load(std::memory_order_relaxed); }
+
 private:
     InputStage inputStage_;
     Mixer mixer_;
@@ -95,10 +106,12 @@ private:
     std::uint32_t     diagNoiseState_ {0x9E3779B9u};  // carrier-noise xorshift state
 
     std::atomic<float> vocoderSibilance_ {0.5f};  // base sibilance (diag can override to 0)
+    std::atomic<float> clarity_ {0.0f};            // "speak clearly" crossfade 0..1
 
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;
-    std::vector<float> carrierBuffer_;  // scratch for the noise-carrier diagnostic
+    std::vector<float> carrierBuffer_;   // scratch for the noise-carrier diagnostic
+    std::vector<float> drySpeechBuffer_; // raw modulator snapshot for clarity blend
 };
 
 } // namespace guitar_dsp::audio

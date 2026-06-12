@@ -99,9 +99,11 @@ public:
     void setVocoderMakeup(float linear) noexcept { graph_.setVocoderMakeup(linear); }
     void setVocoderCarrierNoise(float mix) noexcept { graph_.setVocoderCarrierNoise(mix); }
     void setVocoderSibilance(float v) noexcept { graph_.setVocoderSibilance(v); }
+    void setVocoderClarity(float c) noexcept { graph_.setClarity(c); }
     float vocoderMakeup() const noexcept { return graph_.vocoderMakeup(); }
     float vocoderCarrierNoise() const noexcept { return graph_.vocoderCarrierNoise(); }
     float vocoderSibilance() const noexcept { return graph_.vocoderSibilance(); }
+    float vocoderClarity() const noexcept { return graph_.clarity(); }
 
     // Apple-TTS "type and say" plumbing for the message-thread UI.
     //

@@ -1,6 +1,7 @@
 #include "AudioGraph.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace guitar_dsp::audio {
 
@@ -24,6 +25,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     wetBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     carrierBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
+    drySpeechBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
 
     // Default mixer to fully dry until later phases install branches.
     mixer_.setDryWet(0.0f);
@@ -42,6 +44,7 @@ void AudioGraph::reset() {
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
     std::fill(wetBuffer_.begin(), wetBuffer_.end(), 0.0f);
     std::fill(carrierBuffer_.begin(), carrierBuffer_.end(), 0.0f);
+    std::fill(drySpeechBuffer_.begin(), drySpeechBuffer_.end(), 0.0f);
 }
 
 void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
@@ -72,6 +75,16 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
             // Diagnostic: skip vocoding entirely. wetBuffer_ already holds the
             // raw modulator, so the operator auditions the TTS source directly.
         } else {
+            const float clarity = clarity_.load(std::memory_order_relaxed);
+            // Speak-clearly mode: snapshot the raw modulator BEFORE the vocoder
+            // overwrites wetBuffer_, so we can blend the unvocoded speech back
+            // in at the end. Skip the copy when clarity is 0 (the common case).
+            if (clarity > 0.0f) {
+                std::copy(wetBuffer_.begin(),
+                          wetBuffer_.begin() + static_cast<std::ptrdiff_t>(numSamples),
+                          drySpeechBuffer_.begin());
+            }
+
             // Carrier = guitar, or (diagnostic) broadband white noise so every
             // band has energy to modulate.
             const float* carrier = postInputBuffer_.data();
@@ -90,6 +103,18 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
                     ? 0.0f
                     : vocoderSibilance_.load(std::memory_order_relaxed));
             vocoder_.process(carrier, wetBuffer_.data(), wetBuffer_.data(), numSamples);
+
+            // Crossfade vocoded wet -> raw modulator (boosted via the same
+            // makeup gain + tanh limiter as the vocoded path, so they sit at
+            // comparable levels and the dry path is ear-safe at any setting).
+            if (clarity > 0.0f) {
+                const float gain = vocoder_.outputGain();
+                const float oneMinusC = 1.0f - clarity;
+                for (std::size_t i = 0; i < numSamples; ++i) {
+                    const float dry = std::tanh(drySpeechBuffer_[i] * gain);
+                    wetBuffer_[i] = oneMinusC * wetBuffer_[i] + clarity * dry;
+                }
+            }
         }
     }
 

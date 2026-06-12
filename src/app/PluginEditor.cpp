@@ -15,9 +15,9 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
-    setSize(720, 708);
+    setSize(720, 728);
     setResizable(true, true);
-    setResizeLimits(520, 536, 1800, 1200);
+    setResizeLimits(520, 556, 1800, 1200);
     addAndMakeVisible(diagnosticPanel_);
     addAndMakeVisible(sceneIndicator_);
     addAndMakeVisible(wordReadout_);
@@ -43,7 +43,7 @@ void PluginEditor::resized() {
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
     wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
-    vocoderPanel_.setBounds(bounds.removeFromTop(86));
+    vocoderPanel_.setBounds(bounds.removeFromTop(106));
     ttsStatusBar_.setBounds(bounds.removeFromTop(24));
     if (midiDevicePicker_.isVisible())
         midiDevicePicker_.setBounds(bounds.removeFromTop(28));

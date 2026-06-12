@@ -250,6 +250,11 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
 
             const auto cfg = sceneEngine_.activeTtsConfig();
 
+            // Per-scene "speak-clearly" blend. Applied on every scene change
+            // (even if the TTS clip key is unchanged) so toggling scenes always
+            // refreshes the clarity setting.
+            graph_.setClarity(cfg.clarity);
+
             // Build a per-source key (matches what synthesize() expects).
             std::string key;
             if (cfg.source == "prebaked") key = cfg.clip;
