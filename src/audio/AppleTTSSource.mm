@@ -36,6 +36,25 @@ TTSClipPtr AppleTTSSource::synthesize(const std::string& text) {
     clip->name = text.substr(0, 32);  // first 32 chars for debugging
     clip->sampleRate = targetSampleRate_;
 
+    // Synthesis state lives on the heap with SHARED ownership. The
+    // writeUtterance:toBufferCallback: block can be delivered on the main
+    // queue and may fire AFTER this function returns or times out (e.g. an
+    // audio-device restart drains a backlogged main queue). The block
+    // captures a shared_ptr by value, so the mutex/cv/buffer stay alive as
+    // long as the block exists. Capturing pointers to stack locals here was
+    // a use-after-free: a late callback would lock a destroyed mutex, and
+    // std::mutex::lock() THROWS (EINVAL) rather than deadlocking, aborting
+    // the whole app. (Cannot crash at all costs.)
+    struct SynthState {
+        std::mutex mu;
+        std::condition_variable cv;
+        bool done = false;
+        bool gotAnyAudio = false;
+        double srcSampleRate = 0.0;
+        std::vector<float> collected;
+    };
+    auto state = std::make_shared<SynthState>();
+
     @autoreleasepool {
         NSString* nsText = [NSString stringWithUTF8String:text.c_str()];
         AVSpeechUtterance* utterance = [AVSpeechUtterance speechUtteranceWithString:nsText];
@@ -47,37 +66,26 @@ TTSClipPtr AppleTTSSource::synthesize(const std::string& text) {
             if (voice) utterance.voice = voice;
         }
 
-        // Block until synthesis is complete; collect PCM samples into `clip`.
-        // Use pointers for non-copyable C++ sync primitives (Obj-C++ blocks
-        // capture by value; __block + pointer gives mutable reference semantics).
-        std::mutex mu;
-        std::condition_variable cv;
-        __block bool done = false;
-        __block std::vector<float> collected;
-        __block double srcSampleRate = 0.0;
-        __block bool gotAnyAudio = false;
-        std::mutex*             mu_ptr  = &mu;
-        std::condition_variable* cv_ptr = &cv;
-
         // writeUtterance:toBufferCallback: invokes the callback repeatedly
         // with successive AVAudioPCMBuffer chunks, then once with a nil
-        // (empty) buffer to signal end-of-synthesis.
+        // (empty) buffer to signal end-of-synthesis. `state` is captured by
+        // value (shared_ptr retain), so a late callback is always safe.
         [impl_->synth writeUtterance:utterance toBufferCallback:^(AVAudioBuffer* _Nonnull buffer) {
-            std::lock_guard<std::mutex> lock(*mu_ptr);
+            std::lock_guard<std::mutex> lock(state->mu);
 
             AVAudioPCMBuffer* pcm = (AVAudioPCMBuffer*)buffer;
             const AVAudioFrameCount nFrames = pcm.frameLength;
 
             if (nFrames == 0) {
-                done = true;
-                cv_ptr->notify_one();
+                state->done = true;
+                state->cv.notify_one();
                 return;
             }
-            gotAnyAudio = true;
+            state->gotAnyAudio = true;
 
             // Remember the source sample rate (first chunk).
-            if (srcSampleRate == 0.0) {
-                srcSampleRate = pcm.format.sampleRate;
+            if (state->srcSampleRate == 0.0) {
+                state->srcSampleRate = pcm.format.sampleRate;
             }
 
             // AVSpeechSynthesizer typically returns Int16 mono (format may
@@ -88,15 +96,15 @@ TTSClipPtr AppleTTSSource::synthesize(const std::string& text) {
             const bool isFloat = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0;
             const int bytesPerSample = static_cast<int>(asbd.mBitsPerChannel / 8);
 
-            const std::size_t prevSize = collected.size();
-            collected.resize(prevSize + nFrames);
+            const std::size_t prevSize = state->collected.size();
+            state->collected.resize(prevSize + nFrames);
 
             if (isFloat && bytesPerSample == 4) {
                 const float* src = pcm.floatChannelData[0];
                 for (AVAudioFrameCount i = 0; i < nFrames; ++i) {
                     float sum = src[i];
                     for (int c = 1; c < channels; ++c) sum += pcm.floatChannelData[c][i];
-                    collected[prevSize + i] = sum / static_cast<float>(channels);
+                    state->collected[prevSize + i] = sum / static_cast<float>(channels);
                 }
             } else if (!isFloat && bytesPerSample == 2) {
                 const int16_t* src = pcm.int16ChannelData[0];
@@ -104,29 +112,34 @@ TTSClipPtr AppleTTSSource::synthesize(const std::string& text) {
                 for (AVAudioFrameCount i = 0; i < nFrames; ++i) {
                     long sum = src[i * channels];
                     for (int c = 1; c < channels; ++c) sum += src[i * channels + c];
-                    collected[prevSize + i] = static_cast<float>(sum) * invInt16
+                    state->collected[prevSize + i] = static_cast<float>(sum) * invInt16
                                             / static_cast<float>(channels);
                 }
             } else {
                 // Unsupported format; drop the chunk (silent contribution).
-                std::fill(collected.begin() + static_cast<long>(prevSize),
-                          collected.end(), 0.0f);
+                std::fill(state->collected.begin() + static_cast<long>(prevSize),
+                          state->collected.end(), 0.0f);
             }
         }];
 
-        // Wait for synthesis to finish (with a generous timeout).
-        // `done` is __block, so capture via pointer for the C++ lambda predicate.
-        bool* done_ptr = &done;
+        // Wait for synthesis to finish (with a generous timeout). On timeout
+        // we return nullptr; any callbacks that arrive later still find a
+        // live `state` (held by the block) and are harmless no-ops.
         {
-            std::unique_lock<std::mutex> lock(mu);
-            const bool ok = cv.wait_for(lock, std::chrono::seconds(10),
-                                        [done_ptr] { return *done_ptr; });
-            if (!ok || !gotAnyAudio) {
+            std::unique_lock<std::mutex> lock(state->mu);
+            const bool ok = state->cv.wait_for(lock, std::chrono::seconds(10),
+                                               [&state] { return state->done; });
+            if (!ok || !state->gotAnyAudio) {
                 std::cerr << "[AppleTTSSource] synthesis failed or timed out for: "
                           << text.substr(0, 64) << '\n';
                 return nullptr;
             }
         }
+
+        // Synthesis is done (end-of-stream received) — no more callbacks will
+        // mutate `state`, so we can read it without the lock.
+        const double srcSampleRate = state->srcSampleRate;
+        std::vector<float>& collected = state->collected;
 
         // Resample if needed (linear, same approach as PrebakedTTSSource).
         if (std::abs(srcSampleRate - targetSampleRate_) < 0.5) {
