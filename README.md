@@ -37,8 +37,8 @@ The same app builds as an AUv2 plugin alongside the standalone:
 
 The `.component` is auto-installed to `~/Library/Audio/Plug-Ins/Components/`. It is
 a MIDI-capable **Music Effect** (AU type `aumf`), so in Logic it appears under the
-Audio Units for **GuitarDSP > Guitar DSP** — insert it on a guitar track; it accepts
-host MIDI for scene control.
+Audio Units for **Todd B Fisher > Guitar Speak** — insert it on a guitar track; it
+accepts host MIDI for scene control.
 
 **Recording the processed/spoken output:** Bounce in Place the track, or route the
 track to a bus and record that bus onto another track.
@@ -46,8 +46,8 @@ track to a bus and record that bus onto another track.
 **Dev workflow (iterate fast, stay out of Logic):**
 - Do most work in the **Standalone** (rebuild + relaunch in seconds) and the test suite.
 - Validate the AU without Logic:
-  - `auval -v aumf GtAp GtDs`
-  - `pluginval --strictness-level 10 --validate-in-process "<path-to>/Guitar DSP.component"`
+  - `auval -v aumf GtSp TdBF`
+  - `pluginval --strictness-level 10 --validate-in-process "<path-to>/Guitar Speak.component"`
     (install via `brew install --cask pluginval`). Note: pluginval's embedded `auval`
     sub-test can time out on headless Apple-TTS synthesis — its own in-process tests
     are the stability signal.

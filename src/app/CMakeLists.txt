@@ -1,9 +1,13 @@
+# Product (display) name — used for the bundle name AND the installed-component
+# asset path below, so they can never desync.
+set(GUITAR_DSP_PRODUCT_NAME "Guitar Speak")
+
 juce_add_plugin(guitar_dsp_app
-    PRODUCT_NAME "Guitar DSP"
-    COMPANY_NAME "GuitarDSP"
-    BUNDLE_ID com.guitardsp.app
-    PLUGIN_MANUFACTURER_CODE GtDs
-    PLUGIN_CODE GtAp
+    PRODUCT_NAME "${GUITAR_DSP_PRODUCT_NAME}"
+    COMPANY_NAME "Todd B Fisher"
+    BUNDLE_ID com.toddbfisher.guitarspeak
+    PLUGIN_MANUFACTURER_CODE TdBF
+    PLUGIN_CODE GtSp
     FORMATS Standalone AU
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT TRUE
@@ -15,9 +19,9 @@ juce_add_plugin(guitar_dsp_app
     # module links against the relevant frameworks, and TCC crashes any
     # app on launch that links them without a usage description.
     MICROPHONE_PERMISSION_ENABLED TRUE
-    MICROPHONE_PERMISSION_TEXT "Guitar DSP needs audio input access to process your guitar signal."
+    MICROPHONE_PERMISSION_TEXT "Guitar Speak needs audio input access to process your guitar signal."
     BLUETOOTH_PERMISSION_ENABLED TRUE
-    BLUETOOTH_PERMISSION_TEXT "Guitar DSP needs Bluetooth access only if you want to connect a Bluetooth MIDI foot controller."
+    BLUETOOTH_PERMISSION_TEXT "Guitar Speak needs Bluetooth access only if you want to connect a Bluetooth MIDI foot controller."
 )
 
 juce_generate_juce_header(guitar_dsp_app)
@@ -90,7 +94,7 @@ if(TARGET guitar_dsp_app_AU)
     # folder BEFORE the in-tree asset copy runs, so the installed copy would
     # otherwise lack assets. Copy assets into the installed bundle too.
     set(GUITAR_DSP_AU_INSTALLED
-        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/Guitar DSP.component/Contents/Resources/assets")
+        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${GUITAR_DSP_PRODUCT_NAME}.component/Contents/Resources/assets")
     set(GUITAR_DSP_AU_INSTALLED_STAMP
         "${CMAKE_CURRENT_BINARY_DIR}/assets_copied_AU_installed.stamp")
     add_custom_command(
