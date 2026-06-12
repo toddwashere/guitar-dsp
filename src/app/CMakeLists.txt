@@ -84,4 +84,22 @@ endfunction()
 guitar_dsp_copy_assets_to(guitar_dsp_app_Standalone)
 if(TARGET guitar_dsp_app_AU)
     guitar_dsp_copy_assets_to(guitar_dsp_app_AU)
+    # COPY_PLUGIN_AFTER_BUILD installs the .component to the user's Components
+    # folder BEFORE the in-tree asset copy runs, so the installed copy would
+    # otherwise lack assets. Copy assets into the installed bundle too.
+    set(GUITAR_DSP_AU_INSTALLED
+        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/Guitar DSP.component/Contents/Resources/assets")
+    set(GUITAR_DSP_AU_INSTALLED_STAMP
+        "${CMAKE_CURRENT_BINARY_DIR}/assets_copied_AU_installed.stamp")
+    add_custom_command(
+        OUTPUT "${GUITAR_DSP_AU_INSTALLED_STAMP}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_AU_INSTALLED}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${GUITAR_DSP_ASSETS_SRC}" "${GUITAR_DSP_AU_INSTALLED}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${GUITAR_DSP_AU_INSTALLED_STAMP}"
+        DEPENDS ${GUITAR_DSP_ASSET_FILES} guitar_dsp_app_AU
+        COMMENT "Copying assets/ into the installed AU .component"
+        VERBATIM)
+    add_custom_target(copy_assets_AU_installed ALL
+        DEPENDS "${GUITAR_DSP_AU_INSTALLED_STAMP}")
 endif()

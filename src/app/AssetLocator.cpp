@@ -3,6 +3,7 @@
 #include <juce_core/juce_core.h>
 
 #include <cstdlib>
+#include <dlfcn.h>
 #include <filesystem>
 
 namespace guitar_dsp {
@@ -12,6 +13,22 @@ namespace fs = std::filesystem;
 std::string AssetLocator::assetsRoot() {
     if (const char* env = std::getenv("GUITAR_DSP_ASSETS_DIR")) {
         if (fs::exists(env)) return env;
+    }
+
+    // The bundle that CONTAINS THIS CODE — works for both the standalone .app
+    // and the AU .component. currentApplicationFile would return the HOST app
+    // (e.g. Logic) when we're loaded as a plugin, so use dladdr to find our own
+    // binary, then its bundle's Resources/assets.
+    //   dli_fname = <Bundle>/Contents/MacOS/<binary>
+    //   -> <Bundle>/Contents/Resources/assets
+    Dl_info info{};
+    if (dladdr(reinterpret_cast<const void*>(&AssetLocator::assetsRoot), &info) != 0
+            && info.dli_fname != nullptr) {
+        const fs::path bin(info.dli_fname);
+        const auto resources = bin.parent_path().parent_path() / "Resources" / "assets";
+        std::error_code ec;
+        if (fs::is_directory(resources, ec))
+            return resources.string();
     }
 
     auto appFile = juce::File::getSpecialLocation(
