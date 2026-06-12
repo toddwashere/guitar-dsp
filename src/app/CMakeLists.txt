@@ -4,12 +4,12 @@ juce_add_plugin(guitar_dsp_app
     BUNDLE_ID com.guitardsp.app
     PLUGIN_MANUFACTURER_CODE GtDs
     PLUGIN_CODE GtAp
-    FORMATS Standalone
+    FORMATS Standalone AU
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
-    COPY_PLUGIN_AFTER_BUILD FALSE
+    COPY_PLUGIN_AFTER_BUILD TRUE
     # macOS TCC privacy declarations. Required since macOS 14+ even though
     # this app never enumerates Bluetooth devices — JUCE's audio_devices
     # module links against the relevant frameworks, and TCC crashes any
@@ -59,28 +59,29 @@ target_link_libraries(guitar_dsp_app
         juce::juce_recommended_warning_flags
 )
 
-# Copy assets/ into the Standalone .app's Resources directory.
-# Uses a stamp-file pattern so the copy re-runs whenever any file under
-# assets/ changes (not only when the executable target re-links).
-# Path is JUCE-specific: <target>_artefacts/<BUILD_TYPE>/Standalone/<PRODUCT_NAME>.app
+# Copy assets/ into each built plugin bundle's Resources directory.
+# Stamp-file pattern re-runs the copy whenever any file under assets/ changes.
 set(GUITAR_DSP_ASSETS_SRC "${CMAKE_SOURCE_DIR}/assets")
-set(GUITAR_DSP_APP_RESOURCES
-    "$<TARGET_FILE_DIR:guitar_dsp_app_Standalone>/../Resources/assets")
-set(GUITAR_DSP_ASSETS_STAMP "${CMAKE_CURRENT_BINARY_DIR}/assets_copied.stamp")
-
 file(GLOB_RECURSE GUITAR_DSP_ASSET_FILES CONFIGURE_DEPENDS
     "${GUITAR_DSP_ASSETS_SRC}/*")
 
-add_custom_command(
-    OUTPUT "${GUITAR_DSP_ASSETS_STAMP}"
-    COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_APP_RESOURCES}"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${GUITAR_DSP_ASSETS_SRC}" "${GUITAR_DSP_APP_RESOURCES}"
-    COMMAND ${CMAKE_COMMAND} -E touch "${GUITAR_DSP_ASSETS_STAMP}"
-    DEPENDS ${GUITAR_DSP_ASSET_FILES} guitar_dsp_app_Standalone
-    COMMENT "Copying assets/ into Guitar DSP.app/Contents/Resources/assets/"
-    VERBATIM
-)
+# One copy command per format target. Each format's executable lives at
+# <bundle>/Contents/MacOS, so ../Resources is the bundle's Resources dir.
+function(guitar_dsp_copy_assets_to format_target)
+    set(dest "$<TARGET_FILE_DIR:${format_target}>/../Resources/assets")
+    set(stamp "${CMAKE_CURRENT_BINARY_DIR}/assets_copied_${format_target}.stamp")
+    add_custom_command(
+        OUTPUT "${stamp}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${dest}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${GUITAR_DSP_ASSETS_SRC}" "${dest}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${stamp}"
+        DEPENDS ${GUITAR_DSP_ASSET_FILES} ${format_target}
+        COMMENT "Copying assets/ into ${format_target} bundle Resources/"
+        VERBATIM)
+    add_custom_target(copy_assets_${format_target} ALL DEPENDS "${stamp}")
+endfunction()
 
-add_custom_target(copy_guitar_dsp_assets ALL
-    DEPENDS "${GUITAR_DSP_ASSETS_STAMP}")
+guitar_dsp_copy_assets_to(guitar_dsp_app_Standalone)
+if(TARGET guitar_dsp_app_AU)
+    guitar_dsp_copy_assets_to(guitar_dsp_app_AU)
+endif()
