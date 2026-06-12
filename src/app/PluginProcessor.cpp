@@ -25,6 +25,18 @@ private:
     PluginProcessor& owner_;
 };
 
+class PluginProcessor::HostMidiPoller : public juce::Timer {
+public:
+    explicit HostMidiPoller(PluginProcessor& p) : p_(p) { startTimerHz(30); }
+    ~HostMidiPoller() override { stopTimer(); }
+    void timerCallback() override {
+        const int s = p_.pendingHostScene_.exchange(-1, std::memory_order_acquire);
+        if (s >= 0) p_.sceneEngine_.activateScene(s);
+    }
+private:
+    PluginProcessor& p_;
+};
+
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
         .withInput("Input", juce::AudioChannelSet::mono(), true)
@@ -61,6 +73,11 @@ PluginProcessor::PluginProcessor()
         assetsPoller_ = std::make_unique<AssetsPoller>(*this);
         assetsPoller_->startTimer(2000);
     }
+
+    // Only honor host MIDI when running as a plugin; the standalone uses its
+    // own direct-CoreMIDI MidiRouter (avoids double-triggering).
+    if (wrapperType != wrapperType_Standalone)
+        hostMidiPoller_ = std::make_unique<HostMidiPoller>(*this);
 }
 
 PluginProcessor::~PluginProcessor() {
@@ -172,7 +189,14 @@ bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     return inputOk && outputOk;
 }
 
-void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
+void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
+    // Plugin host MIDI -> pending scene (applied on the message thread by
+    // HostMidiPoller). Lock-free; safe on the audio thread.
+    if (wrapperType != wrapperType_Standalone) {
+        const int s = midi::sceneFromMidiBuffer(midiMessages, midiMapping_);
+        if (s >= 0) pendingHostScene_.store(s, std::memory_order_release);
+    }
+
     juce::ScopedNoDenormals noDenormals;
 
     const auto sceneParams = sceneEngine_.currentMixerParams();

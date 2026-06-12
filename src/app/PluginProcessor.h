@@ -15,6 +15,7 @@
 #include "audio/TTSPrewarmer.h"
 #include "audio/WordAligner.h"
 #include "midi/FCB1010Mapping.h"
+#include "midi/HostMidiSceneRouter.h"
 #include "midi/MidiRouter.h"
 #include "scenes/SceneEngine.h"
 
@@ -151,6 +152,14 @@ private:
     std::unique_ptr<audio::TTSPrewarmer>      piperPrewarmer_;
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     int                                        lastSeenSceneId_ = -1;  // audio thread
+
+    // Host-MIDI scene control (plugin only). processBlock stores a pending
+    // scene id (audio thread, lock-free); HostMidiPoller applies it on the
+    // message thread (activateScene is message-thread API). Standalone uses
+    // MidiRouter instead, so this stays inert there.
+    std::atomic<int> pendingHostScene_ {-1};
+    class HostMidiPoller;
+    std::unique_ptr<HostMidiPoller> hostMidiPoller_;
 };
 
 } // namespace guitar_dsp
