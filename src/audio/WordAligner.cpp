@@ -15,8 +15,13 @@ std::vector<WordSegment> WordAligner::align(const std::vector<float>& samples,
     if (N == 0 || len == 0) return out;
     if (N == 1) { out.push_back({words[0], 0, len}); return out; }
 
-    // Smoothed peak envelope (instant attack, exp release ~5 ms).
-    const float coef = static_cast<float>(std::exp(-1.0 / (sampleRate * 0.005)));
+    // Smoothed peak envelope (instant attack, exp release ~30 ms). The 30 ms
+    // release is intentionally LONGER than typical stop-consonant gaps inside
+    // a multi-syllable word ("think", "therefore", "stop"): those dips don't
+    // drop the envelope below the gap threshold, so they don't show up as
+    // false-positive word boundaries. Real inter-word silences (~80 ms+) decay
+    // far enough below threshold to still register.
+    const float coef = static_cast<float>(std::exp(-1.0 / (sampleRate * 0.030)));
     std::vector<float> env(len);
     float e = 0.0f, peak = 0.0f;
     for (std::size_t i = 0; i < len; ++i) {
@@ -28,6 +33,11 @@ std::vector<WordSegment> WordAligner::align(const std::vector<float>& samples,
     const float thresh = peak * 0.15f;
 
     // Inter-word gap runs (env < thresh), excluding leading/trailing silence.
+    // Skip implausibly short runs (< 30 ms): a real inter-word boundary in a
+    // TTS clip is at least this long; anything shorter is envelope quantization
+    // or a numerical dip, not a word boundary.
+    const std::size_t minGapSamples =
+        static_cast<std::size_t>(sampleRate * 0.030);
     std::vector<std::pair<std::size_t, std::size_t>> gaps;  // (center, length)
     std::size_t runStart = 0; bool inRun = false;
     for (std::size_t i = 0; i < len; ++i) {
@@ -35,8 +45,9 @@ std::vector<WordSegment> WordAligner::align(const std::vector<float>& samples,
         if (silent && !inRun) { inRun = true; runStart = i; }
         else if (!silent && inRun) {
             inRun = false;
-            if (runStart > 0)  // skip leading silence
-                gaps.push_back({(runStart + i) / 2, i - runStart});
+            const std::size_t runLen = i - runStart;
+            if (runStart > 0 && runLen >= minGapSamples)  // skip leading + too-short
+                gaps.push_back({(runStart + i) / 2, runLen});
         }
     }
     // A run reaching the end is trailing silence — skip it (not added).

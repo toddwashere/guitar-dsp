@@ -52,6 +52,40 @@ TEST_CASE("WordAligner: empty clip or no words yields no segments",
     REQUIRE(WordAligner::align(s, {}, 48000.0).empty());
 }
 
+TEST_CASE("WordAligner: brief intra-word energy dips do not split a word",
+          "[audio][aligner]") {
+    // Two-word clip where word 2 has a ~10 ms internal energy dip (the kind
+    // of stop-consonant dip a real TTS engine produces inside multi-syllable
+    // words like "therefore" or "think"). The boundary must land in the
+    // inter-word silence, not in the internal dip — regression check for
+    // the multi-syllable splitting bug.
+    const int rate = 48000;
+    const int burst = 5000;
+    const int interGap = 4000;     // ~83 ms inter-word silence
+    const int innerDip = 480;      // ~10 ms within-word dip (e.g. a 't' stop)
+
+    auto tone = [&](int n) {
+        std::vector<float> v(n);
+        for (int i = 0; i < n; ++i)
+            v[i] = 0.6f * std::sin(2.0f*3.14159265f*300.0f*i/rate);
+        return v;
+    };
+    auto sil = [](int n) { return std::vector<float>(n, 0.0f); };
+
+    std::vector<float> s;
+    auto w = tone(burst);     s.insert(s.end(), w.begin(), w.end());
+    auto g = sil(interGap);   s.insert(s.end(), g.begin(), g.end());
+    w = tone(burst/2);        s.insert(s.end(), w.begin(), w.end());
+    auto d = sil(innerDip);   s.insert(s.end(), d.begin(), d.end());
+    w = tone(burst/2);        s.insert(s.end(), w.begin(), w.end());
+
+    auto segs = WordAligner::align(s, {"one","stop"}, rate);
+    REQUIRE(segs.size() == 2);
+    // Boundary must be inside the inter-word gap [burst..burst+interGap].
+    REQUIRE(segs[0].endSample >= static_cast<size_t>(burst));
+    REQUIRE(segs[0].endSample <= static_cast<size_t>(burst + interGap));
+}
+
 TEST_CASE("WordAligner: gapless clip still returns N even segments",
           "[audio][aligner]") {
     std::vector<float> samples(9000, 0.5f);
