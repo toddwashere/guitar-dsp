@@ -9,6 +9,7 @@
     "voice": "en_US-amy-medium",
     "clip": "07_mid_talk",
     "fallback": "prebaked",
-    "trigger": "note"
+    "trigger": "note",
+    "clarity": 0.3
   }
 }

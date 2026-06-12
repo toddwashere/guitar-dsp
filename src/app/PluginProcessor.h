@@ -104,6 +104,10 @@ public:
     float vocoderCarrierNoise() const noexcept { return graph_.vocoderCarrierNoise(); }
     float vocoderSibilance() const noexcept { return graph_.vocoderSibilance(); }
     float vocoderClarity() const noexcept { return graph_.clarity(); }
+    // The currently active scene's declared clarity (0..1), for the visibility
+    // readout — so the operator can see when the live slider has drifted from
+    // the scene's authored default.
+    float activeSceneClarity() const { return sceneEngine_.activeTtsConfig().clarity; }
 
     // Apple-TTS "type and say" plumbing for the message-thread UI.
     //

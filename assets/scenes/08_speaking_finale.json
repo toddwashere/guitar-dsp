@@ -7,6 +7,7 @@
     "source": "prebaked",
     "clip": "08_gently_weeps",
     "text": "While my guitar gently weeps",
-    "trigger": "note"
+    "trigger": "note",
+    "clarity": 0.5
   }
 }

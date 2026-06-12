@@ -435,12 +435,17 @@ juce::AudioProcessorEditor* PluginProcessor::createEditor() {
     return new PluginEditor(*this);
 }
 
+// getStateInformation / setStateInformation: called by the AU host (Logic) to
+// save/restore the plugin's state inside a project, AND by JUCE's
+// StandalonePluginHolder to persist the standalone's last UI state across
+// launches via its juce::PropertiesFile. One code path covers both formats.
 void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     app::PluginStateData d;
     d.sceneId      = sceneEngine_.getActiveSceneId();
     d.makeup       = graph_.vocoderMakeup();
     d.carrierNoise = graph_.vocoderCarrierNoise();
     d.sibilance    = graph_.vocoderSibilance();
+    // clarity intentionally not persisted — it's per-scene. See PluginState.h.
     const auto json = app::PluginState::toJson(d);
     dest.replaceAll(json.toRawUTF8(), json.getNumBytesAsUTF8());
 }

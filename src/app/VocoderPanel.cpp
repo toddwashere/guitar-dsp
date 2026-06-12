@@ -34,6 +34,19 @@ VocoderPanel::VocoderPanel(PluginProcessor& p) : processor_(p) {
     clarity_.onValueChange = [this] {
         processor_.setVocoderClarity(static_cast<float>(clarity_.getValue()));
     };
+    startTimerHz(4);  // poll the active scene's clarity for the label readout
+}
+
+VocoderPanel::~VocoderPanel() { stopTimer(); }
+
+void VocoderPanel::timerCallback() {
+    const float sceneClarity = processor_.activeSceneClarity();
+    if (sceneClarity != lastSceneClarity_) {
+        lastSceneClarity_ = sceneClarity;
+        clarityLabel_.setText("Clarity  (scene "
+                                  + juce::String(sceneClarity, 2) + ")",
+                              juce::dontSendNotification);
+    }
 }
 
 void VocoderPanel::configureSlider(juce::Slider& s, juce::Label& l,
@@ -60,15 +73,15 @@ void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
     area.removeFromTop(12);  // header band
     const int rowH = area.getHeight() / 4;
-    auto row = [&](juce::Slider& s, juce::Label& l) {
+    auto row = [&](juce::Slider& s, juce::Label& l, int labelW) {
         auto r = area.removeFromTop(rowH);
-        l.setBounds(r.removeFromLeft(86));
+        l.setBounds(r.removeFromLeft(labelW));
         s.setBounds(r);
     };
-    row(makeup_,       makeupLabel_);
-    row(carrierNoise_, carrierNoiseLabel_);
-    row(sibilance_,    sibilanceLabel_);
-    row(clarity_,      clarityLabel_);
+    row(makeup_,       makeupLabel_,       86);
+    row(carrierNoise_, carrierNoiseLabel_, 86);
+    row(sibilance_,    sibilanceLabel_,    86);
+    row(clarity_,      clarityLabel_,      140);  // wider — also shows "(scene 0.50)"
 }
 
 } // namespace guitar_dsp
