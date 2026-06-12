@@ -10,18 +10,20 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       wordReadout_(p),
       diagToggleBar_(p),
       vocoderPanel_(p),
+      ttsStatusBar_(p),
       midiDevicePicker_(p),
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
-    setSize(720, 684);
+    setSize(720, 708);
     setResizable(true, true);
-    setResizeLimits(520, 512, 1800, 1200);
+    setResizeLimits(520, 536, 1800, 1200);
     addAndMakeVisible(diagnosticPanel_);
     addAndMakeVisible(sceneIndicator_);
     addAndMakeVisible(wordReadout_);
     addAndMakeVisible(diagToggleBar_);
     addAndMakeVisible(vocoderPanel_);
+    addAndMakeVisible(ttsStatusBar_);
     if (processor_.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
         addAndMakeVisible(midiDevicePicker_);
     addAndMakeVisible(sayPanel_);
@@ -42,6 +44,7 @@ void PluginEditor::resized() {
     wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     vocoderPanel_.setBounds(bounds.removeFromTop(86));
+    ttsStatusBar_.setBounds(bounds.removeFromTop(24));
     if (midiDevicePicker_.isVisible())
         midiDevicePicker_.setBounds(bounds.removeFromTop(28));
     sayPanel_.setBounds(bounds.removeFromTop(40));

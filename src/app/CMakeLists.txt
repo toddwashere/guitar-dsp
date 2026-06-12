@@ -36,6 +36,7 @@ target_sources(guitar_dsp_app PRIVATE
     SayPanel.cpp
     MidiDevicePicker.cpp
     WordReadout.cpp
+    TtsStatusBar.cpp
 )
 
 target_compile_definitions(guitar_dsp_app PRIVATE

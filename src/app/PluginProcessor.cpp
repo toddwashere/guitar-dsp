@@ -151,6 +151,23 @@ void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
     if (midiRouter_) midiRouter_->setPreferredDeviceName(name);
 }
 
+bool PluginProcessor::piperReady() const noexcept {
+    return piperTtsSource_ && piperTtsSource_->isReady();
+}
+
+juce::String PluginProcessor::activeTtsSourceName() const {
+    return juce::String(sceneEngine_.activeTtsConfig().source);
+}
+
+juce::String PluginProcessor::lastResolvedSource() const noexcept {
+    switch (lastResolvedSource_.load(std::memory_order_relaxed)) {
+        case 1: return "prebaked";
+        case 2: return "apple";
+        case 3: return "piper";
+        default: return "";
+    }
+}
+
 std::vector<std::string> PluginProcessor::activeSceneWords() const {
     const auto cfg = sceneEngine_.activeTtsConfig();
     std::vector<std::string> words;
@@ -292,6 +309,19 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                     clip = it->second->synthesize(keyFor(cfg.fallback));
                 }
             }
+
+            // Record the source that actually produced the clip (for the status
+            // readout). If piper was requested but isn't ready, the fallback
+            // source produced it; otherwise it's cfg.source. nullptr -> none.
+            int resolved = 0;
+            if (clip) {
+                const std::string& s = (cfg.source == "piper" && !piperReady())
+                    ? cfg.fallback : cfg.source;
+                if      (s == "prebaked") resolved = 1;
+                else if (s == "apple")    resolved = 2;
+                else if (s == "piper")    resolved = 3;
+            }
+            lastResolvedSource_.store(resolved, std::memory_order_relaxed);
 
             // Route the clip per the scene's tts.trigger. "note" → segment into
             // words and feed the note-stepped player (word-per-pluck). Anything

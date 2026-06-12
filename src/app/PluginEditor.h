@@ -10,6 +10,7 @@
 #include "SayPanel.h"
 #include "SceneIndicator.h"
 #include "SpectrumAnalyzer.h"
+#include "TtsStatusBar.h"
 #include "VocoderPanel.h"
 #include "WordReadout.h"
 
@@ -37,6 +38,7 @@ private:
     WordReadout        wordReadout_;
     DiagToggleBar      diagToggleBar_;
     VocoderPanel       vocoderPanel_;
+    TtsStatusBar       ttsStatusBar_;
     MidiDevicePicker   midiDevicePicker_;
     SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;

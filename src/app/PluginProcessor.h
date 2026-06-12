@@ -72,6 +72,11 @@ public:
 
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
+    // TTS engine status for the visibility readout (message thread).
+    bool piperReady() const noexcept;                 // binary + voice present
+    juce::String activeTtsSourceName() const;         // declared source of the active scene ("" if none)
+    juce::String lastResolvedSource() const noexcept; // source that actually produced the last clip
+
     // Current spoken word index for the active note-triggered scene (-1 idle).
     int currentSpokenWordIndex() const noexcept {
         return graph_.noteSteppedPlayer().currentWordIndex();
@@ -153,6 +158,7 @@ private:
     std::unique_ptr<audio::PiperTTSSource>    piperTtsSource_;
     std::unique_ptr<audio::TTSPrewarmer>      piperPrewarmer_;
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
+    std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
     int                                        lastSeenSceneId_ = -1;  // audio thread
 
     // Host-MIDI scene control (plugin only). processBlock stores a pending
