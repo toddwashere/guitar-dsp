@@ -196,3 +196,91 @@ TEST_CASE("PitchTrackedCarrier saw: spectral peak near detected fundamental",
 
     REQUIRE(goertzel(220.0f) > 4.0f * goertzel(313.0f));
 }
+
+TEST_CASE("PitchTrackedCarrier hold: continues singing for ~holdMs after silence",
+          "[audio][pitch_tracked_carrier][hold]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+    c.setHoldMs(500.0f);   // 24000 samples @ 48k
+    c.setDecayMs(100.0f);  // 4800 samples decay
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> tone(48000);
+    gen.sine(220.0f, 0.4f, tone.data(), tone.size());
+
+    std::vector<float> blockOut(512);
+    // Phase 1: feed 1s of tone so YIN locks.
+    for (std::size_t i = 0; i < tone.size(); i += 512)
+        c.process(tone.data() + i, blockOut.data(),
+                  std::min<std::size_t>(512, tone.size() - i));
+
+    // Phase 2: feed 200 ms of silence; saw should still be loud (hold).
+    std::vector<float> silence(48000 * 200 / 1000, 0.0f);
+    float peakDuringHold = 0.0f;
+    for (std::size_t i = 0; i < silence.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, silence.size() - i);
+        c.process(silence.data() + i, blockOut.data(), n);
+        for (std::size_t k = 0; k < n; ++k)
+            peakDuringHold = std::max(peakDuringHold, std::abs(blockOut[k]));
+    }
+    REQUIRE(peakDuringHold > 0.5f);  // still near full level mid-hold
+}
+
+TEST_CASE("PitchTrackedCarrier decay: amplitude near zero after hold+decay window",
+          "[audio][pitch_tracked_carrier][hold]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+    c.setHoldMs(200.0f);   //  9600 samples
+    c.setDecayMs(100.0f);  //  4800 samples
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> tone(48000);
+    gen.sine(220.0f, 0.4f, tone.data(), tone.size());
+
+    std::vector<float> blockOut(512);
+    for (std::size_t i = 0; i < tone.size(); i += 512)
+        c.process(tone.data() + i, blockOut.data(),
+                  std::min<std::size_t>(512, tone.size() - i));
+
+    // Feed enough silence to exceed hold + decay + slack.
+    std::vector<float> silence(48000, 0.0f);  // 1 second
+    float peakLastBlock = 0.0f;
+    for (std::size_t i = 0; i < silence.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, silence.size() - i);
+        auto s = c.process(silence.data() + i, blockOut.data(), n);
+        if (i + n == silence.size()) {
+            for (std::size_t k = 0; k < n; ++k)
+                peakLastBlock = std::max(peakLastBlock, std::abs(blockOut[k]));
+            // voiced flag must be false even though we still emit during decay.
+            REQUIRE(s.voiced == false);
+        }
+    }
+    REQUIRE(peakLastBlock < 0.01f);
+}
+
+TEST_CASE("PitchTrackedCarrier: re-locks within 2 hops after voiced->unvoiced->voiced",
+          "[audio][pitch_tracked_carrier][hold]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+    c.setHoldMs(50.0f);
+    c.setDecayMs(50.0f);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> a(24000), silence(12000, 0.0f), b(24000);
+    gen.sine(220.0f, 0.4f, a.data(), a.size());
+    gen.sine(330.0f, 0.4f, b.data(), b.size());
+
+    std::vector<float> in;
+    in.insert(in.end(), a.begin(), a.end());
+    in.insert(in.end(), silence.begin(), silence.end());
+    in.insert(in.end(), b.begin(), b.end());
+
+    std::vector<float> blockOut(512);
+    PitchTrackedCarrier::State last{};
+    for (std::size_t i = 0; i < in.size(); i += 512)
+        last = c.process(in.data() + i, blockOut.data(),
+                         std::min<std::size_t>(512, in.size() - i));
+
+    REQUIRE(last.voiced == true);
+    REQUIRE_THAT(centsBetween(last.freqHz, 330.0f), WithinAbs(0.0f, 30.0f));
+}

@@ -40,34 +40,79 @@ void PitchTrackedCarrier::setFrequencyRange(float minHz, float maxHz) noexcept {
 
 PitchTrackedCarrier::State PitchTrackedCarrier::process(
         const float* guitarIn, float* out, std::size_t numSamples) {
+    const int holdSamplesTotal  = static_cast<int>(holdMs_  * sampleRate_ / 1000.0f);
+    const int decaySamplesTotal = static_cast<int>(decayMs_ * sampleRate_ / 1000.0f);
+
     for (std::size_t i = 0; i < numSamples; ++i) {
         ring_[ringWriteIdx_] = guitarIn[i];
         ringWriteIdx_ = (ringWriteIdx_ + 1) % kWindowSize;
 
         if (realSamplesSeen_ < kWindowSize) ++realSamplesSeen_;
+
         if (--samplesUntilNextHop_ == 0) {
             samplesUntilNextHop_ = kHopSize;
             const float f0 = (realSamplesSeen_ >= kWindowSize) ? runYin() : 0.0f;
-            currentlyVoiced_ = (f0 > 0.0f);
-            if (currentlyVoiced_) {
-                currentFreqHz_ = f0;
-                lastVoicedFreqHz_ = f0;
-                const float midi = 69.0f + 12.0f * std::log2(f0 / 440.0f);
-                currentMidiNote_ = static_cast<int>(std::lround(midi));
-                currentCents_ = 100.0f * (midi - currentMidiNote_);
+            const bool nowVoiced = (f0 > 0.0f);
+
+            if (nowVoiced) {
+                if (!currentlyVoiced_) {
+                    // Transition unvoiced -> voiced: reset hold/decay,
+                    // restart amplitude at full.
+                    holdSamplesRemaining_  = 0;
+                    decaySamplesRemaining_ = 0;
+                    decayGain_ = 1.0f;
+                }
+                currentFreqHz_     = f0;
+                lastVoicedFreqHz_  = f0;
+                const float midi   = 69.0f + 12.0f * std::log2(f0 / 440.0f);
+                currentMidiNote_   = static_cast<int>(std::lround(midi));
+                currentCents_      = 100.0f * (midi - currentMidiNote_);
+            } else if (currentlyVoiced_) {
+                // Transition voiced -> unvoiced: enter hold.
+                holdSamplesRemaining_  = holdSamplesTotal;
+                decaySamplesRemaining_ = decaySamplesTotal;
+                decayGain_             = 1.0f;
+                // keep currentFreqHz_ = lastVoicedFreqHz_ implicitly (no reset)
             }
+            currentlyVoiced_ = nowVoiced;
         }
 
-        out[i] = currentlyVoiced_ && currentFreqHz_ > 0.0f
-               ? nextSawSample(currentFreqHz_)
+        // Amplitude envelope for this sample.
+        float amp = 0.0f;
+        if (currentlyVoiced_) {
+            amp = 1.0f;
+        } else if (holdSamplesRemaining_ > 0) {
+            amp = 1.0f;
+            --holdSamplesRemaining_;
+        } else if (decaySamplesRemaining_ > 0) {
+            // Linear decay from 1.0 -> 0.0 over decaySamplesTotal samples.
+            decayGain_ = static_cast<float>(decaySamplesRemaining_)
+                       / std::max(1, decaySamplesTotal);
+            amp = decayGain_;
+            --decaySamplesRemaining_;
+        } else {
+            // Fully faded — clear cached note so State reports unvoiced.
+            currentMidiNote_ = -1;
+            currentCents_    = 0.0f;
+            lastVoicedFreqHz_ = 0.0f;
+        }
+
+        const float freqForSample = currentlyVoiced_ ? currentFreqHz_
+                                                      : lastVoicedFreqHz_;
+        out[i] = (amp > 0.0f && freqForSample > 0.0f)
+               ? amp * nextSawSample(freqForSample)
                : 0.0f;
     }
 
+    const bool stillSinging = currentlyVoiced_
+                              || holdSamplesRemaining_ > 0
+                              || decaySamplesRemaining_ > 0;
     State s;
     s.voiced   = currentlyVoiced_;
-    s.freqHz   = currentlyVoiced_ ? currentFreqHz_ : 0.0f;
-    s.midiNote = currentlyVoiced_ ? currentMidiNote_ : -1;
-    s.cents    = currentlyVoiced_ ? currentCents_ : 0.0f;
+    s.freqHz   = stillSinging ? (currentlyVoiced_ ? currentFreqHz_ : lastVoicedFreqHz_)
+                              : 0.0f;
+    s.midiNote = stillSinging ? currentMidiNote_ : -1;
+    s.cents    = stillSinging ? currentCents_    : 0.0f;
     return s;
 }
 
