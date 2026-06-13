@@ -87,6 +87,20 @@ deliver its audio callbacks. Logic provides one during playback, so Apple TTS wo
 fully headless hosts (e.g. `auval`) do not, and those scenes fall back to prebaked
 clips. Piper and prebaked clips work regardless.
 
+### Sing mode
+
+A complementary toggle layered on top of pitch-singing that nudges the
+output from "spoken-at-a-pitch" toward "sung":
+
+- **Vibrato**: 5 Hz sine LFO, +/- 20 cents — adds expressive wobble.
+- **Pitch quantize**: snaps the detected F0 to the nearest chromatic
+  semitone, so slightly sharp/flat plucks still sing in tune.
+
+Click the **M  Sing** pill in the diagnostic toggle bar to enable.
+Persisted in plugin state. Works whether pitch-singing is on or off
+(but only audible while pitch-singing is on, since that's what routes
+the pitched saw into the carrier).
+
 ## Project status
 
 This branch implements **Phase 5a: note-triggered word-by-word speech** — the
