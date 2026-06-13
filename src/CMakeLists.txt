@@ -56,6 +56,7 @@ add_library(guitar_dsp_ai STATIC
     ai/ConversationBuffer.cpp
     ai/PersonaRegistry.cpp
     ai/AppPreferences.cpp
+    ai/JuceHttpTransport.cpp
 )
 
 target_include_directories(guitar_dsp_ai PUBLIC
