@@ -131,7 +131,7 @@ private:
     std::atomic<bool> diagSibilanceOff_  {false};
     std::uint32_t     diagNoiseState_ {0x9E3779B9u};  // carrier-noise xorshift state
 
-    std::atomic<float> vocoderSibilance_ {0.5f};  // base sibilance (diag can override to 0)
+    std::atomic<float> vocoderSibilance_ {0.3f};  // base sibilance (diag can override to 0)
     std::atomic<float> clarity_ {0.80f};           // "speak clearly" crossfade 0..1
 
     std::vector<float> postInputBuffer_;
@@ -145,6 +145,14 @@ private:
     std::atomic<float>  detectedCents_     {0.0f};
     std::atomic<float>  detectedHz_        {0.0f};
     std::vector<float>  pitchCarrierBuffer_;
+
+    // Wet-path 1-pole LPF on the vocoder output. Catches high-band scratch
+    // from any source (saw harmonics that survived the pre-vocoder LPF,
+    // sibilance noise, vocoder's own high bands). Applied to wetBuffer_
+    // BEFORE the clarity blend so the dry-TTS path stays unfiltered.
+    float wetLpfState_ = 0.0f;
+    float wetLpfAlpha_ = 0.0f;  // recomputed in prepare() from kWetLpfHz / sampleRate
+    static constexpr float kWetLpfHz = 5000.0f;
 };
 
 } // namespace guitar_dsp::audio

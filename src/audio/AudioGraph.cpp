@@ -30,6 +30,11 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     pitchCarrier_.prepare(sampleRate, blockSize);
     pitchCarrierBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
 
+    // Wet-path LPF coefficient for the current sample rate.
+    wetLpfAlpha_ = 1.0f - std::exp(
+        -2.0f * 3.14159265358979323846f * kWetLpfHz / static_cast<float>(sampleRate));
+    wetLpfState_ = 0.0f;
+
     // Default mixer to fully dry until later phases install branches.
     mixer_.setDryWet(0.0f);
     mixer_.setMasterGainDb(0.0f);
@@ -45,6 +50,7 @@ void AudioGraph::reset() {
     vocoder_.reset();
     pitchCarrier_.reset();
     std::fill(pitchCarrierBuffer_.begin(), pitchCarrierBuffer_.end(), 0.0f);
+    wetLpfState_ = 0.0f;
     carousel_.reset();
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
     std::fill(wetBuffer_.begin(), wetBuffer_.end(), 0.0f);
@@ -132,6 +138,15 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
             if (pitchSinging) vocoder_.setCarrierNoise(0.0f);
             vocoder_.process(carrier, wetBuffer_.data(), wetBuffer_.data(), numSamples);
             if (pitchSinging) vocoder_.setCarrierNoise(savedCarrierNoise);
+
+            // Wet-path 1-pole LPF: tames any high-band scratch that survived
+            // the per-saw LPF + the sibilance generator + the high vocoder bands.
+            // Applied BEFORE the clarity blend so the dry-TTS path stays
+            // unfiltered (intelligibility wins over scratch reduction there).
+            for (std::size_t i = 0; i < numSamples; ++i) {
+                wetLpfState_ += wetLpfAlpha_ * (wetBuffer_[i] - wetLpfState_);
+                wetBuffer_[i] = wetLpfState_;
+            }
 
             // Crossfade vocoded wet -> raw modulator (boosted via the same
             // makeup gain + tanh limiter as the vocoded path, so they sit at

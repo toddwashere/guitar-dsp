@@ -382,3 +382,4 @@ TEST_CASE("AudioGraph: pitchSinging on with TTS modulator -> wet path peak at gu
     };
     REQUIRE(goertzel(220.0f) > 2.0f * goertzel(313.0f));
 }
+
