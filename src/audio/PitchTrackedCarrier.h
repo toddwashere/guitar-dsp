@@ -70,7 +70,7 @@ private:
     float  sawLpfAlpha_   = 0.0f;  // recomputed in prepare() from sawLpfHz_
 
     // ---- Hold/decay state ----------------------------------------------
-    float holdMs_       = 1000.0f;
+    float holdMs_       = 250.0f;
     float decayMs_      = 200.0f;
     float minHz_        = 40.0f;
     float maxHz_        = 2000.0f;
