@@ -19,6 +19,8 @@ public:
     std::string editablePromptText() const { return promptEditor_.getText().toStdString(); }
     std::string apiKeyFieldText()    const { return apiKeyField_.getText().toStdString(); }
     void        refreshOllama();
+    void        selectModel(std::string modelId);
+    std::string modelStatusText() const { return modelStatus_.getText().toStdString(); }
 
 private:
     void populateBaseModels();

@@ -105,3 +105,74 @@ TEST_CASE("AiSettingsPanel: API key field reflects stored value",
     REQUIRE(p.apiKeyFieldText() == "sk-ant-stored");
     tmp.deleteFile();
 }
+
+TEST_CASE("AiSettingsPanel: select Ollama model with Ollama down → 'not running'",
+          "[app][ui][settings][preflight]") {
+    juce::ScopedJuceInitialiser_GUI juceInit;
+    auto tmp = tempPath("aiset_preflight1.xml"); tmp.deleteFile();
+    AppPreferences  prefs{tmp};
+    PersonaRegistry personas;
+    FakeHttpTransport http;
+    // First call (the ctor's refresh) — return empty list:
+    http.replies.push({0, "", "connect refused", {}});
+    // Second call (selectModel's probe) — connect refused too:
+    http.replies.push({0, "", "connect refused", {}});
+    AiSettingsPanel p(prefs, personas, http);
+    p.selectModel("ollama:llama3.2:3b");
+    REQUIRE(p.modelStatusText().find("not running") != std::string::npos);
+    tmp.deleteFile();
+}
+
+TEST_CASE("AiSettingsPanel: select Anthropic model with no key → 'key missing'",
+          "[app][ui][settings][preflight]") {
+    juce::ScopedJuceInitialiser_GUI juceInit;
+    auto tmp = tempPath("aiset_preflight2.xml"); tmp.deleteFile();
+    ::unsetenv("ANTHROPIC_API_KEY");
+    AppPreferences  prefs{tmp};   // no key
+    PersonaRegistry personas;
+    FakeHttpTransport http;
+    http.replies.push({0, "", "no probe", {}});  // ctor refresh
+    AiSettingsPanel p(prefs, personas, http);
+    p.selectModel("claude-haiku-4-5");
+    REQUIRE(p.modelStatusText().find("missing") != std::string::npos);
+    tmp.deleteFile();
+}
+
+TEST_CASE("AiSettingsPanel: select Ollama model that's pulled → 'ready'",
+          "[app][ui][settings][preflight]") {
+    juce::ScopedJuceInitialiser_GUI juceInit;
+    auto tmp = tempPath("aiset_preflight3.xml"); tmp.deleteFile();
+    AppPreferences  prefs{tmp};
+    PersonaRegistry personas;
+    FakeHttpTransport http;
+    // ctor refresh — returns one model
+    http.replies.push({200, R"({"models":[{"name":"llama3.2:3b"}]})", "", {}});
+    // selectModel probe: isRunning check
+    http.replies.push({200, R"({"models":[{"name":"llama3.2:3b"}]})", "", {}});
+    // selectModel probe: listInstalledModels
+    http.replies.push({200, R"({"models":[{"name":"llama3.2:3b"}]})", "", {}});
+    AiSettingsPanel p(prefs, personas, http);
+    p.selectModel("ollama:llama3.2:3b");
+    REQUIRE(p.modelStatusText().find("ready") != std::string::npos);
+    tmp.deleteFile();
+}
+
+TEST_CASE("AiSettingsPanel: select Ollama model that's NOT pulled → 'ollama pull'",
+          "[app][ui][settings][preflight]") {
+    juce::ScopedJuceInitialiser_GUI juceInit;
+    auto tmp = tempPath("aiset_preflight4.xml"); tmp.deleteFile();
+    AppPreferences  prefs{tmp};
+    PersonaRegistry personas;
+    FakeHttpTransport http;
+    // ctor refresh — different model
+    http.replies.push({200, R"({"models":[{"name":"qwen2.5:3b"}]})", "", {}});
+    // selectModel probe: isRunning
+    http.replies.push({200, R"({"models":[{"name":"qwen2.5:3b"}]})", "", {}});
+    // selectModel probe: listInstalledModels
+    http.replies.push({200, R"({"models":[{"name":"qwen2.5:3b"}]})", "", {}});
+    AiSettingsPanel p(prefs, personas, http);
+    p.selectModel("ollama:llama3.2:3b");
+    REQUIRE(p.modelStatusText().find("ollama pull") != std::string::npos);
+    REQUIRE(p.modelStatusText().find("llama3.2:3b") != std::string::npos);
+    tmp.deleteFile();
+}

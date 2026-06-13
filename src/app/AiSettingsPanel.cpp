@@ -1,5 +1,6 @@
 #include "app/AiSettingsPanel.h"
 #include "ai/OllamaClient.h"
+#include <algorithm>
 
 namespace guitar_dsp {
 
@@ -59,6 +60,20 @@ AiSettingsPanel::AiSettingsPanel(ai::AppPreferences& p, ai::PersonaRegistry& r,
     onPersonaChanged();
 
     refreshBtn_.onClick = [this]{ refreshOllama(); };
+    modelBox_.onChange = [this]{
+        const int id = modelBox_.getSelectedId();
+        std::string modelId;
+        if (id == 1) modelId = "claude-haiku-4-5";
+        else if (id == 2) modelId = "claude-sonnet-4-6";
+        else {
+            // Ollama models — strip the " (local — Ollama)" suffix
+            auto label = modelBox_.getText().toStdString();
+            auto suffix = label.find(" (local");
+            modelId = "ollama:" + (suffix != std::string::npos
+                                    ? label.substr(0, suffix) : label);
+        }
+        selectModel(modelId);
+    };
     resetPromptBtn_.onClick = [this]{
         auto idx = personaBox_.getSelectedId() - 1;
         if (idx < 0 || idx >= (int)std::size(kPersonas)) return;
@@ -113,6 +128,31 @@ void AiSettingsPanel::onPersonaChanged() {
     promptEditor_.onTextChange = [this, id]{
         personas_.setCustomPrompt(id, promptEditor_.getText().toStdString());
     };
+}
+
+void AiSettingsPanel::selectModel(std::string id) {
+    if (id.rfind("ollama:", 0) == 0) {
+        const auto tag = id.substr(7);
+        if (! ai::OllamaClient::isRunning(http_, prefs_.ollamaEndpoint())) {
+            modelStatus_.setText("Ollama: not running (run `ollama serve`)",
+                                 juce::dontSendNotification);
+            return;
+        }
+        auto models = ai::OllamaClient::listInstalledModels(http_, prefs_.ollamaEndpoint());
+        const bool present = std::find(models.begin(), models.end(), tag) != models.end();
+        if (present)
+            modelStatus_.setText("Ollama: " + juce::String(tag) + " ready",
+                                 juce::dontSendNotification);
+        else
+            modelStatus_.setText("Ollama: model not pulled — run: ollama pull "
+                                  + juce::String(tag),
+                                 juce::dontSendNotification);
+    } else {
+        modelStatus_.setText(prefs_.anthropicApiKey().empty()
+                                ? juce::String("Anthropic: key missing")
+                                : juce::String("Anthropic: key set \xe2\x9c\x93"),
+                             juce::dontSendNotification);
+    }
 }
 
 void AiSettingsPanel::resized() {
