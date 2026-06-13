@@ -115,3 +115,23 @@ TEST_CASE("PitchTrackedCarrier YIN: midiNote + cents fields agree with freqHz",
     REQUIRE(s.midiNote == 69);
     REQUIRE_THAT(s.cents, WithinAbs(0.0f, 20.0f));
 }
+
+TEST_CASE("PitchTrackedCarrier YIN: warm-up suppresses voiced detection until ring is full",
+          "[audio][pitch_tracked_carrier][yin]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 256);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(2048);          // < kWindowSize, so warm-up window
+    gen.sine(220.0f, 0.4f, in.data(), in.size());
+
+    std::vector<float> out(256);
+    PitchTrackedCarrier::State s{};
+    // Drive only enough samples to fire the first hop but not enough to fill
+    // the ring (kWindowSize = 2048; first hop fires at sample 256 / 512 / ...
+    // up through 1792, all before the ring is "full" of real samples).
+    for (std::size_t i = 0; i < 1792; i += 256) {
+        s = c.process(in.data() + i, out.data(), 256);
+    }
+    REQUIRE(s.voiced == false);
+}

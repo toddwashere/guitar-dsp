@@ -48,6 +48,7 @@ private:
     std::vector<float> ring_;
     int                ringWriteIdx_ = 0;
     int                samplesUntilNextHop_ = kHopSize;
+    int                realSamplesSeen_ = 0;   // gates runYin() until the ring is full of real samples
 
     // ---- YIN scratch ---------------------------------------------------
     std::vector<float> diff_;   // sized kWindowSize/2

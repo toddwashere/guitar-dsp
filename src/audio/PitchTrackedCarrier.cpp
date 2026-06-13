@@ -19,6 +19,7 @@ void PitchTrackedCarrier::reset() {
     std::fill(ring_.begin(), ring_.end(), 0.0f);
     ringWriteIdx_ = 0;
     samplesUntilNextHop_ = kHopSize;
+    realSamplesSeen_ = 0;
     sawPhase_ = 0.0;
     currentFreqHz_ = 0.0f;
     lastVoicedFreqHz_ = 0.0f;
@@ -43,9 +44,10 @@ PitchTrackedCarrier::State PitchTrackedCarrier::process(
         ring_[ringWriteIdx_] = guitarIn[i];
         ringWriteIdx_ = (ringWriteIdx_ + 1) % kWindowSize;
 
+        if (realSamplesSeen_ < kWindowSize) ++realSamplesSeen_;
         if (--samplesUntilNextHop_ == 0) {
             samplesUntilNextHop_ = kHopSize;
-            const float f0 = runYin();
+            const float f0 = (realSamplesSeen_ >= kWindowSize) ? runYin() : 0.0f;
             currentlyVoiced_ = (f0 > 0.0f);
             if (currentlyVoiced_) {
                 currentFreqHz_ = f0;
