@@ -6,8 +6,9 @@
   "tts": {
     "source": "prebaked",
     "clip": "08_gently_weeps",
-    "text": "And now my guitar gently speaks for me.",
+    "text": "And now my gui-tar gent-ly speaks for me.",
     "trigger": "note",
+    "wordSync": "syllable",
     "clarity": 0.5
   }
 }

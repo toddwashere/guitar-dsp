@@ -426,15 +426,31 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             if (cfg.trigger == "note" && clip && !clip->samples.empty()) {
                 // WordAligner needs a mutable copy (TTSClipPtr is shared<const>).
                 auto seg = std::make_shared<audio::TTSClip>(*clip);
-                std::vector<std::string> words;
+                // Build per-word hyphenated + plain lists. clip->words labels
+                // must never contain hyphens; clip->syllables is populated only
+                // when the source text actually contains hyphens (deterministic
+                // — no automatic syllabification of unhyphenated text).
+                const std::string& sourceText =
+                    cfg.text.empty() ? clip->name : cfg.text;
+                std::vector<std::string> plainWords;
+                std::vector<std::string> hyphenatedWords;
                 {
-                    std::istringstream iss(cfg.text.empty() ? clip->name : cfg.text);
-                    std::string w;
-                    while (iss >> w) words.push_back(w);
+                    std::istringstream iss(sourceText);
+                    std::string token;
+                    while (iss >> token) {
+                        hyphenatedWords.push_back(token);
+                        std::string plain;
+                        for (char c : token) if (c != '-') plain += c;
+                        plainWords.push_back(plain);
+                    }
                 }
-                if (!words.empty())
-                    seg->words = audio::WordAligner::align(seg->samples, words,
+                if (!plainWords.empty())
+                    seg->words = audio::WordAligner::align(seg->samples, plainWords,
                                                            seg->sampleRate);
+                const bool anyHyphen = sourceText.find('-') != std::string::npos;
+                if (anyHyphen && !plainWords.empty())
+                    seg->syllables = audio::WordAligner::alignSyllables(
+                        seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
                 graph_.noteSteppedPlayer().setClip(seg);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
                 graph_.ttsClipPlayer().setClip(nullptr);
