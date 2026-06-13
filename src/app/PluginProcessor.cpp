@@ -207,6 +207,11 @@ bool PluginProcessor::piperReady() const noexcept {
     return piperTtsSource_ && piperTtsSource_->isReady();
 }
 
+std::string PluginProcessor::piperStatusDetail() const {
+    if (!piperTtsSource_) return "piper source not initialized";
+    return piperTtsSource_->statusDetail();
+}
+
 juce::String PluginProcessor::activeTtsSourceName() const {
     return juce::String(sceneEngine_.activeTtsConfig().source);
 }

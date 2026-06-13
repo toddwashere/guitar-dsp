@@ -226,15 +226,48 @@ void PiperTTSSource::prepare(double targetSampleRate) {
     targetSampleRate_ = targetSampleRate;
 }
 
+namespace {
+// The piper binary loads these via @rpath = its own directory. The upstream
+// macOS tarballs (2023.11.14-2) ship without them, so a present + executable
+// binary still crashes at launch with "Library not loaded: ...".
+constexpr const char* kRequiredPiperDylibs[] = {
+    "libespeak-ng.1.dylib",
+    "libpiper_phonemize.1.dylib",
+    "libonnxruntime.1.14.1.dylib",
+};
+}
+
 bool PiperTTSSource::isReady() const {
+    return statusDetail().empty();
+}
+
+std::string PiperTTSSource::statusDetail() const {
     namespace fs = std::filesystem;
     std::error_code ec;
-    if (!fs::exists(binaryPath_, ec) || ec) return false;
-    if (!fs::exists(voicePath_, ec) || ec)  return false;
+
+    if (!fs::exists(binaryPath_, ec) || ec)
+        return "piper binary missing at " + binaryPath_;
+    if (!fs::exists(voicePath_, ec) || ec)
+        return "voice file missing at " + voicePath_;
+
     const auto perms = fs::status(binaryPath_, ec).permissions();
-    if (ec) return false;
-    return (perms & (fs::perms::owner_exec | fs::perms::group_exec |
-                     fs::perms::others_exec)) != fs::perms::none;
+    if (ec)
+        return "could not stat piper binary at " + binaryPath_;
+    if ((perms & (fs::perms::owner_exec | fs::perms::group_exec |
+                  fs::perms::others_exec)) == fs::perms::none)
+        return "piper binary at " + binaryPath_ + " is not executable";
+
+    const fs::path binDir = fs::path(binaryPath_).parent_path();
+    for (const auto* lib : kRequiredPiperDylibs) {
+        const auto p = binDir / lib;
+        if (!fs::exists(p, ec) || ec) {
+            return std::string(lib) + " missing next to piper binary at "
+                + binDir.string() + " — the upstream macOS tarball ships "
+                "without runtime dylibs; build Piper from source or copy "
+                "the .dylib from a working install";
+        }
+    }
+    return {};
 }
 
 TTSClipPtr PiperTTSSource::synthesize(const std::string& text) {

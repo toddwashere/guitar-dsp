@@ -27,11 +27,11 @@ void TtsStatusBar::paint(juce::Graphics& g) {
 
     auto area = getLocalBounds().reduced(6, 4);
     const int w = 86;
-    pill(area.removeFromLeft(w), "Apple", true);
+    applePillRect_    = area.removeFromLeft(w);  pill(applePillRect_,    "Apple", true);
     area.removeFromLeft(4);
-    pill(area.removeFromLeft(w), piper ? "Piper OK" : "Piper x", piper);
+    piperPillRect_    = area.removeFromLeft(w);  pill(piperPillRect_,    piper ? "Piper OK" : "Piper x", piper);
     area.removeFromLeft(4);
-    pill(area.removeFromLeft(w), "Prebaked", true);
+    prebakedPillRect_ = area.removeFromLeft(w);  pill(prebakedPillRect_, "Prebaked", true);
     area.removeFromLeft(10);
 
     g.setColour(juce::Colour::fromRGB(150, 160, 175));
@@ -40,6 +40,50 @@ void TtsStatusBar::paint(juce::Graphics& g) {
     if (resolved.isNotEmpty() && resolved != active)
         msg += "   -> using: " + resolved;
     g.drawText(msg, area, juce::Justification::centredLeft);
+}
+
+void TtsStatusBar::mouseDown(const juce::MouseEvent& e) {
+    // Each pill is a click-for-detail status indicator — not a toggle. The
+    // popup mirrors the green/red color and surfaces *why* a red one is red.
+    auto info = [](juce::String engine, bool ok, juce::String detail) {
+        juce::AlertWindow::showAsync(
+            juce::MessageBoxOptions()
+                .withIconType(ok ? juce::MessageBoxIconType::InfoIcon
+                                 : juce::MessageBoxIconType::WarningIcon)
+                .withTitle(engine + (ok ? ": ready" : ": not ready"))
+                .withMessage(ok ? detail
+                                : detail + "\n\n"
+                                  "These status pills are read-only "
+                                  "indicators — selecting which engine plays "
+                                  "is done by the active scene.")
+                .withButton("OK"),
+            nullptr);
+    };
+
+    if (applePillRect_.contains(e.getPosition())) {
+        info("Apple TTS", true,
+             "AVSpeechSynthesizer — bundled with macOS. Always available "
+             "in the standalone; in an AU host it depends on the host "
+             "pumping its main run loop (Logic does; auval does not).");
+        return;
+    }
+    if (piperPillRect_.contains(e.getPosition())) {
+        const bool ok = processor_.piperReady();
+        const auto detail = ok
+            ? juce::String("Local CLI binary at assets/piper/piper with the "
+                           "en_US-amy-medium voice. Runs as a child process; "
+                           "first synth has ~300-800 ms latency.")
+            : juce::String(processor_.piperStatusDetail());
+        info("Piper TTS", ok, detail);
+        return;
+    }
+    if (prebakedPillRect_.contains(e.getPosition())) {
+        info("Prebaked clips", true,
+             "Per-scene WAVs under assets/tts/. Loaded at scene activation "
+             "and used directly - or as the fallback when a live engine "
+             "fails to synthesize. Latency is essentially zero.");
+        return;
+    }
 }
 
 } // namespace guitar_dsp

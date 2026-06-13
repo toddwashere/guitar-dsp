@@ -15,9 +15,15 @@ public:
     explicit TtsStatusBar(PluginProcessor& p);
     ~TtsStatusBar() override;
     void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent& e) override;
 private:
     void timerCallback() override { repaint(); }
     PluginProcessor& processor_;
+    // Cached pill rectangles, refreshed each paint(), so mouseDown knows
+    // which pill the user clicked without re-doing the layout math.
+    juce::Rectangle<int> applePillRect_;
+    juce::Rectangle<int> piperPillRect_;
+    juce::Rectangle<int> prebakedPillRect_;
 };
 
 } // namespace guitar_dsp

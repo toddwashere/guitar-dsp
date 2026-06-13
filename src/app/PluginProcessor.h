@@ -103,7 +103,8 @@ public:
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
     // TTS engine status for the visibility readout (message thread).
-    bool piperReady() const noexcept;                 // binary + voice present
+    bool piperReady() const noexcept;                 // binary + voice + dylibs present
+    std::string piperStatusDetail() const;            // empty when ready, else reason
     juce::String activeTtsSourceName() const;         // declared source of the active scene ("" if none)
     juce::String lastResolvedSource() const noexcept; // source that actually produced the last clip
 

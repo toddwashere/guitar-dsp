@@ -35,9 +35,17 @@ public:
     TTSClipPtr synthesize(const std::string& key) override;
     std::string sourceName() const override { return "piper"; }
 
-    // Returns true if both the binary and voice exist on disk and the
-    // binary is executable. Use this for diagnostic UI / startup checks.
+    // Returns true if Piper looks runnable: binary + voice exist, binary
+    // is executable, and the @rpath-resolved runtime dylibs are present
+    // alongside the binary. Use this for diagnostic UI / startup checks.
     bool isReady() const;
+
+    // Empty when isReady() — otherwise a human-readable explanation of
+    // why Piper can't run (e.g. "libespeak-ng.1.dylib missing next to
+    // piper binary — the upstream macOS tarball ships incomplete; build
+    // Piper from source or copy the dylib from a working install").
+    // Suitable for surfacing in the UI.
+    std::string statusDetail() const;
 
 private:
     std::string binaryPath_;
