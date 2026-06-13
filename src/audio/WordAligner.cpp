@@ -71,4 +71,47 @@ std::vector<WordSegment> WordAligner::align(const std::vector<float>& samples,
     return out;
 }
 
+namespace {
+
+std::vector<std::string> splitOnHyphen(const std::string& s) {
+    std::vector<std::string> parts;
+    std::string cur;
+    for (char c : s) {
+        if (c == '-') {
+            if (!cur.empty()) { parts.push_back(cur); cur.clear(); }
+        } else {
+            cur += c;
+        }
+    }
+    if (!cur.empty()) parts.push_back(cur);
+    if (parts.empty()) parts.push_back(s);
+    return parts;
+}
+
+} // namespace
+
+std::vector<WordSegment> WordAligner::alignSyllables(
+        const std::vector<float>& samples,
+        const std::vector<std::string>& words,
+        const std::vector<std::string>& hyphenatedWords,
+        double sampleRate) {
+    if (hyphenatedWords.size() != words.size()) return {};
+    const auto wordSegs = align(samples, words, sampleRate);
+    if (wordSegs.size() != words.size()) return {};
+
+    std::vector<WordSegment> result;
+    for (std::size_t w = 0; w < wordSegs.size(); ++w) {
+        const auto& seg = wordSegs[w];
+        const auto syllables = splitOnHyphen(hyphenatedWords[w]);
+        const std::size_t n = syllables.size();
+        const std::size_t total = seg.endSample - seg.startSample;
+        for (std::size_t s = 0; s < n; ++s) {
+            const std::size_t start = seg.startSample + (total * s)       / n;
+            const std::size_t end   = seg.startSample + (total * (s + 1)) / n;
+            result.push_back(WordSegment{syllables[s], start, end});
+        }
+    }
+    return result;
+}
+
 } // namespace guitar_dsp::audio

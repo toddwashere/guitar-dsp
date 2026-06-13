@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "audio/WordAligner.h"
+#include "audio/TTSClip.h"
 
 #include <cmath>
 #include <string>
@@ -95,4 +96,66 @@ TEST_CASE("WordAligner: gapless clip still returns N even segments",
     REQUIRE(segs[2].endSample == 9000);
     for (size_t i = 1; i < segs.size(); ++i)
         REQUIRE(segs[i].startSample == segs[i-1].endSample);
+}
+
+namespace {
+
+// Helper: build samples with two "words" — 200 ms tone + 100 ms silence + 200 ms tone.
+std::vector<float> makeTwoWordSamples() {
+    constexpr int wordSamples = 48000 / 5;     // 200 ms
+    constexpr int gapSamples  = 48000 / 10;    // 100 ms
+    std::vector<float> samples(2 * wordSamples + gapSamples, 0.0f);
+    for (int i = 0; i < wordSamples; ++i)
+        samples[i] = 0.5f * std::sin(2.0 * 3.14159265 * 220.0 * i / 48000.0);
+    const int word2Start = wordSamples + gapSamples;
+    for (int i = 0; i < wordSamples; ++i)
+        samples[word2Start + i] = 0.5f * std::sin(2.0 * 3.14159265 * 330.0 * i / 48000.0);
+    return samples;
+}
+
+} // namespace
+
+TEST_CASE("WordAligner::alignSyllables: each word's hyphen-count splits its time range",
+          "[audio][word_aligner][syllables]") {
+    const auto samples = makeTwoWordSamples();
+    const std::vector<std::string> words           {"guitar",   "gently"};
+    const std::vector<std::string> hyphenatedWords {"gui-tar",  "gent-ly"};
+    auto syllables = WordAligner::alignSyllables(samples, words, hyphenatedWords, 48000.0);
+
+    REQUIRE(syllables.size() == 4);
+    REQUIRE(syllables[0].word == "gui");
+    REQUIRE(syllables[1].word == "tar");
+    REQUIRE(syllables[2].word == "gent");
+    REQUIRE(syllables[3].word == "ly");
+
+    // Each syllable's range must fit within its parent word's range.
+    const auto wordSegs = WordAligner::align(samples, words, 48000.0);
+    REQUIRE(syllables[0].startSample == wordSegs[0].startSample);
+    REQUIRE(syllables[1].endSample   == wordSegs[0].endSample);
+    REQUIRE(syllables[2].startSample == wordSegs[1].startSample);
+    REQUIRE(syllables[3].endSample   == wordSegs[1].endSample);
+    // Within word 0, syllables are equal halves (within +/- 1 sample).
+    const std::size_t midWord0 = (wordSegs[0].startSample + wordSegs[0].endSample) / 2;
+    const long delta = static_cast<long>(syllables[0].endSample) - static_cast<long>(midWord0);
+    REQUIRE(delta <= 1);
+    REQUIRE(delta >= -1);
+}
+
+TEST_CASE("WordAligner::alignSyllables: word without hyphen contributes one syllable",
+          "[audio][word_aligner][syllables]") {
+    const auto samples = makeTwoWordSamples();
+    const std::vector<std::string> words           {"guitar", "speaks"};
+    const std::vector<std::string> hyphenatedWords {"gui-tar", "speaks"};
+    auto syllables = WordAligner::alignSyllables(samples, words, hyphenatedWords, 48000.0);
+    REQUIRE(syllables.size() == 3);
+    REQUIRE(syllables[2].word == "speaks");
+}
+
+TEST_CASE("WordAligner::alignSyllables: shape mismatch returns empty",
+          "[audio][word_aligner][syllables]") {
+    const auto samples = makeTwoWordSamples();
+    const std::vector<std::string> words           {"guitar", "speaks"};
+    const std::vector<std::string> hyphenatedWords {"gui-tar"};  // wrong size
+    auto syllables = WordAligner::alignSyllables(samples, words, hyphenatedWords, 48000.0);
+    REQUIRE(syllables.empty());
 }
