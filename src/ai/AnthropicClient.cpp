@@ -18,6 +18,12 @@ std::string AnthropicClient::statusText() const {
 }
 
 LlmReply AnthropicClient::generate(const LlmRequest& req, CancellationToken* cancel) {
+    if (apiKey_.empty()) {
+        LlmReply out;
+        out.error = "Anthropic: key missing";
+        return out;
+    }
+
     // Build request body
     juce::DynamicObject::Ptr root = new juce::DynamicObject();
     root->setProperty("model", juce::String(modelId_));

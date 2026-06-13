@@ -44,8 +44,13 @@ HttpResponse runRequest(const juce::URL& url, bool isPost,
     }
 
     std::map<std::string, std::string> outHeaders;
-    for (const auto& k : respHeaders.getAllKeys())
-        outHeaders[k.toStdString()] = respHeaders[k].toStdString();
+    for (const auto& k : respHeaders.getAllKeys()) {
+        // Lowercase response header names so case-insensitive lookups by clients
+        // (e.g. AnthropicClient looking for "retry-after") work regardless of
+        // what casing the server actually returns.
+        auto lower = k.toLowerCase().toStdString();
+        outHeaders[lower] = respHeaders[k].toStdString();
+    }
 
     return HttpResponse{
         statusCode,

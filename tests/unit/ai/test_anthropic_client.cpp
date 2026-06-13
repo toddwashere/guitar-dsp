@@ -126,3 +126,22 @@ TEST_CASE("AnthropicClient: modelId returns the configured model",
     AnthropicClient c{http, "k", "claude-haiku-4-5"};
     REQUIRE(c.modelId() == "claude-haiku-4-5");
 }
+
+TEST_CASE("AnthropicClient: empty API key returns pre-flight error without HTTP call",
+          "[ai][llm][anthropic]") {
+    FakeHttpTransport http;
+    AnthropicClient c{http, "", "claude-haiku-4-5"};
+    auto reply = c.generate(sampleRequest());
+    REQUIRE(reply.error.find("key missing") != std::string::npos);
+    REQUIRE(http.calls.empty());   // never reached HTTP
+}
+
+TEST_CASE("AnthropicClient: non-special status maps to 'unexpected status N'",
+          "[ai][llm][anthropic]") {
+    FakeHttpTransport http;
+    http.replies.push({418, "{}", "", {}});  // I'm a teapot
+    AnthropicClient c{http, "k", "claude-haiku-4-5"};
+    auto reply = c.generate(sampleRequest());
+    REQUIRE(reply.error.find("unexpected status") != std::string::npos);
+    REQUIRE(reply.error.find("418") != std::string::npos);
+}
