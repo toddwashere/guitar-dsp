@@ -55,6 +55,7 @@ target_link_libraries(guitar_dsp_scenes PUBLIC juce::juce_core)
 add_library(guitar_dsp_ai STATIC
     ai/ConversationBuffer.cpp
     ai/PersonaRegistry.cpp
+    ai/AppPreferences.cpp
 )
 
 target_include_directories(guitar_dsp_ai PUBLIC
