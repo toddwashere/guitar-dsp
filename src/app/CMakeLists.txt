@@ -39,6 +39,7 @@ target_sources(guitar_dsp_app PRIVATE
     VocoderPanel.cpp
     SayPanel.cpp
     MidiDevicePicker.cpp
+    NoteReadout.cpp
     WordReadout.cpp
     TtsStatusBar.cpp
     StatePill.cpp
