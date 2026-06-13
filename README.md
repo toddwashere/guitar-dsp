@@ -130,6 +130,51 @@ include guidance to hyphenate multi-syllable words. Without that, the
 AI response will use the Latch fallback and lose the syllable-level
 sync.
 
+#### Rewind
+
+If the spoken sequence drifts out of sync with what you're playing —
+WordAligner produced bad boundaries, you missed a pluck, you switched
+modes mid-phrase — click the small **Rewind** pill in the top-right
+corner of the word-readout strip. The next onset plays segment 0
+again. Real-time-safe (atomic pending flag, drained by the audio
+thread on the next block).
+
+#### Hand-authored syllable timings for prebaked clips
+
+The default `WordAligner` is an energy-gap heuristic that needs clear
+silences between words. Prebaked TTS clips with continuous prosody
+often lack them, so syllable mode can drift (especially at the start
+of a phrase).
+
+When this matters for a demo phrase, override the heuristic by adding
+`syllableTimingsMs` to the clip's `meta.json`:
+
+```json
+{
+  "text": "And now my gui-tar gent-ly speaks for me.",
+  "voice": "...",
+  "duration_s": 2.155854,
+  "syllableTimingsMs": [
+    [   0,  150],
+    [ 150,  310],
+    [ 310,  460],
+    [ 460,  710],
+    [ 710,  960],
+    [ 960, 1180],
+    [1180, 1340],
+    [1340, 1720],
+    [1720, 1900],
+    [1900, 2156]
+  ]
+}
+```
+
+Array length must match the syllable count (hyphen-split tokens in
+`text`). When present, `PrebakedTTSSource` populates
+`clip->syllables` directly and the aligner is skipped. Refine values
+by ear: load `audio.wav` in Audacity, mark boundaries, edit the
+numbers. No rebuild — re-activate the scene to pick up changes.
+
 ## Project status
 
 This branch implements **Phase 5a: note-triggered word-by-word speech** — the
