@@ -88,9 +88,16 @@ PitchTrackedCarrier::State PitchTrackedCarrier::process(
                     decaySamplesRemaining_ = 0;
                     decayGain_ = 1.0f;
                 }
-                currentFreqHz_     = f0;
-                lastVoicedFreqHz_  = f0;
-                const float midi   = 69.0f + 12.0f * std::log2(f0 / 440.0f);
+                float effectiveF0 = f0;
+                if (singing_.load(std::memory_order_relaxed)
+                        && pitchQuantize_.load(std::memory_order_relaxed)) {
+                    const float midiFloat   = 69.0f + 12.0f * std::log2(f0 / 440.0f);
+                    const float midiRounded = std::round(midiFloat);
+                    effectiveF0 = 440.0f * std::pow(2.0f, (midiRounded - 69.0f) / 12.0f);
+                }
+                currentFreqHz_     = effectiveF0;
+                lastVoicedFreqHz_  = effectiveF0;
+                const float midi   = 69.0f + 12.0f * std::log2(effectiveF0 / 440.0f);
                 currentMidiNote_   = static_cast<int>(std::lround(midi));
                 currentCents_      = 100.0f * (midi - currentMidiNote_);
             } else if (currentlyVoiced_) {

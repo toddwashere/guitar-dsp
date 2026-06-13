@@ -401,3 +401,37 @@ TEST_CASE("PitchTrackedCarrier vibrato: peak instantaneous frequency deviates fr
     const float centsFromF0 = 1200.0f * std::log2(minHz / 220.0f);
     REQUIRE(centsFromF0 < -10.0f);
 }
+
+TEST_CASE("PitchTrackedCarrier quantize: 226 Hz input -> 220 Hz output peak in Sing+quantize mode",
+          "[audio][pitch_tracked_carrier][sing][quantize]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+    c.setSinging(true);
+    c.setPitchQuantize(true);
+    c.setVibratoCents(0.0f);   // disable vibrato so quantize is isolated
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(48000);
+    gen.sine(226.0f, 0.4f, in.data(), in.size());  // slightly sharp A3
+
+    std::vector<float> sawOut(48000), blockOut(512);
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        c.process(in.data() + i, blockOut.data(), n);
+        std::copy(blockOut.begin(), blockOut.begin() + n, sawOut.begin() + i);
+    }
+
+    auto goertzel = [&](float hz) {
+        const float omega = 2.0f * 3.14159265f * hz / 48000.0f;
+        const float coef  = 2.0f * std::cos(omega);
+        float s1 = 0.0f, s2 = 0.0f;
+        for (std::size_t i = 24000; i < sawOut.size(); ++i) {
+            const float s = sawOut[i] + coef * s1 - s2;
+            s2 = s1; s1 = s;
+        }
+        return s1 * s1 + s2 * s2 - coef * s1 * s2;
+    };
+    // Quantized output should have substantially more energy at 220 Hz (A3)
+    // than at 226 Hz (the raw input pitch).
+    REQUIRE(goertzel(220.0f) > 2.0f * goertzel(226.0f));
+}
