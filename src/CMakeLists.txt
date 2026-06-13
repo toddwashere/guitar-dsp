@@ -58,6 +58,7 @@ add_library(guitar_dsp_ai STATIC
     ai/AppPreferences.cpp
     ai/JuceHttpTransport.cpp
     ai/AnthropicClient.cpp
+    ai/OllamaClient.cpp
 )
 
 target_include_directories(guitar_dsp_ai PUBLIC
