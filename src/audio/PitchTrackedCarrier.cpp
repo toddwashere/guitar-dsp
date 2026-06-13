@@ -125,8 +125,18 @@ PitchTrackedCarrier::State PitchTrackedCarrier::process(
 
         const float freqForSample = currentlyVoiced_ ? currentFreqHz_
                                                       : lastVoicedFreqHz_;
-        out[i] = (amp > 0.0f && freqForSample > 0.0f)
-               ? amp * nextSawSample(freqForSample)
+        float effectiveFreq = freqForSample;
+        if (singing_.load(std::memory_order_relaxed) && effectiveFreq > 0.0f) {
+            const float vHz    = vibratoHz_.load(std::memory_order_relaxed);
+            const float vCents = vibratoCents_.load(std::memory_order_relaxed);
+            vibratoPhase_ += 2.0 * 3.14159265358979323846 * vHz / sampleRate_;
+            if (vibratoPhase_ >= 2.0 * 3.14159265358979323846) vibratoPhase_ -= 2.0 * 3.14159265358979323846;
+            const float vibratoOffsetCents =
+                vCents * static_cast<float>(std::sin(vibratoPhase_));
+            effectiveFreq *= std::pow(2.0f, vibratoOffsetCents / 1200.0f);
+        }
+        out[i] = (amp > 0.0f && effectiveFreq > 0.0f)
+               ? amp * nextSawSample(effectiveFreq)
                : 0.0f;
     }
 

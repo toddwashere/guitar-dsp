@@ -363,3 +363,41 @@ TEST_CASE("PitchTrackedCarrier saw: LPF at 2 kHz attenuates 5 kHz energy vs LPF-
     const float highWithoutLpf = goertzel(withoutLpf, 5000.0f);
     REQUIRE(highWithLpf * 5.0f < highWithoutLpf);
 }
+
+TEST_CASE("PitchTrackedCarrier vibrato: peak instantaneous frequency deviates from F0 when Sing on",
+          "[audio][pitch_tracked_carrier][sing][vibrato]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+    c.setSinging(true);
+    c.setPitchQuantize(false);  // isolate vibrato — no semitone snapping
+    c.setVibratoHz(5.0f);
+    c.setVibratoCents(40.0f);   // bigger depth so the test is robust
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(48000);
+    gen.sine(220.0f, 0.4f, in.data(), in.size());
+
+    std::vector<float> sawOut(48000), blockOut(512);
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        c.process(in.data() + i, blockOut.data(), n);
+        std::copy(blockOut.begin(), blockOut.begin() + n, sawOut.begin() + i);
+    }
+
+    // Measure zero-crossing intervals over the last 0.5 s; the longest
+    // observed interval should correspond to a frequency lower than F0 by
+    // at least 10 cents (vibrato pulling pitch down).
+    int lastCrossing = -1, longestInterval = 0;
+    for (std::size_t i = 24000; i + 1 < sawOut.size(); ++i) {
+        if (sawOut[i] <= 0.0f && sawOut[i + 1] > 0.0f) {
+            if (lastCrossing >= 0) {
+                const int interval = static_cast<int>(i) - lastCrossing;
+                longestInterval = std::max(longestInterval, interval);
+            }
+            lastCrossing = static_cast<int>(i);
+        }
+    }
+    const float minHz = 48000.0f / static_cast<float>(longestInterval);
+    const float centsFromF0 = 1200.0f * std::log2(minHz / 220.0f);
+    REQUIRE(centsFromF0 < -10.0f);
+}
