@@ -337,6 +337,16 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             // refreshes the clarity setting.
             graph_.setClarity(cfg.clarity);
 
+            // Per-scene word-sync mode override. Applied on every scene change
+            // so a scene's declared wordSync always wins over the UI selection.
+            // "global" (or unrecognized): leave whatever the UI selected in place.
+            if (cfg.wordSync == "latch")
+                graph_.setWordSyncMode(audio::WordSyncMode::Latch);
+            else if (cfg.wordSync == "advance")
+                graph_.setWordSyncMode(audio::WordSyncMode::Advance);
+            else if (cfg.wordSync == "syllable")
+                graph_.setWordSyncMode(audio::WordSyncMode::Syllable);
+
             // Build a per-source key (matches what synthesize() expects).
             std::string key;
             if (cfg.source == "prebaked") key = cfg.clip;
