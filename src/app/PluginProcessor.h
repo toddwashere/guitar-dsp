@@ -141,6 +141,11 @@ public:
     void togglePitchSinging() noexcept      { graph_.setPitchSinging(!graph_.pitchSinging()); }
     bool pitchSinging() const noexcept      { return graph_.pitchSinging(); }
 
+    // Sing-mode toggle (vibrato + pitch quantize when on).
+    void setSinging(bool on)    noexcept { graph_.setSinging(on); }
+    void toggleSinging()        noexcept { graph_.setSinging(!graph_.singing()); }
+    bool singing()        const noexcept { return graph_.singing(); }
+
     // Live pitch readout published by AudioGraph (audio thread -> UI).
     int   detectedNoteMidi() const noexcept { return graph_.detectedNoteMidi(); }
     float detectedCents()    const noexcept { return graph_.detectedCents(); }
