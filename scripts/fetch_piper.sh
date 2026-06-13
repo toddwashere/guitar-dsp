@@ -26,10 +26,10 @@ VOICE_JSON="$PIPER_DIR/voices/en_US-amy-medium.onnx.json"
 # Pick the right Piper release for this platform.
 case "$(uname -s)/$(uname -m)" in
     Darwin/arm64)
-        PIPER_URL="https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_macos_aarch64.tar.gz"
+        PIPER_URL="https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_macos_aarch64.tar.gz"
         ;;
     Darwin/x86_64)
-        PIPER_URL="https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_macos_x64.tar.gz"
+        PIPER_URL="https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_macos_x64.tar.gz"
         ;;
     *)
         echo "Unsupported platform: $(uname -s)/$(uname -m)" >&2
