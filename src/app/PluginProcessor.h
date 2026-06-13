@@ -146,6 +146,10 @@ public:
     void toggleSinging()        noexcept { graph_.setSinging(!graph_.singing()); }
     bool singing()        const noexcept { return graph_.singing(); }
 
+    // Word-sync mode (Latch / Advance / Syllable) for note-triggered TTS.
+    void setWordSyncMode(audio::WordSyncMode m) noexcept { graph_.setWordSyncMode(m); }
+    audio::WordSyncMode wordSyncMode() const noexcept    { return graph_.wordSyncMode(); }
+
     // Live pitch readout published by AudioGraph (audio thread -> UI).
     int   detectedNoteMidi() const noexcept { return graph_.detectedNoteMidi(); }
     float detectedCents()    const noexcept { return graph_.detectedCents(); }

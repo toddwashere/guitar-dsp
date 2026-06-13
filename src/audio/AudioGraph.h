@@ -109,6 +109,14 @@ public:
     void setSinging(bool on)  noexcept { pitchCarrier_.setSinging(on); }
     bool singing()      const noexcept { return pitchCarrier_.singing(); }
 
+    // Word-sync mode for note-triggered TTS scenes.
+    void setWordSyncMode(WordSyncMode m) noexcept {
+        noteSteppedPlayer_.setMode(m);
+    }
+    WordSyncMode wordSyncMode() const noexcept {
+        return noteSteppedPlayer_.mode();
+    }
+
     // Latest detected pitch published from the audio thread for the UI. -1
     // midiNote / 0 Hz when unvoiced AND hold-decay has expired.
     int   detectedNoteMidi() const noexcept { return detectedNoteMidi_.load(std::memory_order_relaxed); }
