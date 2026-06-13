@@ -42,19 +42,27 @@ void NoteSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
         currentWordIndex_.store(-1, std::memory_order_relaxed);
     }
 
-    const bool haveClip  = activeClip_ && !activeClip_->samples.empty();
-    const bool haveWords = haveClip && !activeClip_->words.empty();
+    const bool haveClip      = activeClip_ && !activeClip_->samples.empty();
+    const auto modeNow       = static_cast<WordSyncMode>(mode_.load(std::memory_order_relaxed));
+    const bool wantSyllables = (modeNow == WordSyncMode::Syllable)
+                                && haveClip
+                                && !activeClip_->syllables.empty();
+    const std::vector<WordSegment>* segments = nullptr;
+    if (haveClip)
+        segments = wantSyllables ? &activeClip_->syllables : &activeClip_->words;
+    const bool haveSegments  = (segments != nullptr) && !segments->empty();
 
     for (std::size_t i = 0; i < numSamples; ++i) {
         if (onset_.processSample(onsetSrc[i]) && haveClip) {
-            const auto m = static_cast<WordSyncMode>(mode_.load(std::memory_order_relaxed));
-            const bool latchHolds = (m == WordSyncMode::Latch) && playing_;
+            const bool latchHolds = (modeNow == WordSyncMode::Latch
+                                      || modeNow == WordSyncMode::Syllable)
+                                    && playing_;
             if (!latchHolds) {
-                if (haveWords) {
-                    const int n = static_cast<int>(activeClip_->words.size());
+                if (haveSegments) {
+                    const int n = static_cast<int>(segments->size());
                     wordIndex_ = (wordIndex_ + 1) % n;
-                    playPos_ = activeClip_->words[static_cast<std::size_t>(wordIndex_)].startSample;
-                    segEnd_  = activeClip_->words[static_cast<std::size_t>(wordIndex_)].endSample;
+                    playPos_ = (*segments)[static_cast<std::size_t>(wordIndex_)].startSample;
+                    segEnd_  = (*segments)[static_cast<std::size_t>(wordIndex_)].endSample;
                 } else {
                     wordIndex_ = 0;
                     playPos_ = 0;

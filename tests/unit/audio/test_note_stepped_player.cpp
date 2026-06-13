@@ -209,3 +209,79 @@ TEST_CASE("NoteSteppedTTSPlayer Advance: onset during playback advances and rest
     // Both onsets fire (Advance mode) -> index goes 0 then 1.
     REQUIRE(player.currentWordIndex() == 1);
 }
+
+namespace {
+
+// 3-syllable clip: like makeThreeWordClip but with `syllables` populated
+// and `words` left empty so the test isolates syllable behavior.
+guitar_dsp::audio::TTSClipPtr makeThreeSyllableClip() {
+    using guitar_dsp::audio::TTSClip;
+    using guitar_dsp::audio::WordSegment;
+    auto clip = std::make_shared<TTSClip>();
+    clip->sampleRate = 48000.0;
+    constexpr int sylSamples = (48000 * 8) / 10;   // 800 ms per syllable — long
+    constexpr int gap         = 48000 / 5;          // 200 ms gap
+    clip->samples.resize(3 * (sylSamples + gap), 0.0f);
+    const float freqs[3] = { 220.0f, 247.0f, 277.0f };
+    for (int s = 0; s < 3; ++s) {
+        const int base = s * (sylSamples + gap);
+        for (int i = 0; i < sylSamples; ++i)
+            clip->samples[base + i] = 0.5f * std::sin(
+                2.0 * 3.14159265 * freqs[s] * i / 48000.0);
+        clip->syllables.push_back(WordSegment{
+            "syl" + std::to_string(s),
+            static_cast<std::size_t>(base),
+            static_cast<std::size_t>(base + sylSamples)});
+    }
+    return clip;
+}
+
+} // namespace
+
+TEST_CASE("NoteSteppedTTSPlayer Syllable: advances through syllables when populated",
+          "[audio][note_stepped][syllable]") {
+    using namespace guitar_dsp::audio;
+    NoteSteppedTTSPlayer player;
+    player.prepare(48000.0, 512);
+    player.setMode(WordSyncMode::Syllable);
+    player.setClip(makeThreeSyllableClip());
+
+    // Three onsets spaced past the 800 ms syllable + 200 ms gap, so each
+    // syllable completes before the next onset arrives → Syllable mode
+    // (Latch-on-syllables semantics) advances cleanly through all 3.
+    constexpr std::size_t N = 48000 * 4;  // 4 seconds
+    std::vector<float> onsets(N, 0.0f);
+    plantOnset(onsets,          100, 0.9f);
+    plantOnset(onsets,        52800, 0.9f);    // t ≈ 1100 ms
+    plantOnset(onsets,       105600, 0.9f);    // t ≈ 2200 ms
+
+    std::vector<float> out(N);
+    for (std::size_t i = 0; i < onsets.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, onsets.size() - i);
+        player.process(onsets.data() + i, out.data() + i, n);
+    }
+    REQUIRE(player.currentWordIndex() == 2);  // index across the 3 syllables
+}
+
+TEST_CASE("NoteSteppedTTSPlayer Syllable: falls back to Latch on words when no syllables",
+          "[audio][note_stepped][syllable]") {
+    using namespace guitar_dsp::audio;
+    NoteSteppedTTSPlayer player;
+    player.prepare(48000.0, 512);
+    player.setMode(WordSyncMode::Syllable);
+    // makeThreeWordClip has WORDS populated, no syllables. With syllable mode
+    // requested but no syllables, behavior must match Latch on words.
+    player.setClip(makeThreeWordClip());
+
+    // Mid-word second onset (same pattern as the Latch-mid-word test).
+    std::vector<float> onsets(48000, 0.0f);
+    plantOnset(onsets,    100, 0.9f);
+    plantOnset(onsets,  12000, 0.9f);   // t ≈ 250 ms, mid-word
+
+    std::vector<float> out(48000);
+    for (std::size_t i = 0; i < onsets.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, onsets.size() - i);
+        player.process(onsets.data() + i, out.data() + i, n);
+    }
+    REQUIRE(player.currentWordIndex() == 0);  // fallback to Latch
+}
