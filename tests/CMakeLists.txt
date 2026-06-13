@@ -45,6 +45,7 @@ add_executable(guitar_dsp_tests
     unit/ai/test_juce_http_transport.cpp
     unit/ai/test_anthropic_client.cpp
     unit/ai/test_ollama_client.cpp
+    unit/ai/test_conversation_engine.cpp
     unit/app/test_plugin_state.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
     integration/test_passthrough_golden.cpp

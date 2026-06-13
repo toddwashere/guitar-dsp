@@ -61,6 +61,7 @@ add_library(guitar_dsp_ai STATIC
     ai/AnthropicClient.cpp
     ai/OllamaClient.cpp
     ai/WhisperTranscriber.cpp
+    ai/ConversationEngine.cpp
 )
 
 target_include_directories(guitar_dsp_ai PUBLIC
