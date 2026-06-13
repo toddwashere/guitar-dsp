@@ -40,7 +40,27 @@ std::optional<FCB1010Mapping> FCB1010Mapping::loadFromJson(const std::string& js
         }
     }
 
+    if (obj->hasProperty("aiPedals")) {
+        if (auto* a = obj->getProperty("aiPedals").getDynamicObject()) {
+            if (a->hasProperty("ptt"))         m.ai_.pttProgramChange       = static_cast<int>(a->getProperty("ptt"));
+            if (a->hasProperty("clearChat"))   m.ai_.clearChatProgramChange = static_cast<int>(a->getProperty("clearChat"));
+            if (a->hasProperty("longPressMs")) m.ai_.longPressMillis        = static_cast<int>(a->getProperty("longPressMs"));
+        }
+    }
+
     return m;
+}
+
+AiAction FCB1010Mapping::decodeAi(int pc, bool isLongPress) const {
+    if (pc == ai_.pttProgramChange && !isLongPress)    return AiAction::PttToggle;
+    if (pc == ai_.clearChatProgramChange) {
+        return isLongPress ? AiAction::ClearChat : AiAction::CancelTurn;
+    }
+    return AiAction::None;
+}
+
+void FCB1010Mapping::setAiBindings(AiPedalBindings b) {
+    ai_ = b;
 }
 
 std::optional<SceneCommand> FCB1010Mapping::translate(const juce::MidiMessage& msg) const {

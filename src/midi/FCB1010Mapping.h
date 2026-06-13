@@ -10,6 +10,14 @@
 
 namespace guitar_dsp::midi {
 
+enum class AiAction { None, PttToggle, CancelTurn, ClearChat };
+
+struct AiPedalBindings {
+    int  pttProgramChange       = -1;   // -1 = disabled
+    int  clearChatProgramChange = -1;
+    int  longPressMillis        = 700;
+};
+
 class FCB1010Mapping {
 public:
     static FCB1010Mapping stockDefaults();
@@ -17,10 +25,15 @@ public:
 
     std::optional<SceneCommand> translate(const juce::MidiMessage& msg) const;
 
+    AiAction        decodeAi(int programChangeNumber, bool isLongPress) const;
+    void            setAiBindings(AiPedalBindings);
+    AiPedalBindings aiBindings() const { return ai_; }
+
 private:
     std::unordered_map<int, int> programChangeToScene_;
     int wetDryCc_     = -1;
     int masterGainCc_ = -1;
+    AiPedalBindings ai_;
 };
 
 } // namespace guitar_dsp::midi

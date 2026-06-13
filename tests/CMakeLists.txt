@@ -36,6 +36,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
     unit/midi/test_fcb1010_mapping.cpp
+    unit/midi/test_fcb1010_mapping_ai.cpp
     unit/midi/test_host_midi_scene_router.cpp
     unit/ai/test_conversation_buffer.cpp
     unit/ai/test_persona_registry.cpp
