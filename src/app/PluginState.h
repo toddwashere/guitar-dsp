@@ -17,6 +17,7 @@ struct PluginStateData {
     float gateThresholdDb = -60.0f;  // noise gate (lower = more permissive)
     bool pitchSinging = false;
     bool singing = false;
+    int wordSyncMode = 0;  // 0=Latch, 1=Advance, 2=Syllable
     // NOTE: vocoder `clarity` is intentionally NOT persisted — it is a per-
     // SCENE control (every scene change overwrites it from cfg.clarity), so
     // saving it would just race with the scene-change handler on reload. To

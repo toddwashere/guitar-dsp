@@ -114,3 +114,19 @@ TEST_CASE("PluginState: singing defaults to false when absent",
     const auto out = guitar_dsp::app::PluginState::fromJson(json);
     REQUIRE(out.singing == false);
 }
+
+TEST_CASE("PluginState: wordSyncMode round-trips through JSON",
+          "[app][state][word_sync]") {
+    guitar_dsp::app::PluginStateData d;
+    d.wordSyncMode = 2;  // Syllable
+    const auto json = guitar_dsp::app::PluginState::toJson(d);
+    const auto out  = guitar_dsp::app::PluginState::fromJson(json);
+    REQUIRE(out.wordSyncMode == 2);
+}
+
+TEST_CASE("PluginState: wordSyncMode defaults to 0 (Latch) when absent",
+          "[app][state][word_sync]") {
+    const juce::String json = R"({ "sceneId": 0 })";
+    const auto out = guitar_dsp::app::PluginState::fromJson(json);
+    REQUIRE(out.wordSyncMode == 0);
+}
