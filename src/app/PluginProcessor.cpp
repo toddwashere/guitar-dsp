@@ -32,6 +32,9 @@ public:
     void timerCallback() override {
         const int s = p_.pendingHostScene_.exchange(-1, std::memory_order_acquire);
         if (s >= 0) p_.sceneEngine_.activateScene(s);
+
+        if (p_.pendingPitchSingingToggle_.exchange(false, std::memory_order_acquire))
+            p_.togglePitchSinging();
     }
 private:
     PluginProcessor& p_;
@@ -63,6 +66,8 @@ PluginProcessor::PluginProcessor()
             if (auto cmd = midiMapping_.translate(msg)) {
                 if (cmd->type == midi::SceneCommandType::ActivateScene) {
                     sceneEngine_.activateScene(cmd->payload);
+                } else if (cmd->type == midi::SceneCommandType::TogglePitchSinging) {
+                    graph_.setPitchSinging(!graph_.pitchSinging());
                 }
                 // SetWetDry / SetMasterGain are recognized but no-op in
                 // Phase 2; expression-pedal continuous control wires
@@ -284,6 +289,11 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     if (wrapperType != wrapperType_Standalone) {
         const int s = midi::sceneFromMidiBuffer(midiMessages, midiMapping_);
         if (s >= 0) pendingHostScene_.store(s, std::memory_order_release);
+    }
+
+    if (wrapperType != wrapperType_Standalone) {
+        if (midi::pitchSingingToggleFromMidiBuffer(midiMessages, midiMapping_))
+            pendingPitchSingingToggle_.store(true, std::memory_order_release);
     }
 
     juce::ScopedNoDenormals noDenormals;

@@ -136,6 +136,16 @@ public:
     float vocoderSibilance() const noexcept { return graph_.vocoderSibilance(); }
     float vocoderClarity() const noexcept { return graph_.clarity(); }
 
+    // Pitch-singing toggle (message thread).
+    void setPitchSinging(bool on) noexcept  { graph_.setPitchSinging(on); }
+    void togglePitchSinging() noexcept      { graph_.setPitchSinging(!graph_.pitchSinging()); }
+    bool pitchSinging() const noexcept      { return graph_.pitchSinging(); }
+
+    // Live pitch readout published by AudioGraph (audio thread -> UI).
+    int   detectedNoteMidi() const noexcept { return graph_.detectedNoteMidi(); }
+    float detectedCents()    const noexcept { return graph_.detectedCents(); }
+    float detectedHz()       const noexcept { return graph_.detectedHz(); }
+
     // Noise gate threshold (dBFS). Lower = more permissive.
     void  setNoiseGateThresholdDb(float dB) noexcept { graph_.setNoiseGateThresholdDb(dB); }
     float noiseGateThresholdDb() const noexcept      { return graph_.noiseGateThresholdDb(); }
@@ -209,6 +219,7 @@ private:
     // message thread (activateScene is message-thread API). Standalone uses
     // MidiRouter instead, so this stays inert there.
     std::atomic<int> pendingHostScene_ {-1};
+    std::atomic<bool> pendingPitchSingingToggle_ {false};
     class HostMidiPoller;
     std::unique_ptr<HostMidiPoller> hostMidiPoller_;
 
