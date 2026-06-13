@@ -38,6 +38,11 @@ public:
     // treated as unvoiced. Defaults: 40 Hz .. 2000 Hz.
     void setFrequencyRange(float minHz, float maxHz) noexcept;
 
+    // Saw lowpass cutoff in Hz. Default 2000. Recompute happens in prepare();
+    // call this BEFORE prepare(), or update sampleRate-dependent alpha
+    // manually if you change it later.
+    void setSawLowpassHz(float hz) noexcept;
+
 private:
     // ---- YIN detector parameters ---------------------------------------
     static constexpr int kWindowSize = 2048;   // ~46 ms @ 44.1 kHz
@@ -57,6 +62,12 @@ private:
     double sampleRate_ = 48000.0;
     double sawPhase_   = 0.0;   // [0, 1)
     float  currentFreqHz_ = 0.0f;
+
+    // Saw post-filter: 1-pole IIR LPF on the sawtooth output. Tames the
+    // bright top end so vocoder bands don't pass buzz through.
+    float  sawLpfState_   = 0.0f;
+    float  sawLpfHz_      = 2000.0f;
+    float  sawLpfAlpha_   = 0.0f;  // recomputed in prepare() from sawLpfHz_
 
     // ---- Hold/decay state ----------------------------------------------
     float holdMs_       = 1000.0f;

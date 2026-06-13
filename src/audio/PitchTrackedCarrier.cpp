@@ -10,6 +10,8 @@ PitchTrackedCarrier::PitchTrackedCarrier() = default;
 void PitchTrackedCarrier::prepare(double sampleRate, int blockSize) {
     (void) blockSize;
     sampleRate_ = sampleRate;
+    sawLpfAlpha_ = 1.0f - std::exp(
+        -2.0f * 3.14159265358979323846f * sawLpfHz_ / static_cast<float>(sampleRate_));
     ring_.assign(kWindowSize, 0.0f);
     diff_.assign(kWindowSize / 2, 0.0f);
     reset();
@@ -29,6 +31,7 @@ void PitchTrackedCarrier::reset() {
     currentlyVoiced_ = false;
     currentMidiNote_ = -1;
     currentCents_ = 0.0f;
+    sawLpfState_ = 0.0f;
 }
 
 void PitchTrackedCarrier::setHoldMs(float ms)  noexcept { holdMs_  = ms; }
@@ -36,6 +39,12 @@ void PitchTrackedCarrier::setDecayMs(float ms) noexcept { decayMs_ = ms; }
 void PitchTrackedCarrier::setFrequencyRange(float minHz, float maxHz) noexcept {
     minHz_ = minHz;
     maxHz_ = maxHz;
+}
+
+void PitchTrackedCarrier::setSawLowpassHz(float hz) noexcept {
+    sawLpfHz_ = hz;
+    sawLpfAlpha_ = 1.0f - std::exp(
+        -2.0f * 3.14159265358979323846f * sawLpfHz_ / static_cast<float>(sampleRate_));
 }
 
 PitchTrackedCarrier::State PitchTrackedCarrier::process(
@@ -213,7 +222,8 @@ float PitchTrackedCarrier::nextSawSample(float freqHz) noexcept {
 
     sawPhase_ += dt;
     if (sawPhase_ >= 1.0) sawPhase_ -= 1.0;
-    return v;
+    sawLpfState_ += sawLpfAlpha_ * (v - sawLpfState_);
+    return sawLpfState_;
 }
 
 } // namespace guitar_dsp::audio

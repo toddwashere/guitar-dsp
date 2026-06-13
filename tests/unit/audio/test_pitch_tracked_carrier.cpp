@@ -312,3 +312,36 @@ TEST_CASE("PitchTrackedCarrier: re-locks within 2 hops after voiced->unvoiced->v
     REQUIRE(last.voiced == true);
     REQUIRE_THAT(centsBetween(last.freqHz, 330.0f), WithinAbs(0.0f, 30.0f));
 }
+
+TEST_CASE("PitchTrackedCarrier saw: LPF attenuates >4 kHz energy at 1 kHz fundamental",
+          "[audio][pitch_tracked_carrier][saw][lpf]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(48000);
+    gen.sine(1000.0f, 0.4f, in.data(), in.size());  // F0=1 kHz, well-detected
+
+    std::vector<float> sawOut(48000), blockOut(512);
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        c.process(in.data() + i, blockOut.data(), n);
+        std::copy(blockOut.begin(), blockOut.begin() + n, sawOut.begin() + i);
+    }
+
+    auto goertzel = [&](float hz) {
+        const float omega = 2.0f * 3.14159265f * hz / 48000.0f;
+        const float coef  = 2.0f * std::cos(omega);
+        float s1 = 0.0f, s2 = 0.0f;
+        for (std::size_t i = 24000; i < sawOut.size(); ++i) {
+            const float s = sawOut[i] + coef * s1 - s2;
+            s2 = s1; s1 = s;
+        }
+        return s1 * s1 + s2 * s2 - coef * s1 * s2;
+    };
+    // The LPF cutoff is 2 kHz; energy at 5 kHz should be at least 12 dB below
+    // energy at the 1 kHz fundamental.
+    const float lowE  = goertzel(1000.0f);
+    const float highE = goertzel(5000.0f);
+    REQUIRE(highE * 16.0f < lowE);  // 12 dB = 4x amplitude = 16x power
+}
