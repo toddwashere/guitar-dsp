@@ -20,12 +20,24 @@ TEST_CASE("ConversationBuffer: append then snapshot returns messages in order",
 TEST_CASE("ConversationBuffer: truncates to last 10 messages",
           "[ai][buffer]") {
     ConversationBuffer b;
-    for (int i = 0; i < 12; ++i)
+    constexpr int extra = 2;
+    for (std::size_t i = 0; i < ConversationBuffer::kMaxMessages + extra; ++i)
         b.append(Message::Role::User, std::to_string(i));
     auto s = b.snapshot();
-    REQUIRE(s.size() == 10);
-    REQUIRE(s.front().text == "2");
-    REQUIRE(s.back().text == "11");
+    REQUIRE(s.size() == ConversationBuffer::kMaxMessages);
+    REQUIRE(s.front().text == std::to_string(extra));
+    REQUIRE(s.back().text == std::to_string(ConversationBuffer::kMaxMessages + extra - 1));
+}
+
+TEST_CASE("ConversationBuffer: exactly kMaxMessages fit without truncation",
+          "[ai][buffer]") {
+    ConversationBuffer b;
+    for (std::size_t i = 0; i < ConversationBuffer::kMaxMessages; ++i)
+        b.append(Message::Role::User, std::to_string(i));
+    auto s = b.snapshot();
+    REQUIRE(s.size() == ConversationBuffer::kMaxMessages);
+    REQUIRE(s.front().text == "0");
+    REQUIRE(s.back().text == std::to_string(ConversationBuffer::kMaxMessages - 1));
 }
 
 TEST_CASE("ConversationBuffer: clear empties", "[ai][buffer]") {
