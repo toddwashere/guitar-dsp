@@ -7,12 +7,13 @@ namespace guitar_dsp {
 class PluginProcessor;
 
 // A thin row of toggle pills used to isolate vocoder behavior and select
-// the singing carrier:
+// pitch-singing/sing modes:
 //   V — Bypass vocoder (hear the raw TTS modulator)
 //   N — Noise carrier  (swap the guitar carrier for white noise)
 //   S — Sibilance off  (mute the vocoder's noise/sibilance path)
 //   P — Pitch sing     (use a pitch-tracked sawtooth as the carrier floor)
-// Click a pill or press V / N / S / P to toggle. Active toggles are highlighted.
+//   M — Modulate sing  (vibrato + chromatic semitone quantize on the saw)
+// Click a pill or press V / N / S / P / M to toggle. Active toggles are highlighted.
 class DiagToggleBar : public juce::Component,
                       private juce::Timer {
 public:
@@ -24,7 +25,7 @@ public:
 
 private:
     void timerCallback() override;
-    juce::Rectangle<int> pillBounds(int index) const;  // index 0..3
+    juce::Rectangle<int> pillBounds(int index) const;  // index 0..4
 
     PluginProcessor& processor_;
 };
