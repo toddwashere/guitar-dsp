@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <vector>
 
@@ -43,6 +44,16 @@ public:
     // manually if you change it later.
     void setSawLowpassHz(float hz) noexcept;
 
+    // Sing mode: when ON, the saw output is modulated by vibrato (a sine
+    // LFO on the F0) and the F0 is quantized to the nearest chromatic
+    // semitone. Independent of the pitchSinging toggle in AudioGraph.
+    void setSinging(bool on) noexcept;
+    bool singing() const noexcept;
+
+    void setVibratoHz(float hz)        noexcept;  // default 5.0
+    void setVibratoCents(float depth)  noexcept;  // default 20.0
+    void setPitchQuantize(bool on)     noexcept;  // default true
+
 private:
     // ---- YIN detector parameters ---------------------------------------
     static constexpr int kWindowSize = 2048;   // ~46 ms @ 44.1 kHz
@@ -83,6 +94,13 @@ private:
     // ---- Cached for State output ---------------------------------------
     int   currentMidiNote_ = -1;
     float currentCents_    = 0.0f;
+
+    // ---- Sing-mode state -----------------------------------------------
+    std::atomic<bool>  singing_         {false};
+    std::atomic<bool>  pitchQuantize_   {true};
+    std::atomic<float> vibratoHz_       {5.0f};
+    std::atomic<float> vibratoCents_    {20.0f};
+    double             vibratoPhase_    = 0.0;  // [0, 2π)
 
     // Run one YIN frame on the last kWindowSize samples ending at ringWriteIdx_.
     // Returns frequency in Hz or 0.0f if unvoiced.

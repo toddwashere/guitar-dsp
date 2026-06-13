@@ -32,6 +32,7 @@ void PitchTrackedCarrier::reset() {
     currentMidiNote_ = -1;
     currentCents_ = 0.0f;
     sawLpfState_ = 0.0f;
+    vibratoPhase_ = 0.0;
 }
 
 void PitchTrackedCarrier::setHoldMs(float ms)  noexcept { holdMs_  = ms; }
@@ -45,6 +46,22 @@ void PitchTrackedCarrier::setSawLowpassHz(float hz) noexcept {
     sawLpfHz_ = hz;
     sawLpfAlpha_ = 1.0f - std::exp(
         -2.0f * 3.14159265358979323846f * sawLpfHz_ / static_cast<float>(sampleRate_));
+}
+
+void PitchTrackedCarrier::setSinging(bool on) noexcept {
+    singing_.store(on, std::memory_order_relaxed);
+}
+bool PitchTrackedCarrier::singing() const noexcept {
+    return singing_.load(std::memory_order_relaxed);
+}
+void PitchTrackedCarrier::setVibratoHz(float hz) noexcept {
+    vibratoHz_.store(hz, std::memory_order_relaxed);
+}
+void PitchTrackedCarrier::setVibratoCents(float depth) noexcept {
+    vibratoCents_.store(depth, std::memory_order_relaxed);
+}
+void PitchTrackedCarrier::setPitchQuantize(bool on) noexcept {
+    pitchQuantize_.store(on, std::memory_order_relaxed);
 }
 
 PitchTrackedCarrier::State PitchTrackedCarrier::process(
