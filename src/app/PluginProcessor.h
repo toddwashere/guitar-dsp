@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -114,6 +115,12 @@ public:
     }
     // The active scene's words (split on whitespace). Message thread.
     std::vector<std::string> activeSceneWords() const;
+    // Active scene color (0xRRGGBB). Returns a neutral mid-gray (0x9090A0) if
+    // no scene is active. Message-thread only.
+    std::uint32_t activeSceneColorRgb() const noexcept {
+        const auto& s = sceneEngine_.getActiveScene();
+        return (s.id >= 0) ? s.colorRgb : 0x9090A0u;
+    }
 
     // --- Vocoder diagnostic toggles (message thread) --------------------
     // Forward to the AudioGraph. Used by the DiagToggleBar UI + V/N/S keys
