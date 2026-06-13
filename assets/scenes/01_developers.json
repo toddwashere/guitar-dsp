@@ -1,0 +1,13 @@
+{
+  "id": 1,
+  "name": "Developers!",
+  "color": "#0078D4",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 0.9, "transitionMs": 30 },
+  "tts": {
+    "source": "prebaked",
+    "clip": "01_developers",
+    "text": "DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS!",
+    "trigger": "note",
+    "clarity": 0.25
+  }
+}
