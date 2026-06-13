@@ -96,6 +96,10 @@ public:
     void        selectModelId(std::string id);
     std::string selectedModelId() const { return selectedModelId_; }
 
+    // Called from AiSettingsPanel when user picks a persona.
+    void          setCurrentPersona(ai::PersonaId p, std::string customPrompt = "");
+    ai::PersonaId currentPersonaId() const noexcept { return currentPersonaId_; }
+
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
     // TTS engine status for the visibility readout (message thread).
@@ -210,6 +214,7 @@ private:
     std::unique_ptr<ai::WhisperTranscriber> whisper_;
     std::unique_ptr<ai::ILlmClient>         llm_;
     std::string                             selectedModelId_ {"claude-haiku-4-5"};
+    ai::PersonaId                           currentPersonaId_ {ai::PersonaId::Interviewer};
     std::unique_ptr<ai::ConversationEngine> engine_;
 
     void rebuildLlmClient();   // re-create llm_ based on selectedModelId_

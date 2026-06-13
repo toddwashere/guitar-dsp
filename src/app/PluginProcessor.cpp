@@ -182,6 +182,12 @@ void PluginProcessor::selectModelId(std::string id) {
     rebuildLlmClient();
 }
 
+void PluginProcessor::setCurrentPersona(ai::PersonaId p, std::string custom) {
+    currentPersonaId_ = p;
+    if (! custom.empty()) personas_.setCustomPrompt(p, std::move(custom));
+    if (engine_) engine_->setPersona(p, "");
+}
+
 bool PluginProcessor::piperReady() const noexcept {
     return piperTtsSource_ && piperTtsSource_->isReady();
 }
@@ -526,6 +532,22 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.carrierNoise = graph_.vocoderCarrierNoise();
     d.sibilance    = graph_.vocoderSibilance();
     // clarity intentionally not persisted — it's per-scene. See PluginState.h.
+
+    d.selectedModelId = selectedModelId_;
+    d.personaId       = currentPersonaId_;
+
+    // Snapshot only custom prompts that differ from defaults.
+    static constexpr ai::PersonaId kAllPersonas[] = {
+        ai::PersonaId::Interviewer, ai::PersonaId::Snarky,
+        ai::PersonaId::WeatheredGuitar, ai::PersonaId::StudioEngineer,
+        ai::PersonaId::CuriousAi, ai::PersonaId::PlainAssistant,
+    };
+    for (auto id : kAllPersonas) {
+        auto current = personas_.promptFor(id);
+        if (current != ai::PersonaRegistry::defaultPromptFor(id))
+            d.customPromptByPersona[id] = current;
+    }
+
     const auto json = app::PluginState::toJson(d);
     dest.replaceAll(json.toRawUTF8(), json.getNumBytesAsUTF8());
 }
@@ -537,6 +559,12 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     graph_.setVocoderCarrierNoise(d.carrierNoise);
     graph_.setVocoderSibilance(d.sibilance);
     sceneEngine_.activateScene(d.sceneId);
+
+    selectModelId(d.selectedModelId);
+    currentPersonaId_ = d.personaId;
+    for (auto& [id, prompt] : d.customPromptByPersona)
+        personas_.setCustomPrompt(id, prompt);
+    if (engine_) engine_->setPersona(currentPersonaId_, "");
 }
 
 } // namespace guitar_dsp
