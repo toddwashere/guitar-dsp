@@ -16,9 +16,11 @@ public:
     ~WordReadout() override;
 
     void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent&) override;
 
 private:
     void timerCallback() override;
+    juce::Rectangle<int> rewindButtonBounds() const;
 
     PluginProcessor& processor_;
     int lastIndex_ = -2;

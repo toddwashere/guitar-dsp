@@ -30,10 +30,23 @@ WordSyncMode NoteSteppedTTSPlayer::mode() const noexcept {
     return static_cast<WordSyncMode>(mode_.load(std::memory_order_relaxed));
 }
 
+void NoteSteppedTTSPlayer::rewind() noexcept {
+    pendingRewind_.store(true, std::memory_order_release);
+}
+
 void NoteSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
                                    std::size_t numSamples) noexcept {
     if (newClipFlag_.exchange(false, std::memory_order_acquire)) {
         activeClip_ = std::move(pendingClip_);
+        wordIndex_ = -1;
+        playPos_ = 0;
+        segEnd_ = 0;
+        playing_ = false;
+        onset_.reset();
+        currentWordIndex_.store(-1, std::memory_order_relaxed);
+    }
+
+    if (pendingRewind_.exchange(false, std::memory_order_acquire)) {
         wordIndex_ = -1;
         playPos_ = 0;
         segEnd_ = 0;

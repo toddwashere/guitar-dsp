@@ -28,6 +28,13 @@ public:
     void setMode(WordSyncMode m) noexcept;
     WordSyncMode mode() const noexcept;
 
+    // Message thread. Reset playback to the start of the sequence — next
+    // onset plays segment 0 again. Useful when a phrase desyncs from the
+    // performer (bad WordAligner output, lost a pluck, etc.). The actual
+    // reset happens on the next audio block via an atomic pending flag,
+    // so the call is RT-safe.
+    void rewind() noexcept;
+
     // Audio thread. onsetSrc = clean guitar; writes the modulator to modOut.
     void process(const float* onsetSrc, float* modOut, std::size_t numSamples) noexcept;
 
@@ -48,8 +55,9 @@ private:
     std::size_t segEnd_     = 0;
     bool        playing_    = false;
 
-    std::atomic<int> currentWordIndex_ {-1};
-    std::atomic<int> mode_ {static_cast<int>(WordSyncMode::Latch)};
+    std::atomic<int>  currentWordIndex_ {-1};
+    std::atomic<int>  mode_ {static_cast<int>(WordSyncMode::Latch)};
+    std::atomic<bool> pendingRewind_ {false};
 };
 
 } // namespace guitar_dsp::audio

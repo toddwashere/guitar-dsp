@@ -117,6 +117,10 @@ public:
         return noteSteppedPlayer_.mode();
     }
 
+    // Rewind the note-triggered TTS sequence to the start (next onset
+    // plays segment 0). Message thread; RT-safe via pending flag.
+    void rewindSpoken() noexcept { noteSteppedPlayer_.rewind(); }
+
     // Latest detected pitch published from the audio thread for the UI. -1
     // midiNote / 0 Hz when unvoiced AND hold-decay has expired.
     int   detectedNoteMidi() const noexcept { return detectedNoteMidi_.load(std::memory_order_relaxed); }
