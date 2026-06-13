@@ -8,7 +8,7 @@ void OnsetDetector::prepare(double sampleRate) noexcept {
     sampleRate_ = sampleRate;
     const double releaseMs = 30.0;
     releaseCoef_ = static_cast<float>(std::exp(-1.0 / (sampleRate * releaseMs / 1000.0)));
-    setDebounceMs(40.0f);
+    setDebounceMs(80.0f);
     reset();
 }
 

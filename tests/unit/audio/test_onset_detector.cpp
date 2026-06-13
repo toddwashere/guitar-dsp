@@ -56,3 +56,22 @@ TEST_CASE("OnsetDetector: debounce suppresses a rapid double-hit",
     pluck(buf, 400, 4000, 0.8f, 48000.0);
     REQUIRE(countOnsets(d, buf) == 1);
 }
+
+TEST_CASE("OnsetDetector: default min-interval suppresses second onset 60 ms after first",
+          "[audio][onset_detector][debounce]") {
+    using guitar_dsp::audio::OnsetDetector;
+    OnsetDetector det;
+    det.prepare(48000.0);
+
+    // Two transient pulses 60 ms apart.
+    constexpr int kSamples = 48000 / 5;  // 0.2 s
+    std::vector<float> buf(kSamples, 0.0f);
+    buf[0]    = 0.8f;      // pulse #1 at t=0
+    buf[2880] = 0.8f;      // pulse #2 at t=60 ms
+
+    int onsetCount = 0;
+    for (float s : buf)
+        if (det.processSample(s)) ++onsetCount;
+    // With 80 ms default min-interval, only the first pulse fires.
+    REQUIRE(onsetCount == 1);
+}
