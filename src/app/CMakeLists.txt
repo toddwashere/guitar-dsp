@@ -43,6 +43,7 @@ target_sources(guitar_dsp_app PRIVATE
     TtsStatusBar.cpp
     StatePill.cpp
     ConversationPanel.cpp
+    AiSettingsPanel.cpp
 )
 
 target_compile_definitions(guitar_dsp_app PRIVATE

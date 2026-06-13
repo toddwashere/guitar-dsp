@@ -49,9 +49,11 @@ add_executable(guitar_dsp_tests
     unit/app/test_plugin_state.cpp
     unit/app/test_state_pill.cpp
     unit/app/test_conversation_panel.cpp
+    unit/app/test_ai_settings_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
     ${CMAKE_SOURCE_DIR}/src/app/StatePill.cpp
     ${CMAKE_SOURCE_DIR}/src/app/ConversationPanel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/AiSettingsPanel.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     integration/test_scene_switch.cpp
