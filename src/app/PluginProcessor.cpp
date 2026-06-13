@@ -79,6 +79,18 @@ PluginProcessor::PluginProcessor()
     // own direct-CoreMIDI MidiRouter (avoids double-triggering).
     if (wrapperType != wrapperType_Standalone)
         hostMidiPoller_ = std::make_unique<HostMidiPoller>(*this);
+
+    // Conversational AI subsystem.
+    prefs_ = std::make_unique<ai::AppPreferences>(ai::AppPreferences::defaultPath());
+
+    whisper_ = std::make_unique<ai::WhisperTranscriber>(
+        juce::File(juce::String(AssetLocator::whisperModelPath())));
+
+    rebuildLlmClient();
+
+    engine_ = std::make_unique<ai::ConversationEngine>(
+        *whisper_, *llm_, micCapture_, convBuf_, personas_,
+        [this](std::string text){ enqueueSayText(text); });
 }
 
 PluginProcessor::~PluginProcessor() {
@@ -151,6 +163,23 @@ void PluginProcessor::releaseResources() {
 
 void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
     if (midiRouter_) midiRouter_->setPreferredDeviceName(name);
+}
+
+void PluginProcessor::rebuildLlmClient() {
+    if (selectedModelId_.rfind("ollama:", 0) == 0) {
+        const auto tag = selectedModelId_.substr(7);
+        llm_ = std::make_unique<ai::OllamaClient>(
+            http_, prefs_->ollamaEndpoint(), tag);
+    } else {
+        llm_ = std::make_unique<ai::AnthropicClient>(
+            http_, prefs_->anthropicApiKey(), selectedModelId_);
+    }
+    if (engine_) engine_->setLlmClient(*llm_);
+}
+
+void PluginProcessor::selectModelId(std::string id) {
+    selectedModelId_ = std::move(id);
+    rebuildLlmClient();
 }
 
 bool PluginProcessor::piperReady() const noexcept {

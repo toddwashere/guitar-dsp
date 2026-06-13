@@ -79,4 +79,10 @@ std::string AssetLocator::defaultPiperVoicePath() {
     return fs::exists(p) ? p : std::string{};
 }
 
+std::string AssetLocator::whisperModelPath() {
+    const auto root = assetsRoot();
+    if (root.empty()) return {};
+    return (fs::path(root) / "whisper" / "ggml-base.en.bin").string();
+}
+
 } // namespace guitar_dsp

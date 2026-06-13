@@ -24,6 +24,10 @@ public:
     // (matching the model the prebake tool already uses).
     static std::string defaultPiperVoicePath();
 
+    // Returns the path to the bundled Whisper model binary, or empty if not
+    // bundled. Path: <assetsRoot>/whisper/ggml-base.en.bin
+    static std::string whisperModelPath();
+
 private:
     static std::string assetsRoot();
 };

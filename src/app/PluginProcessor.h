@@ -20,6 +20,15 @@
 #include "midi/MidiRouter.h"
 #include "scenes/SceneEngine.h"
 
+#include "ai/AppPreferences.h"
+#include "ai/PersonaRegistry.h"
+#include "ai/ConversationBuffer.h"
+#include "ai/ConversationEngine.h"
+#include "ai/JuceHttpTransport.h"
+#include "ai/WhisperTranscriber.h"
+#include "ai/AnthropicClient.h"
+#include "ai/OllamaClient.h"
+
 #include "PluginState.h"
 
 namespace guitar_dsp {
@@ -75,6 +84,17 @@ public:
     scenes::SceneEngine& sceneEngine() { return sceneEngine_; }
 
     audio::MicCapture& micCapture() noexcept { return micCapture_; }
+
+    // AI feature accessors used by the editor/UI panels.
+    ai::ConversationEngine& conversationEngine() noexcept { return *engine_; }
+    ai::ConversationBuffer& conversationBuffer() noexcept { return convBuf_; }
+    ai::PersonaRegistry&    personaRegistry()    noexcept { return personas_; }
+    ai::AppPreferences&     appPreferences()     noexcept { return *prefs_; }
+    ai::IHttpTransport&     httpTransport()      noexcept { return http_; }
+
+    // Called from AiSettingsPanel when user picks a model in the dropdown.
+    void        selectModelId(std::string id);
+    std::string selectedModelId() const { return selectedModelId_; }
 
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
@@ -181,6 +201,18 @@ private:
     std::atomic<int> pendingHostScene_ {-1};
     class HostMidiPoller;
     std::unique_ptr<HostMidiPoller> hostMidiPoller_;
+
+    // Conversational AI subsystem.
+    std::unique_ptr<ai::AppPreferences>     prefs_;
+    ai::PersonaRegistry                     personas_;
+    ai::ConversationBuffer                  convBuf_;
+    ai::JuceHttpTransport                   http_;
+    std::unique_ptr<ai::WhisperTranscriber> whisper_;
+    std::unique_ptr<ai::ILlmClient>         llm_;
+    std::string                             selectedModelId_ {"claude-haiku-4-5"};
+    std::unique_ptr<ai::ConversationEngine> engine_;
+
+    void rebuildLlmClient();   // re-create llm_ based on selectedModelId_
 };
 
 } // namespace guitar_dsp
