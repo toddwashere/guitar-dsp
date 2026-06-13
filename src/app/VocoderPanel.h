@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "NoteReadout.h"
+#include "WordSyncSelector.h"
 
 namespace guitar_dsp {
 
@@ -31,6 +32,7 @@ private:
                  gateThresholdLabel_;
     float lastSceneClarity_ = -1.0f;  // sentinel — forces first paint
     NoteReadout  noteReadout_;
+    WordSyncSelector wordSyncSelector_;
     juce::String lastCarrierNoiseLabel_;
 };
 

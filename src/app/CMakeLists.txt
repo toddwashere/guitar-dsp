@@ -40,6 +40,7 @@ target_sources(guitar_dsp_app PRIVATE
     SayPanel.cpp
     MidiDevicePicker.cpp
     NoteReadout.cpp
+    WordSyncSelector.cpp
     WordReadout.cpp
     TtsStatusBar.cpp
     StatePill.cpp

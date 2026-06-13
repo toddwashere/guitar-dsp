@@ -5,9 +5,10 @@
 namespace guitar_dsp {
 
 VocoderPanel::VocoderPanel(PluginProcessor& p)
-    : processor_(p), noteReadout_(p) {
+    : processor_(p), noteReadout_(p), wordSyncSelector_(p) {
     setOpaque(true);
     addAndMakeVisible(noteReadout_);
+    addAndMakeVisible(wordSyncSelector_);
 
     configureSlider(makeup_, makeupLabel_, "Makeup");
     makeup_.setRange(0.5, 16.0, 0.01);
@@ -92,6 +93,8 @@ void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
     area.removeFromTop(12);  // header band
 
+    constexpr int selectorH = 22;
+    wordSyncSelector_.setBounds(area.removeFromBottom(selectorH));
     constexpr int readoutH = 36;
     noteReadout_.setBounds(area.removeFromBottom(readoutH));
 
