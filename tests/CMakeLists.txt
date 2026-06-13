@@ -36,6 +36,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_engine_carousel.cpp
     unit/midi/test_fcb1010_mapping.cpp
     unit/midi/test_host_midi_scene_router.cpp
+    unit/ai/test_conversation_buffer.cpp
     unit/app/test_plugin_state.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
     integration/test_passthrough_golden.cpp
@@ -56,6 +57,7 @@ target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio
     guitar_dsp_scenes
     guitar_dsp_midi
+    guitar_dsp_ai
     juce::juce_audio_formats
     Catch2::Catch2WithMain
 )

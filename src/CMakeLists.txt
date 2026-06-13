@@ -53,7 +53,7 @@ target_link_libraries(guitar_dsp_scenes PUBLIC juce::juce_core)
 
 # AI module — STT, LLM clients, conversation orchestration. Pure C++ + JUCE.
 add_library(guitar_dsp_ai STATIC
-    ai/AiModule.cpp
+    ai/ConversationBuffer.cpp
 )
 
 target_include_directories(guitar_dsp_ai PUBLIC
