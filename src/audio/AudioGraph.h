@@ -11,6 +11,7 @@
 #include "InputStage.h"
 #include "Mixer.h"
 #include "NoteSteppedTTSPlayer.h"
+#include "PitchTrackedCarrier.h"
 #include "TTSClipPlayer.h"
 
 namespace guitar_dsp::audio {
@@ -93,6 +94,23 @@ public:
     }
     float clarity() const noexcept { return clarity_.load(std::memory_order_relaxed); }
 
+    // Pitch-tracked singing carrier. When ON, AudioGraph composes the carrier
+    // as `guitar + carrierNoise * pitched_saw` (with ChannelVocoder's internal
+    // noise floor disabled), so the spoken voice sings the guitar's note.
+    // Default OFF — preserves today's behavior exactly.
+    void setPitchSinging(bool on) noexcept {
+        pitchSinging_.store(on, std::memory_order_relaxed);
+    }
+    bool pitchSinging() const noexcept {
+        return pitchSinging_.load(std::memory_order_relaxed);
+    }
+
+    // Latest detected pitch published from the audio thread for the UI. -1
+    // midiNote / 0 Hz when unvoiced AND hold-decay has expired.
+    int   detectedNoteMidi() const noexcept { return detectedNoteMidi_.load(std::memory_order_relaxed); }
+    float detectedCents()    const noexcept { return detectedCents_.load(std::memory_order_relaxed); }
+    float detectedHz()       const noexcept { return detectedHz_.load(std::memory_order_relaxed); }
+
 private:
     InputStage inputStage_;
     Mixer mixer_;
@@ -116,6 +134,13 @@ private:
     std::vector<float> wetBuffer_;
     std::vector<float> carrierBuffer_;   // scratch for the noise-carrier diagnostic
     std::vector<float> drySpeechBuffer_; // raw modulator snapshot for clarity blend
+
+    PitchTrackedCarrier pitchCarrier_;
+    std::atomic<bool>   pitchSinging_      {false};
+    std::atomic<int>    detectedNoteMidi_  {-1};
+    std::atomic<float>  detectedCents_     {0.0f};
+    std::atomic<float>  detectedHz_        {0.0f};
+    std::vector<float>  pitchCarrierBuffer_;
 };
 
 } // namespace guitar_dsp::audio

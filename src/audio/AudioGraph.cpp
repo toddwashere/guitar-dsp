@@ -27,6 +27,9 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     carrierBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     drySpeechBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
 
+    pitchCarrier_.prepare(sampleRate, blockSize);
+    pitchCarrierBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
+
     // Default mixer to fully dry until later phases install branches.
     mixer_.setDryWet(0.0f);
     mixer_.setMasterGainDb(0.0f);
@@ -40,6 +43,8 @@ void AudioGraph::reset() {
     ttsClipPlayer_.reset();
     noteSteppedPlayer_.reset();
     vocoder_.reset();
+    pitchCarrier_.reset();
+    std::fill(pitchCarrierBuffer_.begin(), pitchCarrierBuffer_.end(), 0.0f);
     carousel_.reset();
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
     std::fill(wetBuffer_.begin(), wetBuffer_.end(), 0.0f);
@@ -85,8 +90,18 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
                           drySpeechBuffer_.begin());
             }
 
-            // Carrier = guitar, or (diagnostic) broadband white noise so every
-            // band has energy to modulate.
+            // Pitch-tracked carrier always runs so the UI readout is live whether
+            // the toggle is on or off; its output is only routed when the toggle is on.
+            const auto pitchState = pitchCarrier_.process(
+                postInputBuffer_.data(), pitchCarrierBuffer_.data(), numSamples);
+            detectedNoteMidi_.store(pitchState.midiNote, std::memory_order_relaxed);
+            detectedCents_.store(pitchState.cents,       std::memory_order_relaxed);
+            detectedHz_.store(pitchState.freqHz,         std::memory_order_relaxed);
+
+            const bool pitchSinging = pitchSinging_.load(std::memory_order_relaxed);
+
+            // Carrier = guitar (default), or (diagnostic) broadband white noise, or
+            // (pitch-singing) guitar + carrierNoise * pitched_saw.
             const float* carrier = postInputBuffer_.data();
             if (diagNoiseCarrier_.load(std::memory_order_relaxed)) {
                 for (std::size_t i = 0; i < numSamples; ++i) {
@@ -97,12 +112,26 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
                         0.5f * ((static_cast<float>(diagNoiseState_) / 2147483648.0f) - 1.0f);
                 }
                 carrier = carrierBuffer_.data();
+            } else if (pitchSinging) {
+                const float cn = vocoder_.carrierNoise();
+                for (std::size_t i = 0; i < numSamples; ++i) {
+                    carrierBuffer_[i] = postInputBuffer_.data()[i]
+                                      + cn * pitchCarrierBuffer_[i];
+                }
+                carrier = carrierBuffer_.data();
             }
+
             vocoder_.setSibilance(
                 diagSibilanceOff_.load(std::memory_order_relaxed)
                     ? 0.0f
                     : vocoderSibilance_.load(std::memory_order_relaxed));
+
+            // When pitch-singing is on, disable the vocoder's internal noise floor so
+            // the pitched saw is the sole "floor" contribution.
+            const float savedCarrierNoise = vocoder_.carrierNoise();
+            if (pitchSinging) vocoder_.setCarrierNoise(0.0f);
             vocoder_.process(carrier, wetBuffer_.data(), wetBuffer_.data(), numSamples);
+            if (pitchSinging) vocoder_.setCarrierNoise(savedCarrierNoise);
 
             // Crossfade vocoded wet -> raw modulator (boosted via the same
             // makeup gain + tanh limiter as the vocoded path, so they sit at

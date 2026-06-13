@@ -287,3 +287,98 @@ TEST_CASE("AudioGraph: note-stepped modulator vocodes a word on a pluck",
     REQUIRE(peak > 1e-3f);
     for (float x : out) REQUIRE(std::isfinite(x));
 }
+
+TEST_CASE("AudioGraph: pitchSinging toggle defaults to off",
+          "[audio][graph][pitch_singing]") {
+    AudioGraph graph;
+    REQUIRE(graph.pitchSinging() == false);
+}
+
+TEST_CASE("AudioGraph: toggle-off output is deterministic across instances",
+          "[audio][graph][pitch_singing][regression]") {
+    // With pitchSinging off, two AudioGraph instances with identical config
+    // and identical inputs must produce bit-identical outputs across blocks.
+    // This catches accidental dependence on the new PitchTrackedCarrier's
+    // internal state (e.g. if it leaked into a shared buffer).
+    AudioGraph a, b;
+    a.prepare(48000.0, 512);
+    b.prepare(48000.0, 512);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(512);
+    gen.sine(440.0f, 0.3f, in.data(), in.size());
+
+    std::vector<float> outA(512), outB(512);
+    for (int blk = 0; blk < 4; ++blk) {
+        a.process(in.data(), outA.data(), in.size());
+        b.process(in.data(), outB.data(), in.size());
+        for (std::size_t i = 0; i < in.size(); ++i)
+            REQUIRE(outA[i] == outB[i]);
+    }
+}
+
+TEST_CASE("AudioGraph: pitchSinging toggle on -> detected note published",
+          "[audio][graph][pitch_singing]") {
+    AudioGraph graph;
+    graph.prepare(48000.0, 512);
+    graph.setPitchSinging(true);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(48000);
+    gen.sine(440.0f, 0.4f, in.data(), in.size());
+
+    std::vector<float> out(512);
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        graph.process(in.data() + i, out.data(), n);
+    }
+
+    REQUIRE(graph.detectedNoteMidi() == 69);  // A4
+    REQUIRE(std::abs(graph.detectedCents()) < 20.0f);
+    REQUIRE(graph.detectedHz() > 430.0f);
+    REQUIRE(graph.detectedHz() < 450.0f);
+}
+
+TEST_CASE("AudioGraph: pitchSinging on with TTS modulator -> wet path peak at guitar's F0",
+          "[audio][graph][pitch_singing][vocoder]") {
+    AudioGraph graph;
+    graph.prepare(48000.0, 512);
+    graph.setPitchSinging(true);
+    graph.mixer().setDryWet(1.0f);
+    graph.mixer().setMasterGainDb(0.0f);
+    graph.mixer().reset();
+
+    // TTS clip: 1 s of 800 Hz tone — broadband-enough modulator to let
+    // multiple vocoder bands pass.
+    auto clip = std::make_shared<guitar_dsp::audio::TTSClip>();
+    clip->sampleRate = 48000.0;
+    clip->samples.resize(48000);
+    for (int i = 0; i < 48000; ++i)
+        clip->samples[i] = 0.6f * std::sin(2.0 * 3.14159265 * 800.0 * i / 48000.0);
+    graph.ttsClipPlayer().setClip(clip);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(48000);
+    gen.sine(220.0f, 0.5f, in.data(), in.size());
+
+    std::vector<float> out(48000), blockOut(512);
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        graph.process(in.data() + i, blockOut.data(), n);
+        std::copy(blockOut.begin(), blockOut.begin() + n, out.begin() + i);
+    }
+
+    // Goertzel @ 220 Hz vs 313 Hz over the last 0.5 s.
+    auto goertzel = [&](float hz) {
+        const float omega = 2.0f * 3.14159265f * hz / 48000.0f;
+        const float coef  = 2.0f * std::cos(omega);
+        float s1 = 0.0f, s2 = 0.0f;
+        for (std::size_t i = 24000; i < out.size(); ++i) {
+            const float s = out[i] + coef * s1 - s2;
+            s2 = s1;
+            s1 = s;
+        }
+        return s1 * s1 + s2 * s2 - coef * s1 * s2;
+    };
+    REQUIRE(goertzel(220.0f) > 2.0f * goertzel(313.0f));
+}
