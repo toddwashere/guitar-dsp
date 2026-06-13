@@ -2,6 +2,8 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "NoteReadout.h"
+
 namespace guitar_dsp {
 
 class PluginProcessor;
@@ -28,6 +30,8 @@ private:
     juce::Label  makeupLabel_, carrierNoiseLabel_, sibilanceLabel_, clarityLabel_,
                  gateThresholdLabel_;
     float lastSceneClarity_ = -1.0f;  // sentinel — forces first paint
+    NoteReadout  noteReadout_;
+    juce::String lastCarrierNoiseLabel_;
 };
 
 } // namespace guitar_dsp

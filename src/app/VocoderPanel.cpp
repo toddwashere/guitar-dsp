@@ -4,8 +4,10 @@
 
 namespace guitar_dsp {
 
-VocoderPanel::VocoderPanel(PluginProcessor& p) : processor_(p) {
+VocoderPanel::VocoderPanel(PluginProcessor& p)
+    : processor_(p), noteReadout_(p) {
     setOpaque(true);
+    addAndMakeVisible(noteReadout_);
 
     configureSlider(makeup_, makeupLabel_, "Makeup");
     makeup_.setRange(0.5, 16.0, 0.01);
@@ -56,6 +58,14 @@ void VocoderPanel::timerCallback() {
                                   + juce::String(sceneClarity, 2) + ")",
                               juce::dontSendNotification);
     }
+
+    const juce::String desiredCarrierLabel = processor_.pitchSinging()
+        ? juce::String("Pitched floor")
+        : juce::String("Noise floor");
+    if (desiredCarrierLabel != lastCarrierNoiseLabel_) {
+        lastCarrierNoiseLabel_ = desiredCarrierLabel;
+        carrierNoiseLabel_.setText(desiredCarrierLabel, juce::dontSendNotification);
+    }
 }
 
 void VocoderPanel::configureSlider(juce::Slider& s, juce::Label& l,
@@ -81,6 +91,10 @@ void VocoderPanel::paint(juce::Graphics& g) {
 void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
     area.removeFromTop(12);  // header band
+
+    constexpr int readoutH = 36;
+    noteReadout_.setBounds(area.removeFromBottom(readoutH));
+
     const int rowH = area.getHeight() / 5;
     auto row = [&](juce::Slider& s, juce::Label& l, int labelW) {
         auto r = area.removeFromTop(rowH);
