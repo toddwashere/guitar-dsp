@@ -285,3 +285,74 @@ TEST_CASE("NoteSteppedTTSPlayer Syllable: falls back to Latch on words when no s
     }
     REQUIRE(player.currentWordIndex() == 0);  // fallback to Latch
 }
+
+TEST_CASE("NoteSteppedTTSPlayer: setMode to a new mode rewinds the sequence",
+          "[audio][note_stepped][mode_change]") {
+    // Drive the player to wordIndex=1 in Latch mode, then switch mode. The
+    // next onset (well after the previous word completes) should advance to
+    // index 0, not 2 — confirms setMode triggered the pendingRewind path.
+    using namespace guitar_dsp::audio;
+    NoteSteppedTTSPlayer player;
+    player.prepare(48000.0, 512);
+    player.setMode(WordSyncMode::Latch);
+    player.setClip(makeThreeWordClip());
+
+    constexpr std::size_t N = 48000 * 3;  // 3 seconds — past two 800 ms words
+    std::vector<float> onsets(N, 0.0f);
+    plantOnset(onsets,       100, 0.9f);    // advance to word 0
+    plantOnset(onsets,     52800, 0.9f);    // t ≈ 1100 ms, advance to word 1
+
+    std::vector<float> out(N);
+    // Process the first two onsets through.
+    for (std::size_t i = 0; i < N; i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, N - i);
+        player.process(onsets.data() + i, out.data() + i, n);
+    }
+    REQUIRE(player.currentWordIndex() == 1);  // sanity: latched to word 1
+
+    // Switch mode — should request a rewind. The next process() drains it.
+    player.setMode(WordSyncMode::Advance);
+
+    // After rewind, currentWordIndex should be -1 within one block.
+    std::vector<float> blank(512, 0.0f), bout(512);
+    player.process(blank.data(), bout.data(), 512);
+    REQUIRE(player.currentWordIndex() == -1);
+
+    // A subsequent fresh onset advances to index 0 (not 2).
+    std::vector<float> trailing(N, 0.0f);
+    plantOnset(trailing, 1000, 0.9f);
+    for (std::size_t i = 0; i < N; i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, N - i);
+        player.process(trailing.data() + i, bout.data(), n);
+        if (i > 1000) break;  // capture first onset
+    }
+    REQUIRE(player.currentWordIndex() == 0);
+}
+
+TEST_CASE("NoteSteppedTTSPlayer: setMode to SAME mode does not rewind",
+          "[audio][note_stepped][mode_change]") {
+    // No-op mode change should NOT reset wordIndex_ — confirms the prev/new
+    // comparison in setMode short-circuits when the value didn't change.
+    using namespace guitar_dsp::audio;
+    NoteSteppedTTSPlayer player;
+    player.prepare(48000.0, 512);
+    player.setMode(WordSyncMode::Latch);
+    player.setClip(makeThreeWordClip());
+
+    constexpr std::size_t N = 48000 * 3;
+    std::vector<float> onsets(N, 0.0f);
+    plantOnset(onsets, 100,   0.9f);
+    plantOnset(onsets, 52800, 0.9f);
+
+    std::vector<float> out(N);
+    for (std::size_t i = 0; i < N; i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, N - i);
+        player.process(onsets.data() + i, out.data() + i, n);
+    }
+    REQUIRE(player.currentWordIndex() == 1);
+
+    player.setMode(WordSyncMode::Latch);  // same mode → no rewind
+    std::vector<float> blank(512, 0.0f), bout(512);
+    player.process(blank.data(), bout.data(), 512);
+    REQUIRE(player.currentWordIndex() == 1);  // still on word 1
+}

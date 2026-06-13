@@ -102,12 +102,20 @@ bool PluginEditor::keyPressed(const juce::KeyPress& key, juce::Component*) {
         return true;
     }
 
-    // Vocoder diagnostic toggles (case-insensitive). Let the operator isolate
-    // by ear why vocoded speech is unintelligible.
+    // Vocoder diagnostic toggles + pitch/sing mode flips + word-sync cycle.
+    // Matches the on-screen pill labels (V/N/S/P/M in DiagToggleBar and the
+    // 3-way mode pills in VocoderPanel).
     switch (key.getTextCharacter()) {
         case 'v': case 'V': processor_.toggleDiagBypassVocoder(); return true;
         case 'n': case 'N': processor_.toggleDiagNoiseCarrier();  return true;
         case 's': case 'S': processor_.toggleDiagSibilanceOff();  return true;
+        case 'p': case 'P': processor_.togglePitchSinging();      return true;
+        case 'm': case 'M': processor_.toggleSinging();           return true;
+        case 'w': case 'W': {
+            const int next = (static_cast<int>(processor_.wordSyncMode()) + 1) % 3;
+            processor_.setWordSyncMode(static_cast<audio::WordSyncMode>(next));
+            return true;
+        }
         default: break;
     }
     return false;

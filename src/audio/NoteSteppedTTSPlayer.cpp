@@ -24,7 +24,12 @@ void NoteSteppedTTSPlayer::setClip(TTSClipPtr clip) {
 }
 
 void NoteSteppedTTSPlayer::setMode(WordSyncMode m) noexcept {
-    mode_.store(static_cast<int>(m), std::memory_order_relaxed);
+    // If the mode actually changes, also rewind. The segment list being
+    // stepped through likely differs (words ⇄ syllables), so a carryover
+    // wordIndex_ would jump mid-phrase on the next onset.
+    const int prev = mode_.exchange(static_cast<int>(m), std::memory_order_relaxed);
+    if (prev != static_cast<int>(m))
+        pendingRewind_.store(true, std::memory_order_release);
 }
 WordSyncMode NoteSteppedTTSPlayer::mode() const noexcept {
     return static_cast<WordSyncMode>(mode_.load(std::memory_order_relaxed));
