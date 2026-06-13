@@ -2,6 +2,8 @@
 
 #include "PluginProcessor.h"
 
+#include <algorithm>
+
 namespace guitar_dsp {
 
 WordReadout::WordReadout(PluginProcessor& processor) : processor_(processor) {
@@ -69,6 +71,8 @@ void WordReadout::paint(juce::Graphics& g) {
                  ? juce::String(words[static_cast<std::size_t>(i)]) : juce::String();
     };
 
+    const int n = static_cast<int>(words.size());
+
     const int third = area.getWidth() / 3;
     auto left  = area.removeFromLeft(third);
     auto right = area.removeFromRight(third);
@@ -79,13 +83,19 @@ void WordReadout::paint(juce::Graphics& g) {
     g.drawText(dim(idx - 1), left,  juce::Justification::centredRight);
     g.drawText(dim(idx + 1), right, juce::Justification::centredLeft);
 
-    // Center word (unchanged styling for now — Task 6 replaces with the ramp).
-    g.setColour(juce::Colour::fromRGB(240, 230, 180));
-    g.setFont(juce::Font{juce::FontOptions{}.withHeight(kCenterBaseHeight).withStyle("Bold")});
+    // Center word — intensity ramp driven by progress through the chant.
+    const float denom = static_cast<float>(std::max(1, n - 1));
+    const float progress = std::clamp(static_cast<float>(idx) / denom, 0.0f, 1.0f);
+
+    const float fontH = kCenterBaseHeight * (1.0f + kCenterGrowFactor * progress);
+    const auto peakColor = juce::Colour::fromRGB(kPeakColorR, kPeakColorG, kPeakColorB);
+    const auto centerColor = sceneColor.interpolatedWith(peakColor, progress);
+
+    g.setColour(centerColor);
+    g.setFont(juce::Font{juce::FontOptions{}.withHeight(fontH).withStyle("Bold")});
     g.drawText(dim(idx), mid, juce::Justification::centred);
 
     // Pip strip: N pips evenly distributed. Past=dim, current=full, upcoming=very dim.
-    const int n = static_cast<int>(words.size());
     const float w = static_cast<float>(pipStrip.getWidth());
     const float cy = static_cast<float>(pipStrip.getCentreY());
     const float r = kPipDiameter * 0.5f;

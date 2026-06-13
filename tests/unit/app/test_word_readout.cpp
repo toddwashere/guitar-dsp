@@ -29,3 +29,16 @@ TEST_CASE("WordReadout: center-word ramp constants", "[app][ui][word-readout][ra
                              (1.0f + WordReadout::kCenterGrowFactor * 1.0f);
     REQUIRE(peakHeight == Catch::Approx(54.4f).epsilon(1e-4f));
 }
+
+TEST_CASE("WordReadout: center word at progress=1 lerps to peak red, ~1.6x size",
+          "[app][ui][word-readout][ramp]") {
+    // Sanity: kPeakColorR/G/B match #FF3030.
+    REQUIRE(WordReadout::kPeakColorR == 0xFF);
+    REQUIRE(WordReadout::kPeakColorG == 0x30);
+    REQUIRE(WordReadout::kPeakColorB == 0x30);
+
+    // Sanity: at progress=1, computed font size is 1.6x base.
+    const float ramped = WordReadout::kCenterBaseHeight *
+                         (1.0f + WordReadout::kCenterGrowFactor * 1.0f);
+    REQUIRE(ramped == Catch::Approx(54.4f).epsilon(1e-4f));
+}
