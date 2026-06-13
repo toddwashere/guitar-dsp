@@ -20,6 +20,7 @@ juce::String PluginState::toJson(const PluginStateData& d) {
     o->setProperty("makeup",       d.makeup);
     o->setProperty("carrierNoise", d.carrierNoise);
     o->setProperty("sibilance",    d.sibilance);
+    o->setProperty("gateThresholdDb", d.gateThresholdDb);
     // AI fields
     o->setProperty("selectedModelId", juce::String(d.selectedModelId));
     o->setProperty("personaId",       static_cast<int>(d.personaId));
@@ -49,6 +50,8 @@ PluginStateData PluginState::fromJson(const juce::String& json) {
         if (o->hasProperty("makeup"))       d.makeup       = (float) (double) o->getProperty("makeup");
         if (o->hasProperty("carrierNoise")) d.carrierNoise = (float) (double) o->getProperty("carrierNoise");
         if (o->hasProperty("sibilance"))    d.sibilance    = (float) (double) o->getProperty("sibilance");
+        if (o->hasProperty("gateThresholdDb"))
+            d.gateThresholdDb = (float) (double) o->getProperty("gateThresholdDb");
         // AI fields
         if (o->hasProperty("selectedModelId"))
             d.selectedModelId = o->getProperty("selectedModelId").toString().toStdString();

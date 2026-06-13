@@ -22,6 +22,7 @@ public:
     // Threshold in dBFS below which the gate closes. Set very low (e.g.
     // -200) to effectively disable the gate.
     void setNoiseGateThreshold(float thresholdDb);
+    float noiseGateThresholdDb() const noexcept { return gateThresholdDb_; }
     void setInputGainDb(float gainDb);
 
     // Current gate gain (0..1), updated each sample by process(). Safe to
@@ -38,6 +39,7 @@ private:
     float dcBlockerR_ = 0.0f;
 
     // Noise gate (peak envelope follower + soft gain control).
+    float gateThresholdDb_  = -120.0f;
     float gateThresholdLin_ = 0.0f;
     float gateEnvelope_ = 0.0f;
     float gateAttackCoef_ = 0.0f;

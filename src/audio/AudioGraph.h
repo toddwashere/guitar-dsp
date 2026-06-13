@@ -30,6 +30,10 @@ public:
     void process(const float* in, float* out, std::size_t numSamples);
 
     InputStage& input() { return inputStage_; }
+
+    // Noise-gate threshold convenience (forwards to InputStage).
+    void  setNoiseGateThresholdDb(float dB) noexcept { inputStage_.setNoiseGateThreshold(dB); }
+    float noiseGateThresholdDb()      const noexcept { return inputStage_.noiseGateThresholdDb(); }
     Mixer& mixer() { return mixer_; }
     TTSClipPlayer& ttsClipPlayer() { return ttsClipPlayer_; }
     NoteSteppedTTSPlayer& noteSteppedPlayer() { return noteSteppedPlayer_; }

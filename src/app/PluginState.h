@@ -14,6 +14,7 @@ struct PluginStateData {
     float makeup       = 5.0f;
     float carrierNoise = 0.30f;
     float sibilance    = 0.5f;
+    float gateThresholdDb = -70.0f;  // noise gate (lower = more permissive)
     // NOTE: vocoder `clarity` is intentionally NOT persisted — it is a per-
     // SCENE control (every scene change overwrites it from cfg.clarity), so
     // saving it would just race with the scene-change handler on reload. To

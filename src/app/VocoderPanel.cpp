@@ -34,6 +34,15 @@ VocoderPanel::VocoderPanel(PluginProcessor& p) : processor_(p) {
     clarity_.onValueChange = [this] {
         processor_.setVocoderClarity(static_cast<float>(clarity_.getValue()));
     };
+
+    configureSlider(gateThreshold_, gateThresholdLabel_, "Gate threshold");
+    gateThreshold_.setRange(-90.0, -20.0, 0.5);
+    gateThreshold_.setTextValueSuffix(" dB");
+    gateThreshold_.setValue(processor_.noiseGateThresholdDb(), juce::dontSendNotification);
+    gateThreshold_.onValueChange = [this] {
+        processor_.setNoiseGateThresholdDb(static_cast<float>(gateThreshold_.getValue()));
+    };
+
     startTimerHz(4);  // poll the active scene's clarity for the label readout
 }
 
@@ -72,16 +81,17 @@ void VocoderPanel::paint(juce::Graphics& g) {
 void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
     area.removeFromTop(12);  // header band
-    const int rowH = area.getHeight() / 4;
+    const int rowH = area.getHeight() / 5;
     auto row = [&](juce::Slider& s, juce::Label& l, int labelW) {
         auto r = area.removeFromTop(rowH);
         l.setBounds(r.removeFromLeft(labelW));
         s.setBounds(r);
     };
-    row(makeup_,       makeupLabel_,       86);
-    row(carrierNoise_, carrierNoiseLabel_, 86);
-    row(sibilance_,    sibilanceLabel_,    86);
-    row(clarity_,      clarityLabel_,      140);  // wider — also shows "(scene 0.50)"
+    row(makeup_,         makeupLabel_,         86);
+    row(carrierNoise_,   carrierNoiseLabel_,   86);
+    row(sibilance_,      sibilanceLabel_,      86);
+    row(clarity_,        clarityLabel_,       140);  // wider — also shows "(scene 0.50)"
+    row(gateThreshold_,  gateThresholdLabel_,  86);
 }
 
 } // namespace guitar_dsp

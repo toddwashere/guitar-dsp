@@ -134,6 +134,11 @@ public:
     float vocoderCarrierNoise() const noexcept { return graph_.vocoderCarrierNoise(); }
     float vocoderSibilance() const noexcept { return graph_.vocoderSibilance(); }
     float vocoderClarity() const noexcept { return graph_.clarity(); }
+
+    // Noise gate threshold (dBFS). Lower = more permissive.
+    void  setNoiseGateThresholdDb(float dB) noexcept { graph_.setNoiseGateThresholdDb(dB); }
+    float noiseGateThresholdDb() const noexcept      { return graph_.noiseGateThresholdDb(); }
+
     // The currently active scene's declared clarity (0..1), for the visibility
     // readout — so the operator can see when the live slider has drifted from
     // the scene's authored default.

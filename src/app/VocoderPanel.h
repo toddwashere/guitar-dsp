@@ -24,8 +24,9 @@ private:
     void timerCallback() override;
 
     PluginProcessor& processor_;
-    juce::Slider makeup_, carrierNoise_, sibilance_, clarity_;
-    juce::Label  makeupLabel_, carrierNoiseLabel_, sibilanceLabel_, clarityLabel_;
+    juce::Slider makeup_, carrierNoise_, sibilance_, clarity_, gateThreshold_;
+    juce::Label  makeupLabel_, carrierNoiseLabel_, sibilanceLabel_, clarityLabel_,
+                 gateThresholdLabel_;
     float lastSceneClarity_ = -1.0f;  // sentinel — forces first paint
 };
 
