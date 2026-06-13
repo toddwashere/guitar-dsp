@@ -47,7 +47,9 @@ add_executable(guitar_dsp_tests
     unit/ai/test_ollama_client.cpp
     unit/ai/test_conversation_engine.cpp
     unit/app/test_plugin_state.cpp
+    unit/app/test_state_pill.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/StatePill.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     integration/test_scene_switch.cpp
@@ -72,6 +74,7 @@ target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_ai
     juce::juce_audio_formats
     juce::juce_audio_processors
+    juce::juce_gui_basics
     Catch2::Catch2WithMain
 )
 
