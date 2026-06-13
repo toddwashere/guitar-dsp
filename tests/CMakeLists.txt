@@ -48,8 +48,10 @@ add_executable(guitar_dsp_tests
     unit/ai/test_conversation_engine.cpp
     unit/app/test_plugin_state.cpp
     unit/app/test_state_pill.cpp
+    unit/app/test_conversation_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
     ${CMAKE_SOURCE_DIR}/src/app/StatePill.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/ConversationPanel.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     integration/test_scene_switch.cpp
