@@ -60,6 +60,7 @@ target_link_libraries(guitar_dsp_app
         juce::juce_dsp
         juce::juce_gui_extra
     PUBLIC
+        guitar_dsp_ai
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags

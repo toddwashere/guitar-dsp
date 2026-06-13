@@ -2,12 +2,41 @@
 
 namespace guitar_dsp::app {
 
+// Helpers for PersonaId <-> int conversion with range checking.
+// Valid range: Interviewer (0) .. PlainAssistant (5).
+static constexpr int kPersonaMin = static_cast<int>(ai::PersonaId::Interviewer);
+static constexpr int kPersonaMax = static_cast<int>(ai::PersonaId::PlainAssistant);
+
+static ai::PersonaId personaFromInt(int v) {
+    if (v < kPersonaMin || v > kPersonaMax)
+        return ai::PersonaId::Interviewer;
+    return static_cast<ai::PersonaId>(v);
+}
+
 juce::String PluginState::toJson(const PluginStateData& d) {
     juce::DynamicObject::Ptr o = new juce::DynamicObject();
-    o->setProperty("sceneId", d.sceneId);
-    o->setProperty("makeup", d.makeup);
+    // Existing fields
+    o->setProperty("sceneId",      d.sceneId);
+    o->setProperty("makeup",       d.makeup);
     o->setProperty("carrierNoise", d.carrierNoise);
-    o->setProperty("sibilance", d.sibilance);
+    o->setProperty("sibilance",    d.sibilance);
+    // AI fields
+    o->setProperty("selectedModelId", juce::String(d.selectedModelId));
+    o->setProperty("personaId",       static_cast<int>(d.personaId));
+    o->setProperty("maxSentences",    d.maxSentences);
+    o->setProperty("maxWords",        d.maxWords);
+    o->setProperty("sttModelId",      juce::String(d.sttModelId));
+    o->setProperty("pttPedalId",      d.pttPedalId);
+    o->setProperty("clearChatPedalId", d.clearChatPedalId);
+    // customPromptByPersona — omit entirely if empty
+    if (!d.customPromptByPersona.empty()) {
+        juce::DynamicObject::Ptr prompts = new juce::DynamicObject();
+        for (const auto& [pid, prompt] : d.customPromptByPersona) {
+            const auto key = juce::String(static_cast<int>(pid));
+            prompts->setProperty(key, juce::String(prompt));
+        }
+        o->setProperty("customPromptByPersona", juce::var(prompts.get()));
+    }
     return juce::JSON::toString(juce::var(o.get()), true);
 }
 
@@ -15,10 +44,41 @@ PluginStateData PluginState::fromJson(const juce::String& json) {
     PluginStateData d;  // defaults
     const juce::var v = juce::JSON::parse(json);
     if (auto* o = v.getDynamicObject()) {
+        // Existing fields
         if (o->hasProperty("sceneId"))      d.sceneId      = (int)   o->getProperty("sceneId");
         if (o->hasProperty("makeup"))       d.makeup       = (float) (double) o->getProperty("makeup");
         if (o->hasProperty("carrierNoise")) d.carrierNoise = (float) (double) o->getProperty("carrierNoise");
         if (o->hasProperty("sibilance"))    d.sibilance    = (float) (double) o->getProperty("sibilance");
+        // AI fields
+        if (o->hasProperty("selectedModelId"))
+            d.selectedModelId = o->getProperty("selectedModelId").toString().toStdString();
+        if (o->hasProperty("personaId"))
+            d.personaId = personaFromInt((int) o->getProperty("personaId"));
+        if (o->hasProperty("maxSentences"))
+            d.maxSentences = (int) o->getProperty("maxSentences");
+        if (o->hasProperty("maxWords"))
+            d.maxWords = (int) o->getProperty("maxWords");
+        if (o->hasProperty("sttModelId"))
+            d.sttModelId = o->getProperty("sttModelId").toString().toStdString();
+        if (o->hasProperty("pttPedalId"))
+            d.pttPedalId = (int) o->getProperty("pttPedalId");
+        if (o->hasProperty("clearChatPedalId"))
+            d.clearChatPedalId = (int) o->getProperty("clearChatPedalId");
+        // customPromptByPersona sub-object
+        if (o->hasProperty("customPromptByPersona")) {
+            const juce::var sub = o->getProperty("customPromptByPersona");
+            if (auto* prompts = sub.getDynamicObject()) {
+                for (const auto& prop : prompts->getProperties()) {
+                    const int pidInt = prop.name.toString().getIntValue();
+                    const ai::PersonaId pid = personaFromInt(pidInt);
+                    // Only store if the key round-trips (i.e. was a valid id)
+                    if (static_cast<int>(pid) == pidInt) {
+                        d.customPromptByPersona[pid] =
+                            prop.value.toString().toStdString();
+                    }
+                }
+            }
+        }
     }
     return d;
 }
