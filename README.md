@@ -101,6 +101,35 @@ Persisted in plugin state. Works whether pitch-singing is on or off
 (but only audible while pitch-singing is on, since that's what routes
 the pitched saw into the carrier).
 
+### Word-sync modes for note-triggered speech
+
+When a TTS scene uses `"trigger": "note"`, you can choose how guitar
+onsets drive the speech. The selector below the vocoder sliders has
+three options:
+
+- **Latch (default)** — one word per onset, hard latch. The current
+  word plays to completion before the next onset advances. Most
+  reliable 1:1 mapping.
+- **Advance** — every onset advances and restarts the next word.
+  Responsive but can cut multi-syllable words.
+- **Syllable** — requires the scene's `text` to include hyphens
+  (e.g. `"gui-tar gent-ly"`). Each hyphen-bounded fragment becomes
+  one syllable segment; onsets step through syllables.
+
+A scene can override the global UI selection via its TTS config:
+
+`"wordSync": "latch" | "advance" | "syllable" | "global"` (default
+`"global"`).
+
+If a scene requests Syllable mode but its text has no hyphens, it
+falls back to Latch on words.
+
+**When the conversational AI flow lands (future spec):** when Syllable
+mode is active for the response output, the LLM's system prompt must
+include guidance to hyphenate multi-syllable words. Without that, the
+AI response will use the Latch fallback and lose the syllable-level
+sync.
+
 ## Project status
 
 This branch implements **Phase 5a: note-triggered word-by-word speech** — the
