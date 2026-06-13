@@ -10,6 +10,7 @@ class AiSettingsPanel : public juce::Component {
 public:
     AiSettingsPanel(ai::AppPreferences&, ai::PersonaRegistry&, ai::IHttpTransport&);
 
+    void paint(juce::Graphics&) override;
     void resized() override;
 
     // Test-facing helpers

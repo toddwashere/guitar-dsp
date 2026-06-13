@@ -19,6 +19,7 @@ constexpr PersonaEntry kPersonas[] = {
 AiSettingsPanel::AiSettingsPanel(ai::AppPreferences& p, ai::PersonaRegistry& r,
                                  ai::IHttpTransport& http)
     : prefs_(p), personas_(r), http_(http) {
+    setOpaque(true);
     addAndMakeVisible(modelBox_);
     addAndMakeVisible(modelStatus_);
     addAndMakeVisible(refreshBtn_);
@@ -153,6 +154,13 @@ void AiSettingsPanel::selectModel(std::string id) {
                                 : juce::String("Anthropic: key set \xe2\x9c\x93"),
                              juce::dontSendNotification);
     }
+}
+
+void AiSettingsPanel::paint(juce::Graphics& g) {
+    // Opaque overlay so widgets behind the panel don't bleed through.
+    g.fillAll(juce::Colour::fromRGB(28, 30, 36));
+    g.setColour(juce::Colour::fromRGB(60, 64, 72));
+    g.drawRect(getLocalBounds(), 1);
 }
 
 void AiSettingsPanel::resized() {

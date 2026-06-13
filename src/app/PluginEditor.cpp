@@ -53,6 +53,11 @@ PluginEditor::PluginEditor(PluginProcessor& p)
 
     setWantsKeyboardFocus(true);
     addKeyListener(this);
+
+    // setSize(720, 880) above triggers resized() before conversationPanel_ and
+    // aiSettingsPanel_ are constructed, so they never get bounds. Run resized()
+    // once more now that all children exist.
+    resized();
 }
 
 void PluginEditor::paint(juce::Graphics& g) {
