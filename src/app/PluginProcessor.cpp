@@ -90,6 +90,7 @@ PluginProcessor::~PluginProcessor() {
 
 void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     graph_.prepare(sampleRate, samplesPerBlock);
+    micCapture_.prepare(sampleRate, 1);
     monoScratch_.assign(static_cast<std::size_t>(samplesPerBlock), 0.0f);
 
     if (sceneEngine_.getSceneCount() == 0) {
@@ -433,6 +434,40 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     for (int ch = 0; ch < totalOut; ++ch) {
         float* out = buffer.getWritePointer(ch);
         std::memcpy(out, monoScratch_.data(), sizeof(float) * static_cast<std::size_t>(numSamples));
+    }
+
+    // MicCapture sidechain routing (RT-safe, allocation-free).
+    // In AU: bus 1 carries the sidechain mic; in standalone, bus 1 is absent so
+    // we fall back to bus 0 (the user routes their mic to the single input device
+    // selected in the JUCE standalone host).
+    if (micCapture_.isCapturing()) {
+        if (getBusCount(/*isInput=*/true) >= 2 && getChannelCountOfBus(true, 1) > 0) {
+            auto micBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/1);
+            if (micBus.getNumChannels() == 1) {
+                micCapture_.appendFromAudioBlock(
+                    micBus.getReadPointer(0), micBus.getNumSamples());
+            } else if (micBus.getNumChannels() >= 2) {
+                // Downmix stereo sidechain to mono using a stack buffer (no malloc).
+                constexpr int kMaxBlock = 8192;
+                float tmp[kMaxBlock];
+                const int n = std::min(micBus.getNumSamples(), kMaxBlock);
+                const float* L = micBus.getReadPointer(0);
+                const float* R = micBus.getReadPointer(1);
+                for (int i = 0; i < n; ++i) tmp[i] = 0.5f * (L[i] + R[i]);
+                micCapture_.appendFromAudioBlock(tmp, n);
+            }
+        } else {
+            // Standalone (no sidechain): use main input as the mic source.
+            // Note: in standalone, the user picks an input device in the JUCE
+            // standalone host — that device feeds bus 0. So in standalone the
+            // user routes their mic to that single input. (Trade-off: in
+            // standalone, mic and guitar can't be on separate channels.)
+            auto mainBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/0);
+            if (mainBus.getNumChannels() >= 1) {
+                micCapture_.appendFromAudioBlock(
+                    mainBus.getReadPointer(0), mainBus.getNumSamples());
+            }
+        }
     }
 }
 

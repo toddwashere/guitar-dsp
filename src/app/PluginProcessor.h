@@ -10,6 +10,7 @@
 
 #include "audio/AudioGraph.h"
 #include "audio/AppleTTSSource.h"
+#include "audio/MicCapture.h"
 #include "audio/PiperTTSSource.h"
 #include "audio/PrebakedTTSSource.h"
 #include "audio/TTSPrewarmer.h"
@@ -73,6 +74,8 @@ public:
 
     scenes::SceneEngine& sceneEngine() { return sceneEngine_; }
 
+    audio::MicCapture& micCapture() noexcept { return micCapture_; }
+
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
     // TTS engine status for the visibility readout (message thread).
@@ -133,6 +136,7 @@ public:
 
 private:
     audio::AudioGraph graph_;
+    audio::MicCapture micCapture_;
     std::vector<float> monoScratch_;
 
     std::atomic<float> inputPeak_   {0.0f};
