@@ -77,7 +77,7 @@ private:
     // Saw post-filter: 1-pole IIR LPF on the sawtooth output. Tames the
     // bright top end so vocoder bands don't pass buzz through.
     float  sawLpfState_   = 0.0f;
-    float  sawLpfHz_      = 2000.0f;
+    float  sawLpfHz_      = 1500.0f;
     float  sawLpfAlpha_   = 0.0f;  // recomputed in prepare() from sawLpfHz_
 
     // ---- Hold/decay state ----------------------------------------------

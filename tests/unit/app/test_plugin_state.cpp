@@ -18,9 +18,9 @@ TEST_CASE("PluginState: round-trips scene id and vocoder knobs", "[app][state]")
 TEST_CASE("PluginState: missing/garbage input yields defaults", "[app][state]") {
     const auto out = PluginState::fromJson("not json");
     REQUIRE(out.sceneId == 0);
-    REQUIRE(out.makeup == 5.0f);
+    REQUIRE(out.makeup == 4.0f);
     REQUIRE(out.carrierNoise == 0.30f);
-    REQUIRE(out.sibilance == 0.5f);
+    REQUIRE(out.sibilance == 0.3f);
 }
 
 TEST_CASE("PluginState: new AI fields have correct defaults", "[app][state][ai]") {

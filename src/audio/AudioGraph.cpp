@@ -14,11 +14,11 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     noteSteppedPlayer_.prepare(sampleRate, blockSize);
     vocoder_.prepare(sampleRate, blockSize);
     vocoder_.setWetLevel(1.0f);
-    vocoder_.setSibilance(0.5f);
+    vocoder_.setSibilance(0.3f);
     // Audible vocoder defaults: the raw carrier*envelope product is ~15 dB
     // too quiet, and a clean guitar note is too sparse to carry formants.
     // Makeup gain + a broadband carrier floor fix both (tune live in the UI).
-    vocoder_.setOutputGain(5.0f);     // ~ +14 dB, tanh-limited downstream
+    vocoder_.setOutputGain(4.0f);     // ~ +12 dB, tanh-limited downstream
     vocoder_.setCarrierNoise(0.30f);
     carousel_.prepare(sampleRate, blockSize);
 

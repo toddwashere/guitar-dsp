@@ -11,9 +11,9 @@ namespace guitar_dsp::app {
 
 struct PluginStateData {
     int   sceneId      = 0;
-    float makeup       = 5.0f;
+    float makeup       = 4.0f;
     float carrierNoise = 0.30f;
-    float sibilance    = 0.5f;
+    float sibilance    = 0.3f;
     float gateThresholdDb = -60.0f;  // noise gate (lower = more permissive)
     bool pitchSinging = false;
     bool singing = false;

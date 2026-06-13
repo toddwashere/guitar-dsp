@@ -313,10 +313,10 @@ TEST_CASE("PitchTrackedCarrier: re-locks within 2 hops after voiced->unvoiced->v
     REQUIRE_THAT(centsBetween(last.freqHz, 330.0f), WithinAbs(0.0f, 30.0f));
 }
 
-TEST_CASE("PitchTrackedCarrier saw: LPF at 2 kHz attenuates 5 kHz energy vs LPF-bypassed reference",
+TEST_CASE("PitchTrackedCarrier saw: LPF attenuates 5 kHz energy vs LPF-bypassed reference",
           "[audio][pitch_tracked_carrier][saw][lpf]") {
     // Drive the same 1 kHz sine through two PitchTrackedCarrier instances.
-    // One has the default 2 kHz LPF; the other has the LPF effectively
+    // One has the default LPF cutoff; the other has the LPF effectively
     // bypassed (cutoff set above Nyquist). At 5 kHz the LPF instance
     // should show meaningfully less energy than the bypass instance.
     auto runAndCollect = [](float lpfHz) {
