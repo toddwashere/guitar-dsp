@@ -39,7 +39,8 @@ private:
 
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
-        .withInput("Input", juce::AudioChannelSet::mono(), true)
+        .withInput ("Input",  juce::AudioChannelSet::mono(),   true)
+        .withInput ("Mic",    juce::AudioChannelSet::mono(),   false)  // sidechain, disabled by default
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
     midiRouter_ = std::make_unique<midi::MidiRouter>(
         [this, weakAlive = std::weak_ptr<std::atomic<bool>>(alive_)]
@@ -196,14 +197,29 @@ int PluginProcessor::tryInstallSayText(const std::string& text) {
 }
 
 bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
-    const auto inputs = layouts.getMainInputChannelSet();
+    const auto inputs  = layouts.getMainInputChannelSet();
     const auto outputs = layouts.getMainOutputChannelSet();
     if (inputs.isDisabled() || outputs.isDisabled()) return false;
-    const bool inputOk = (inputs == juce::AudioChannelSet::mono()
-                       || inputs == juce::AudioChannelSet::stereo());
+
+    const bool inputOk = (inputs  == juce::AudioChannelSet::mono()
+                       || inputs  == juce::AudioChannelSet::stereo());
     const bool outputOk = (outputs == juce::AudioChannelSet::mono()
                         || outputs == juce::AudioChannelSet::stereo());
-    return inputOk && outputOk;
+    if (! inputOk || ! outputOk) return false;
+
+    // Optional sidechain mic input bus: disabled, mono, or stereo (we'll downmix).
+    if (layouts.inputBuses.size() >= 2) {
+        const auto sc = layouts.inputBuses[1];
+        if (! sc.isDisabled()
+            && sc != juce::AudioChannelSet::mono()
+            && sc != juce::AudioChannelSet::stereo()) return false;
+    }
+    return true;
+}
+
+bool PluginProcessor::micBusIsActive() const noexcept {
+    if (getBusCount(/*isInput=*/true) < 2) return false;
+    return getChannelCountOfBus(/*isInput=*/true, /*busIndex=*/1) > 0;
 }
 
 void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {

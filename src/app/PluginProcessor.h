@@ -68,6 +68,9 @@ public:
     static constexpr int kAudioRingSize = 4096;  // ~93 ms at 44.1 kHz
     void snapshotRecentSamples(float* dest, int count) const noexcept;
 
+    // True when the user has routed a sidechain source for the mic input bus.
+    bool micBusIsActive() const noexcept;
+
     scenes::SceneEngine& sceneEngine() { return sceneEngine_; }
 
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }

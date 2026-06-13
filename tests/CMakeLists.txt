@@ -57,6 +57,7 @@ add_executable(guitar_dsp_tests
     integration/test_carousel_scene.cpp
     integration/test_note_triggered_speech.cpp
     integration/test_whisper_transcriber.cpp
+    integration/test_sidechain_routing.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
@@ -68,6 +69,7 @@ target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_midi
     guitar_dsp_ai
     juce::juce_audio_formats
+    juce::juce_audio_processors
     Catch2::Catch2WithMain
 )
 
