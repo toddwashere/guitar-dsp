@@ -68,6 +68,20 @@ PluginProcessor::PluginProcessor()
                 // Phase 2; expression-pedal continuous control wires
                 // through in Phase 3.
             }
+
+            // AI pedal dispatch — runs after scene-change handling so a pedal can
+            // (in principle) trigger both. In stock defaults the AI bindings are -1
+            // so this is a no-op until the user configures FCB AI pedals.
+            if (msg.isProgramChange() && engine_) {
+                const int pc = msg.getProgramChangeNumber();
+                auto action = midiMapping_.decodeAi(pc, false);
+                switch (action) {
+                    case midi::AiAction::PttToggle:  engine_->startTurn();         break;
+                    case midi::AiAction::ClearChat:  engine_->clearConversation(); break;
+                    case midi::AiAction::CancelTurn: engine_->cancelTurn();        break;
+                    case midi::AiAction::None:        break;
+                }
+            }
         });
 
     if (const char* env = std::getenv("GUITAR_DSP_HOT_RELOAD"); env && std::string(env) == "1") {

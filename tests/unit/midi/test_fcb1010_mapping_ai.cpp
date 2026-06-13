@@ -22,14 +22,14 @@ TEST_CASE("FCB1010 AI: configured PTT pedal short press -> PttToggle",
     REQUIRE(m.decodeAi(8, false) == AiAction::PttToggle);
 }
 
-TEST_CASE("FCB1010 AI: configured clear pedal: short = CancelTurn, long = ClearChat",
+TEST_CASE("FCB1010 AI: clear pedal press always fires ClearChat (v1)",
           "[midi][fcb][ai]") {
     auto m = FCB1010Mapping::stockDefaults();
     AiPedalBindings b;
     b.pttProgramChange       = 8;
     b.clearChatProgramChange = 9;
     m.setAiBindings(b);
-    REQUIRE(m.decodeAi(9, false) == AiAction::CancelTurn);
+    REQUIRE(m.decodeAi(9, false) == AiAction::ClearChat);
     REQUIRE(m.decodeAi(9, true)  == AiAction::ClearChat);
 }
 

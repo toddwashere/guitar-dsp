@@ -51,11 +51,9 @@ std::optional<FCB1010Mapping> FCB1010Mapping::loadFromJson(const std::string& js
     return m;
 }
 
-AiAction FCB1010Mapping::decodeAi(int pc, bool isLongPress) const {
-    if (pc == ai_.pttProgramChange && !isLongPress)    return AiAction::PttToggle;
-    if (pc == ai_.clearChatProgramChange) {
-        return isLongPress ? AiAction::ClearChat : AiAction::CancelTurn;
-    }
+AiAction FCB1010Mapping::decodeAi(int pc, bool /*isLongPress*/) const {
+    if (pc == ai_.pttProgramChange       && pc >= 0) return AiAction::PttToggle;
+    if (pc == ai_.clearChatProgramChange && pc >= 0) return AiAction::ClearChat;
     return AiAction::None;
 }
 

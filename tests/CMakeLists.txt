@@ -68,6 +68,7 @@ add_executable(guitar_dsp_tests
     integration/test_sidechain_routing.cpp
     integration/test_realtime_safety_ai.cpp
     integration/test_au_state_persist_ai.cpp
+    integration/test_ai_pedal_routing.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
