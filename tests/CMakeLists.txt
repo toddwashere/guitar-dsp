@@ -34,6 +34,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_tts_trigger.cpp
     unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_library_carousel_pitch.cpp
+    unit/scenes/test_scene_library_developers.cpp
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
     unit/midi/test_fcb1010_mapping.cpp
