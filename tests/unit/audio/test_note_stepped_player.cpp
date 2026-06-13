@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "audio/NoteSteppedTTSPlayer.h"
 #include "audio/TTSClip.h"
+#include "audio/WordSyncMode.h"
 #include "harness/RealtimeSentinel.h"
 
 #include <algorithm>
@@ -90,4 +91,15 @@ TEST_CASE("NoteSteppedTTSPlayer: process is allocation-free",
     for (int blk = 0; blk < 50; ++blk) p.process(onset.data(), mod.data(), mod.size());
     sentinel.unmarkCurrentThreadAsRealtime();
     REQUIRE(sentinel.violations() == 0);
+}
+
+TEST_CASE("WordSyncMode: string round-trip", "[audio][word_sync_mode]") {
+    using guitar_dsp::audio::WordSyncMode;
+    using guitar_dsp::audio::toString;
+    using guitar_dsp::audio::wordSyncModeFromString;
+    REQUIRE(wordSyncModeFromString("latch")    == WordSyncMode::Latch);
+    REQUIRE(wordSyncModeFromString("advance")  == WordSyncMode::Advance);
+    REQUIRE(wordSyncModeFromString("syllable") == WordSyncMode::Syllable);
+    REQUIRE(wordSyncModeFromString("nonsense") == WordSyncMode::Latch);
+    REQUIRE(std::string(toString(WordSyncMode::Syllable)) == "syllable");
 }
