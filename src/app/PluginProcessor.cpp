@@ -232,11 +232,31 @@ juce::String PluginProcessor::lastResolvedSource() const noexcept {
 
 std::vector<std::string> PluginProcessor::activeSceneWords() const {
     const auto cfg = sceneEngine_.activeTtsConfig();
-    std::vector<std::string> words;
-    std::istringstream iss(cfg.text);
-    std::string w;
-    while (iss >> w) words.push_back(w);
-    return words;
+    std::vector<std::string> tokens;
+    // In Syllable mode, the player is stepping through TTSClip::syllables —
+    // text "gui-tar" produced two segments ("gui", "tar"). The display needs
+    // to match that segmentation, so split on hyphen as well as whitespace.
+    // Otherwise the player advances past "gui" / "tar" / "gent" / "ly" while
+    // the display ticks one token per WORD ("gui-tar", "gent-ly") and the
+    // two indices diverge by one per hyphenated word.
+    const bool syllableMode =
+        (graph_.wordSyncMode() == audio::WordSyncMode::Syllable);
+    if (syllableMode) {
+        std::string cur;
+        for (char c : cfg.text) {
+            if (c == ' ' || c == '\t' || c == '-' || c == '\n') {
+                if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
+            } else {
+                cur += c;
+            }
+        }
+        if (!cur.empty()) tokens.push_back(cur);
+    } else {
+        std::istringstream iss(cfg.text);
+        std::string w;
+        while (iss >> w) tokens.push_back(w);
+    }
+    return tokens;
 }
 
 void PluginProcessor::enqueueSayText(const std::string& text,
