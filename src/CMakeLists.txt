@@ -21,6 +21,7 @@ add_library(guitar_dsp_audio STATIC
     audio/OnsetDetector.cpp
     audio/WordAligner.cpp
     audio/NoteSteppedTTSPlayer.cpp
+    audio/MicCapture.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
