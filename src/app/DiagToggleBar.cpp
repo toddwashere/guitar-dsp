@@ -16,7 +16,7 @@ void DiagToggleBar::timerCallback() { repaint(); }
 juce::Rectangle<int> DiagToggleBar::pillBounds(int index) const {
     auto area = getLocalBounds().reduced(6, 5);
     constexpr int gap = 6;
-    const int w = (area.getWidth() - 2 * gap) / 3;
+    const int w = (area.getWidth() - 3 * gap) / 4;
     return juce::Rectangle<int>(area.getX() + index * (w + gap),
                                 area.getY(), w, area.getHeight());
 }
@@ -25,13 +25,14 @@ void DiagToggleBar::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour::fromRGB(14, 16, 22));
 
     struct Pill { const char* label; bool active; juce::Colour on; };
-    const Pill pills[3] = {
+    const Pill pills[4] = {
         { "V  Bypass vocoder", processor_.diagBypassVocoder(), juce::Colour::fromRGB(230, 170,  70) },
         { "N  Noise carrier",  processor_.diagNoiseCarrier(),  juce::Colour::fromRGB( 90, 200, 120) },
         { "S  Sibilance off",  processor_.diagSibilanceOff(),  juce::Colour::fromRGB(110, 170, 230) },
+        { "P  Pitch sing",     processor_.pitchSinging(),      juce::Colour::fromRGB(220, 120, 220) },
     };
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         const auto b = pillBounds(i);
         const bool on = pills[i].active;
         g.setColour(on ? pills[i].on : juce::Colour::fromRGB(34, 38, 46));
@@ -45,11 +46,12 @@ void DiagToggleBar::paint(juce::Graphics& g) {
 }
 
 void DiagToggleBar::mouseDown(const juce::MouseEvent& e) {
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         if (!pillBounds(i).contains(e.getPosition())) continue;
         if      (i == 0) processor_.toggleDiagBypassVocoder();
         else if (i == 1) processor_.toggleDiagNoiseCarrier();
-        else             processor_.toggleDiagSibilanceOff();
+        else if (i == 2) processor_.toggleDiagSibilanceOff();
+        else             processor_.togglePitchSinging();
         repaint();
         return;
     }
