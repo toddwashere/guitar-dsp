@@ -33,6 +33,7 @@ private:
     std::unordered_map<int, int> programChangeToScene_;
     int wetDryCc_     = -1;
     int masterGainCc_ = -1;
+    int pitchSingingToggleCc_ = -1;
     AiPedalBindings ai_;
 };
 

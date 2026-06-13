@@ -9,6 +9,7 @@ FCB1010Mapping FCB1010Mapping::stockDefaults() {
     for (int i = 0; i < 10; ++i) m.programChangeToScene_[i] = i;
     m.wetDryCc_     = 27;
     m.masterGainCc_ = 7;
+    m.pitchSingingToggleCc_ = 80;
     return m;
 }
 
@@ -39,6 +40,10 @@ std::optional<FCB1010Mapping> FCB1010Mapping::loadFromJson(const std::string& js
                 m.masterGainCc_ = static_cast<int>(ccObj->getProperty("masterGain"));
         }
     }
+
+    if (obj->hasProperty("pitchSingingToggleCc"))
+        m.pitchSingingToggleCc_ =
+            static_cast<int>(obj->getProperty("pitchSingingToggleCc"));
 
     if (obj->hasProperty("aiPedals")) {
         if (auto* a = obj->getProperty("aiPedals").getDynamicObject()) {
@@ -75,6 +80,8 @@ std::optional<SceneCommand> FCB1010Mapping::translate(const juce::MidiMessage& m
             return SceneCommand{SceneCommandType::SetWetDry, val};
         if (cc == masterGainCc_ && masterGainCc_ >= 0)
             return SceneCommand{SceneCommandType::SetMasterGain, val};
+        if (cc == pitchSingingToggleCc_ && pitchSingingToggleCc_ >= 0 && val >= 64)
+            return SceneCommand{SceneCommandType::TogglePitchSinging, 0};
     }
     return std::nullopt;
 }

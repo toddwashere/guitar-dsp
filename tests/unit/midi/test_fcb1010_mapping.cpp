@@ -77,3 +77,30 @@ TEST_CASE("FCB1010Mapping: loadFromJson with garbage returns nullopt",
           "[midi][fcb]") {
     REQUIRE_FALSE(FCB1010Mapping::loadFromJson("this is not json").has_value());
 }
+
+TEST_CASE("FCB1010Mapping: CC 80 value >= 64 -> TogglePitchSinging",
+          "[midi][fcb][pitch_singing]") {
+    FCB1010Mapping m = FCB1010Mapping::stockDefaults();
+    auto cmd = m.translate(juce::MidiMessage::controllerEvent(1, 80, 127));
+    REQUIRE(cmd.has_value());
+    REQUIRE(cmd->type == SceneCommandType::TogglePitchSinging);
+}
+
+TEST_CASE("FCB1010Mapping: CC 80 value < 64 -> nullopt (latch release)",
+          "[midi][fcb][pitch_singing]") {
+    FCB1010Mapping m = FCB1010Mapping::stockDefaults();
+    REQUIRE_FALSE(m.translate(juce::MidiMessage::controllerEvent(1, 80, 0)).has_value());
+    REQUIRE_FALSE(m.translate(juce::MidiMessage::controllerEvent(1, 80, 63)).has_value());
+}
+
+TEST_CASE("FCB1010Mapping: loadFromJson can override pitchSingingToggle CC",
+          "[midi][fcb][pitch_singing]") {
+    const auto json = R"({
+        "pitchSingingToggleCc": 85
+    })";
+    auto m = FCB1010Mapping::loadFromJson(json);
+    REQUIRE(m.has_value());
+    auto cmd = m->translate(juce::MidiMessage::controllerEvent(1, 85, 100));
+    REQUIRE(cmd.has_value());
+    REQUIRE(cmd->type == SceneCommandType::TogglePitchSinging);
+}
