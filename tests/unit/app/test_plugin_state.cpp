@@ -98,3 +98,19 @@ TEST_CASE("PluginState: pitchSinging defaults to false when absent",
     const auto out = guitar_dsp::app::PluginState::fromJson(json);
     REQUIRE(out.pitchSinging == false);
 }
+
+TEST_CASE("PluginState: singing round-trips through JSON",
+          "[app][state][singing]") {
+    guitar_dsp::app::PluginStateData d;
+    d.singing = true;
+    const auto json = guitar_dsp::app::PluginState::toJson(d);
+    const auto out  = guitar_dsp::app::PluginState::fromJson(json);
+    REQUIRE(out.singing == true);
+}
+
+TEST_CASE("PluginState: singing defaults to false when absent",
+          "[app][state][singing]") {
+    const juce::String json = R"({ "sceneId": 0 })";
+    const auto out = guitar_dsp::app::PluginState::fromJson(json);
+    REQUIRE(out.singing == false);
+}
