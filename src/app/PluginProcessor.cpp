@@ -562,6 +562,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.carrierNoise = graph_.vocoderCarrierNoise();
     d.sibilance    = graph_.vocoderSibilance();
     d.gateThresholdDb = graph_.noiseGateThresholdDb();
+    d.pitchSinging = graph_.pitchSinging();
     // clarity intentionally not persisted — it's per-scene. See PluginState.h.
 
     d.selectedModelId = selectedModelId_;
@@ -590,6 +591,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     graph_.setVocoderCarrierNoise(d.carrierNoise);
     graph_.setVocoderSibilance(d.sibilance);
     graph_.setNoiseGateThresholdDb(d.gateThresholdDb);
+    graph_.setPitchSinging(d.pitchSinging);
     sceneEngine_.activateScene(d.sceneId);
 
     selectModelId(d.selectedModelId);

@@ -82,3 +82,19 @@ TEST_CASE("PluginState: custom prompts with UTF-8 + quotes round-trip",
     REQUIRE(out.customPromptByPersona.at(guitar_dsp::ai::PersonaId::CuriousAi)
             == "I wonder \"why\" — Æ ✨ — let's see.");
 }
+
+TEST_CASE("PluginState: pitchSinging round-trips through JSON",
+          "[app][state][pitch_singing]") {
+    guitar_dsp::app::PluginStateData d;
+    d.pitchSinging = true;
+    const auto json = guitar_dsp::app::PluginState::toJson(d);
+    const auto out  = guitar_dsp::app::PluginState::fromJson(json);
+    REQUIRE(out.pitchSinging == true);
+}
+
+TEST_CASE("PluginState: pitchSinging defaults to false when absent",
+          "[app][state][pitch_singing]") {
+    const juce::String json = R"({ "sceneId": 0 })";
+    const auto out = guitar_dsp::app::PluginState::fromJson(json);
+    REQUIRE(out.pitchSinging == false);
+}
