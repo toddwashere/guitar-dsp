@@ -19,7 +19,7 @@ juce_add_plugin(guitar_dsp_app
     # module links against the relevant frameworks, and TCC crashes any
     # app on launch that links them without a usage description.
     MICROPHONE_PERMISSION_ENABLED TRUE
-    MICROPHONE_PERMISSION_TEXT "Guitar Speak needs audio input access to process your guitar signal."
+    MICROPHONE_PERMISSION_TEXT "Guitar Speak listens to your voice to power the conversational-AI feature."
     BLUETOOTH_PERMISSION_ENABLED TRUE
     BLUETOOTH_PERMISSION_TEXT "Guitar Speak needs Bluetooth access only if you want to connect a Bluetooth MIDI foot controller."
 )
