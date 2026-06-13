@@ -5,6 +5,7 @@
 
 #include "OnsetDetector.h"
 #include "TTSClip.h"
+#include "WordSyncMode.h"
 
 namespace guitar_dsp::audio {
 
@@ -22,6 +23,10 @@ public:
 
     // Message thread. Pass nullptr to clear.
     void setClip(TTSClipPtr clip);
+
+    // Message thread. Default is WordSyncMode::Latch.
+    void setMode(WordSyncMode m) noexcept;
+    WordSyncMode mode() const noexcept;
 
     // Audio thread. onsetSrc = clean guitar; writes the modulator to modOut.
     void process(const float* onsetSrc, float* modOut, std::size_t numSamples) noexcept;
@@ -44,6 +49,7 @@ private:
     bool        playing_    = false;
 
     std::atomic<int> currentWordIndex_ {-1};
+    std::atomic<int> mode_ {static_cast<int>(WordSyncMode::Latch)};
 };
 
 } // namespace guitar_dsp::audio

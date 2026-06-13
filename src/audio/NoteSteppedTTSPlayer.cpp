@@ -23,6 +23,13 @@ void NoteSteppedTTSPlayer::setClip(TTSClipPtr clip) {
     newClipFlag_.store(true, std::memory_order_release);
 }
 
+void NoteSteppedTTSPlayer::setMode(WordSyncMode m) noexcept {
+    mode_.store(static_cast<int>(m), std::memory_order_relaxed);
+}
+WordSyncMode NoteSteppedTTSPlayer::mode() const noexcept {
+    return static_cast<WordSyncMode>(mode_.load(std::memory_order_relaxed));
+}
+
 void NoteSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
                                    std::size_t numSamples) noexcept {
     if (newClipFlag_.exchange(false, std::memory_order_acquire)) {
@@ -40,18 +47,22 @@ void NoteSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
 
     for (std::size_t i = 0; i < numSamples; ++i) {
         if (onset_.processSample(onsetSrc[i]) && haveClip) {
-            if (haveWords) {
-                const int n = static_cast<int>(activeClip_->words.size());
-                wordIndex_ = (wordIndex_ + 1) % n;
-                playPos_ = activeClip_->words[static_cast<std::size_t>(wordIndex_)].startSample;
-                segEnd_  = activeClip_->words[static_cast<std::size_t>(wordIndex_)].endSample;
-            } else {
-                wordIndex_ = 0;
-                playPos_ = 0;
-                segEnd_ = activeClip_->samples.size();
+            const auto m = static_cast<WordSyncMode>(mode_.load(std::memory_order_relaxed));
+            const bool latchHolds = (m == WordSyncMode::Latch) && playing_;
+            if (!latchHolds) {
+                if (haveWords) {
+                    const int n = static_cast<int>(activeClip_->words.size());
+                    wordIndex_ = (wordIndex_ + 1) % n;
+                    playPos_ = activeClip_->words[static_cast<std::size_t>(wordIndex_)].startSample;
+                    segEnd_  = activeClip_->words[static_cast<std::size_t>(wordIndex_)].endSample;
+                } else {
+                    wordIndex_ = 0;
+                    playPos_ = 0;
+                    segEnd_ = activeClip_->samples.size();
+                }
+                playing_ = true;
+                currentWordIndex_.store(wordIndex_, std::memory_order_relaxed);
             }
-            playing_ = true;
-            currentWordIndex_.store(wordIndex_, std::memory_order_relaxed);
         }
 
         float s = 0.0f;
