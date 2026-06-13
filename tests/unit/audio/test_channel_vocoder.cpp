@@ -174,3 +174,53 @@ TEST_CASE("ChannelVocoder: sibilance noise activates with high-band modulator en
                   << "  withSib=" << rms(outWithSib.data(), N));
     REQUIRE(rms(outWithSib.data(), N) > rms(outNoSib.data(), N) * 3.0);
 }
+
+TEST_CASE("ChannelVocoder: envelope follower decays with ~25 ms time constant",
+          "[audio][channel_vocoder][envelope]") {
+    using namespace guitar_dsp::audio;
+    ChannelVocoder voc;
+    voc.prepare(48000.0, 1024);
+    voc.setWetLevel(1.0f);
+    voc.setSibilance(0.0f);
+    // Keep gain low so the output stays in the tanh linear region; otherwise
+    // saturation masks envelope decay.
+    voc.setOutputGain(0.05f);
+    voc.setCarrierNoise(0.1f);  // small broadband floor so all bands have carrier
+
+    // Modulator: 100 ms of 1 kHz tone followed by 100 ms of silence.
+    std::vector<float> mod(48000 / 5);  // 0.2 s
+    for (std::size_t i = 0; i < mod.size() / 2; ++i)
+        mod[i] = 0.6f * std::sin(2.0 * 3.14159265 * 1000.0 * i / 48000.0);
+    // tail (second half) already zero from default
+
+    // Constant carrier — band-filter rejects DC, so carrier excitation comes
+    // from the noise floor above.
+    std::vector<float> car(mod.size(), 0.0f);
+    std::vector<float> out(mod.size());
+
+    voc.process(car.data(), mod.data(), out.data(), mod.size());
+
+    // RMS just before modulator stops (sample 3800-4799, last 20 ms of tone)
+    // and ~25 ms after stop (sample 5800-6199, ~21..29 ms post-stop).
+    // RMS is more stable than sample peak for the noise-carrier output.
+    auto rmsOver = [&](std::size_t from, std::size_t len) {
+        double s = 0.0;
+        std::size_t n = 0;
+        for (std::size_t i = from; i < from + len && i < out.size(); ++i) {
+            s += static_cast<double>(out[i]) * out[i];
+            ++n;
+        }
+        return n ? std::sqrt(s / n) : 0.0;
+    };
+    const double atStop  = rmsOver(3800, 1000);
+    const double at25ms  = rmsOver(5800, 400);
+    INFO("atStop=" << atStop << "  at25ms=" << at25ms
+                   << "  ratio=" << (at25ms / atStop));
+    // The output amplitude tracks the modulator-band envelope (LP of |modulator|).
+    // After one time constant (~25 ms), envelope should be ~1/e (~37%) of its
+    // pre-stop value. With envT=15 ms it would fall to ~19% in the same window
+    // (exp(-25/15)). Bounds 25%..50% distinguish 25 ms from 15 ms while
+    // tolerating noise-carrier statistical jitter.
+    REQUIRE(at25ms < atStop * 0.50);
+    REQUIRE(at25ms > atStop * 0.25);
+}
