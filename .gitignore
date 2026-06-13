@@ -40,6 +40,9 @@ tools/tts_prebake/voices/*.onnx
 tools/tts_prebake/voices/*.onnx.json
 tools/tts_prebake/.venv/
 
+# Whisper model files (download separately; too large to commit)
+Resources/whisper/*.bin
+
 # Piper binary + voices (download via scripts/fetch_piper.sh)
 assets/piper/piper
 assets/piper/*.dylib
