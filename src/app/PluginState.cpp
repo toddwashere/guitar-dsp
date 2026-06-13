@@ -64,17 +64,16 @@ PluginStateData PluginState::fromJson(const juce::String& json) {
             d.pttPedalId = (int) o->getProperty("pttPedalId");
         if (o->hasProperty("clearChatPedalId"))
             d.clearChatPedalId = (int) o->getProperty("clearChatPedalId");
-        // customPromptByPersona sub-object
+        // customPromptByPersona sub-object — explicit per-known-id lookup
+        // to avoid getIntValue() silently returning 0 for non-numeric keys.
         if (o->hasProperty("customPromptByPersona")) {
             const juce::var sub = o->getProperty("customPromptByPersona");
-            if (auto* prompts = sub.getDynamicObject()) {
-                for (const auto& prop : prompts->getProperties()) {
-                    const int pidInt = prop.name.toString().getIntValue();
-                    const ai::PersonaId pid = personaFromInt(pidInt);
-                    // Only store if the key round-trips (i.e. was a valid id)
-                    if (static_cast<int>(pid) == pidInt) {
-                        d.customPromptByPersona[pid] =
-                            prop.value.toString().toStdString();
+            if (auto* subObj = sub.getDynamicObject()) {
+                for (int i = kPersonaMin; i <= kPersonaMax; ++i) {
+                    const juce::Identifier key { juce::String(i) };
+                    if (subObj->hasProperty(key)) {
+                        d.customPromptByPersona[static_cast<ai::PersonaId>(i)] =
+                            subObj->getProperty(key).toString().toStdString();
                     }
                 }
             }

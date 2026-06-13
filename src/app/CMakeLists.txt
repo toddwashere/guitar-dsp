@@ -54,13 +54,13 @@ target_link_libraries(guitar_dsp_app
         guitar_dsp_audio
         guitar_dsp_midi
         guitar_dsp_scenes
+        guitar_dsp_ai
         juce::juce_audio_utils
         juce::juce_audio_devices
         juce::juce_audio_processors
         juce::juce_dsp
         juce::juce_gui_extra
     PUBLIC
-        guitar_dsp_ai
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
