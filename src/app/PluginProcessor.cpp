@@ -105,6 +105,7 @@ PluginProcessor::PluginProcessor()
     engine_ = std::make_unique<ai::ConversationEngine>(
         *whisper_, *llm_, micCapture_, convBuf_, personas_,
         [this](std::string text){ enqueueSayText(text); });
+    engine_->setCannedFallbackEnabled(prefs_->cannedFallbackOnLlmError());
 }
 
 PluginProcessor::~PluginProcessor() {

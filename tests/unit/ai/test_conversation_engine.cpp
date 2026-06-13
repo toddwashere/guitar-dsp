@@ -192,3 +192,32 @@ TEST_CASE("Engine: clear during Thinking cancels in-flight and empties buffer",
     REQUIRE(h.engine.state() == ConversationEngine::State::Idle);
     REQUIRE(h.buf.snapshot().empty());
 }
+
+TEST_CASE("Engine: canned fallback fires on LLM error -> still speaks",
+          "[ai][engine][fallback]") {
+    Harness h;
+    h.llm.scriptedError = "rate limited";
+    h.engine.setCannedFallbackEnabled(true);
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Speaking);
+    h.engine.onTtsPlaybackFinished();
+    h.waitForState(ConversationEngine::State::Idle);
+
+    REQUIRE(h.spokenTexts.size() == 1);
+    REQUIRE_FALSE(h.spokenTexts[0].empty());
+    REQUIRE(h.engine.lastError().find("rate limited") != std::string::npos);
+}
+
+TEST_CASE("Engine: canned fallback disabled (default) -> Error state with reason",
+          "[ai][engine][fallback]") {
+    Harness h;
+    h.llm.scriptedError = "rate limited";
+    // Note: not enabling fallback
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Error);
+    REQUIRE(h.spokenTexts.empty());
+}

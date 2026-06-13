@@ -2,6 +2,17 @@
 
 namespace guitar_dsp::ai {
 
+std::string ConversationEngine::pickCannedReply(int n) noexcept {
+    static const char* pool[] = {
+        "Hmm, let me think.",
+        "Say that again?",
+        "Hard to say.",
+        "I'm not sure yet."
+    };
+    constexpr int kPoolSize = static_cast<int>(sizeof(pool) / sizeof(pool[0]));
+    return pool[n % kPoolSize];
+}
+
 ConversationEngine::ConversationEngine(ITranscriber& t, ILlmClient& l,
                                        audio::IMicCapture& m,
                                        ConversationBuffer& b, PersonaRegistry& p,
@@ -109,6 +120,13 @@ void ConversationEngine::runEndTurn() {
     if (cancel_.isCancelled()) { state_.store(State::Idle); return; }
     if (!reply.error.empty()) {
         { std::lock_guard lk(errorMutex_); lastError_ = reply.error; }
+        if (cannedFallback_.load()) {
+            const auto canned = pickCannedReply(static_cast<int>(buf_->snapshot().size()));
+            buf_->append(Message::Role::Assistant, canned);
+            state_.store(State::Speaking);
+            say_(canned);
+            return;
+        }
         state_.store(State::Error); return;
     }
     buf_->append(Message::Role::Assistant, reply.text);

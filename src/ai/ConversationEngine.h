@@ -53,6 +53,10 @@ public:
     void setLlmClient(ILlmClient&);
     void setPersona(PersonaId, std::string customPrompt);
 
+    void setCannedFallbackEnabled(bool enabled) noexcept {
+        cannedFallback_.store(enabled);
+    }
+
 private:
     enum class Job { StartTurn, EndTurn, Cancel, Clear, TtsFinished };
     void enqueue(Job);
@@ -72,6 +76,9 @@ private:
     std::string         lastError_;
     StageTimings        lastTimings_;
     CancellationToken   cancel_;
+    std::atomic<bool>   cannedFallback_ {false};
+
+    static std::string pickCannedReply(int turnCount) noexcept;
 
     std::thread             worker_;
     std::mutex              qMutex_;
