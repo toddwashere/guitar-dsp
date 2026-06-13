@@ -1,5 +1,17 @@
 {
-  "text": "And now my guitar gently speaks for me.",
+  "text": "And now my gui-tar gent-ly speaks for me.",
   "voice": "com.apple.voice.compact.en-US.Samantha",
-  "duration_s": 2.155854
+  "duration_s": 2.155854,
+  "syllableTimingsMs": [
+    [   0,  150],
+    [ 150,  310],
+    [ 310,  460],
+    [ 460,  710],
+    [ 710,  960],
+    [ 960, 1180],
+    [1180, 1340],
+    [1340, 1720],
+    [1720, 1900],
+    [1900, 2156]
+  ]
 }

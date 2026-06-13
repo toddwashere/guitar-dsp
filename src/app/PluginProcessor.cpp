@@ -468,7 +468,10 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                     seg->words = audio::WordAligner::align(seg->samples, plainWords,
                                                            seg->sampleRate);
                 const bool anyHyphen = sourceText.find('-') != std::string::npos;
-                if (anyHyphen && !plainWords.empty())
+                // PrebakedTTSSource may have already populated `syllables`
+                // from a hand-authored `syllableTimingsMs` in the clip's
+                // meta.json. Those override the energy-gap heuristic.
+                if (anyHyphen && !plainWords.empty() && seg->syllables.empty())
                     seg->syllables = audio::WordAligner::alignSyllables(
                         seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
                 graph_.noteSteppedPlayer().setClip(seg);

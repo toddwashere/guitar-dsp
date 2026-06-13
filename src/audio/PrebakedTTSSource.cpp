@@ -63,6 +63,53 @@ TTSClipPtr PrebakedTTSSource::synthesize(const std::string& key) {
         }
     }
 
+    // Optional: hand-authored syllable timings in meta.json override the
+    // WordAligner's energy-gap heuristic, which is unreliable on prebaked
+    // clips with continuous prosody (no clean silences between words).
+    // Schema:
+    //   {
+    //     "text": "...hyphenated...",
+    //     "syllableTimingsMs": [[start, end], [start, end], ...]
+    //   }
+    // When present AND the length matches the syllable count from the
+    // hyphen-split text, populate clip->syllables directly.
+    const fs::path metaPath = fs::path(rootDir_) / key / "meta.json";
+    if (fs::exists(metaPath)) {
+        const auto json = juce::JSON::parse(
+            juce::File(metaPath.string()).loadFileAsString());
+        if (auto* obj = json.getDynamicObject()) {
+            if (obj->hasProperty("syllableTimingsMs")
+                    && obj->hasProperty("text")) {
+                const auto text = obj->getProperty("text").toString().toStdString();
+                std::vector<std::string> labels;
+                {
+                    std::string cur;
+                    for (char c : text) {
+                        if (c == ' ' || c == '\t' || c == '-' || c == '\n') {
+                            if (!cur.empty()) { labels.push_back(cur); cur.clear(); }
+                        } else cur += c;
+                    }
+                    if (!cur.empty()) labels.push_back(cur);
+                }
+                const auto* arr = obj->getProperty("syllableTimingsMs").getArray();
+                if (arr && static_cast<std::size_t>(arr->size()) == labels.size()) {
+                    for (std::size_t i = 0; i < labels.size(); ++i) {
+                        const auto* pair = (*arr)[static_cast<int>(i)].getArray();
+                        if (!pair || pair->size() < 2) continue;
+                        const double startMs = (double)(*pair)[0];
+                        const double endMs   = (double)(*pair)[1];
+                        const auto startSample = static_cast<std::size_t>(
+                            startMs / 1000.0 * clip->sampleRate);
+                        const auto endSample = static_cast<std::size_t>(
+                            endMs / 1000.0 * clip->sampleRate);
+                        clip->syllables.push_back(
+                            WordSegment{labels[i], startSample, endSample});
+                    }
+                }
+            }
+        }
+    }
+
     return clip;
 }
 
