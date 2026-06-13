@@ -2,6 +2,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "AiSettingsPanel.h"
+#include "ConversationPanel.h"
 #include "DiagToggleBar.h"
 #include "DiagnosticPanel.h"
 #include "MidiDevicePicker.h"
@@ -43,6 +45,10 @@ private:
     SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;
     SpectrumAnalyzer   spectrumAnalyzer_;
+
+    std::unique_ptr<ConversationPanel> conversationPanel_;
+    std::unique_ptr<AiSettingsPanel>   aiSettingsPanel_;
+    juce::TextButton                   toggleAiSettingsBtn_ {"AI Settings"};
 };
 
 } // namespace guitar_dsp

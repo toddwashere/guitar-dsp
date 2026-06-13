@@ -15,7 +15,7 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
-    setSize(720, 728);
+    setSize(720, 880);
     setResizable(true, true);
     setResizeLimits(520, 556, 1800, 1200);
     addAndMakeVisible(diagnosticPanel_);
@@ -29,6 +29,28 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(sayPanel_);
     addAndMakeVisible(oscilloscope_);
     addAndMakeVisible(spectrumAnalyzer_);
+
+    const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
+
+    conversationPanel_ = std::make_unique<ConversationPanel>(
+        processor_.conversationEngine(), processor_.conversationBuffer(), compact);
+    addAndMakeVisible(*conversationPanel_);
+
+    aiSettingsPanel_ = std::make_unique<AiSettingsPanel>(
+        processor_.appPreferences(),
+        processor_.personaRegistry(),
+        processor_.httpTransport());
+    addChildComponent(*aiSettingsPanel_);   // hidden by default (overlay)
+
+    addAndMakeVisible(toggleAiSettingsBtn_);
+    toggleAiSettingsBtn_.setClickingTogglesState(true);
+    toggleAiSettingsBtn_.onClick = [this] {
+        const bool visible = toggleAiSettingsBtn_.getToggleState();
+        aiSettingsPanel_->setVisible(visible);
+        if (visible) aiSettingsPanel_->toFront(false);
+        resized();
+    };
+
     setWantsKeyboardFocus(true);
     addKeyListener(this);
 }
@@ -48,9 +70,20 @@ void PluginEditor::resized() {
     if (midiDevicePicker_.isVisible())
         midiDevicePicker_.setBounds(bounds.removeFromTop(28));
     sayPanel_.setBounds(bounds.removeFromTop(40));
+
+    // Reserve AI Settings toggle and ConversationPanel at the bottom.
+    toggleAiSettingsBtn_.setBounds(bounds.removeFromTop(24));
+    const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
+    const int convHeight = compact ? 80 : 220;
+    auto convArea = bounds.removeFromBottom(convHeight);
+    if (conversationPanel_) conversationPanel_->setBounds(convArea);
+
     const int remaining = bounds.getHeight();
     oscilloscope_.setBounds(bounds.removeFromTop(remaining / 2));
     spectrumAnalyzer_.setBounds(bounds);
+
+    if (aiSettingsPanel_ && aiSettingsPanel_->isVisible())
+        aiSettingsPanel_->setBounds(getLocalBounds().reduced(40));
 }
 
 bool PluginEditor::keyPressed(const juce::KeyPress& key, juce::Component*) {
