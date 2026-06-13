@@ -197,41 +197,52 @@ TEST_CASE("PitchTrackedCarrier saw: spectral peak near detected fundamental",
     REQUIRE(goertzel(220.0f) > 4.0f * goertzel(313.0f));
 }
 
-TEST_CASE("PitchTrackedCarrier hold: continues singing for ~holdMs after silence",
+TEST_CASE("PitchTrackedCarrier hold: still loud at 200 ms into silence with holdMs=500",
           "[audio][pitch_tracked_carrier][hold]") {
     PitchTrackedCarrier c;
     c.prepare(48000.0, 512);
-    c.setHoldMs(500.0f);   // 24000 samples @ 48k
-    c.setDecayMs(100.0f);  // 4800 samples decay
+    c.setHoldMs(500.0f);
+    c.setDecayMs(100.0f);
 
     SyntheticGuitar gen{48000.0};
     std::vector<float> tone(48000);
     gen.sine(220.0f, 0.4f, tone.data(), tone.size());
 
     std::vector<float> blockOut(512);
-    // Phase 1: feed 1s of tone so YIN locks.
+    // Phase 1: 1 s of tone (lock + fill ring).
     for (std::size_t i = 0; i < tone.size(); i += 512)
         c.process(tone.data() + i, blockOut.data(),
                   std::min<std::size_t>(512, tone.size() - i));
 
-    // Phase 2: feed 200 ms of silence; saw should still be loud (hold).
-    std::vector<float> silence(48000 * 200 / 1000, 0.0f);
-    float peakDuringHold = 0.0f;
+    // Phase 2: silence. We want to sample peak amplitude in a block far past
+    // YIN's ring-buffer lag (~46 ms) but well before holdMs (500 ms) expires.
+    // Specifically, the block covering t = 150–162 ms of silence (samples
+    // 7168–7679 of the silence stream).
+    std::vector<float> silence(48000, 0.0f);  // 1 s of silence available
+    float peakLate = 0.0f;
+    constexpr std::size_t kProbeStart = 7168;   // 149 ms into silence
+    constexpr std::size_t kProbeLen   = 512;
     for (std::size_t i = 0; i < silence.size(); i += 512) {
         const std::size_t n = std::min<std::size_t>(512, silence.size() - i);
         c.process(silence.data() + i, blockOut.data(), n);
-        for (std::size_t k = 0; k < n; ++k)
-            peakDuringHold = std::max(peakDuringHold, std::abs(blockOut[k]));
+        // Capture peak within the late-probe block only.
+        if (i == kProbeStart) {
+            for (std::size_t k = 0; k < kProbeLen; ++k)
+                peakLate = std::max(peakLate, std::abs(blockOut[k]));
+        }
     }
-    REQUIRE(peakDuringHold > 0.5f);  // still near full level mid-hold
+    // With hold active, saw is at full level at 150 ms of silence. Without
+    // the hold state machine, the saw goes silent ~46 ms into silence.
+    REQUIRE(peakLate > 0.5f);
 }
 
-TEST_CASE("PitchTrackedCarrier decay: amplitude near zero after hold+decay window",
+TEST_CASE("PitchTrackedCarrier decay: ramps down across the decay window",
           "[audio][pitch_tracked_carrier][hold]") {
     PitchTrackedCarrier c;
     c.prepare(48000.0, 512);
-    c.setHoldMs(200.0f);   //  9600 samples
-    c.setDecayMs(100.0f);  //  4800 samples
+    c.setHoldMs(100.0f);    // 4800 samples hold
+    c.setDecayMs(400.0f);   // 19200 samples decay — wide enough to sample
+                            // mid-decay reliably
 
     SyntheticGuitar gen{48000.0};
     std::vector<float> tone(48000);
@@ -242,20 +253,37 @@ TEST_CASE("PitchTrackedCarrier decay: amplitude near zero after hold+decay windo
         c.process(tone.data() + i, blockOut.data(),
                   std::min<std::size_t>(512, tone.size() - i));
 
-    // Feed enough silence to exceed hold + decay + slack.
-    std::vector<float> silence(48000, 0.0f);  // 1 second
-    float peakLastBlock = 0.0f;
+    // Silence stream:
+    //   t = 0 ms       silence begins
+    //   t ≈ 46 ms      YIN ring transitions to unvoiced
+    //   t = 100 ms     hold expires, decay begins
+    //   t = 300 ms     decay halfway through (gain ≈ 0.5)
+    //   t = 500 ms     decay complete, saw silent
+    std::vector<float> silence(48000, 0.0f);
+    float peakMidDecay  = 0.0f;
+    float peakPostDecay = 0.0f;
+    constexpr std::size_t kMidDecayStart  = 14336;  // ~299 ms
+    constexpr std::size_t kPostDecayStart = 28672;  // ~597 ms
     for (std::size_t i = 0; i < silence.size(); i += 512) {
         const std::size_t n = std::min<std::size_t>(512, silence.size() - i);
         auto s = c.process(silence.data() + i, blockOut.data(), n);
-        if (i + n == silence.size()) {
+        if (i == kMidDecayStart) {
             for (std::size_t k = 0; k < n; ++k)
-                peakLastBlock = std::max(peakLastBlock, std::abs(blockOut[k]));
-            // voiced flag must be false even though we still emit during decay.
+                peakMidDecay = std::max(peakMidDecay, std::abs(blockOut[k]));
+        }
+        if (i == kPostDecayStart) {
+            for (std::size_t k = 0; k < n; ++k)
+                peakPostDecay = std::max(peakPostDecay, std::abs(blockOut[k]));
             REQUIRE(s.voiced == false);
         }
     }
-    REQUIRE(peakLastBlock < 0.01f);
+    // Mid-decay: amplitude around 0.5 (linear decay from 1.0 -> 0 over decayMs).
+    // Without state machine: 0. Without linear ramp (just hold->cliff): either
+    // ~1.0 (if still in hold) or 0. The (0.2, 0.85) window pins linear behavior.
+    REQUIRE(peakMidDecay > 0.2f);
+    REQUIRE(peakMidDecay < 0.85f);
+    // Past hold + decay: saw should be silent.
+    REQUIRE(peakPostDecay < 0.01f);
 }
 
 TEST_CASE("PitchTrackedCarrier: re-locks within 2 hops after voiced->unvoiced->voiced",
