@@ -313,35 +313,53 @@ TEST_CASE("PitchTrackedCarrier: re-locks within 2 hops after voiced->unvoiced->v
     REQUIRE_THAT(centsBetween(last.freqHz, 330.0f), WithinAbs(0.0f, 30.0f));
 }
 
-TEST_CASE("PitchTrackedCarrier saw: LPF attenuates >4 kHz energy at 1 kHz fundamental",
+TEST_CASE("PitchTrackedCarrier saw: LPF at 2 kHz attenuates 5 kHz energy vs LPF-bypassed reference",
           "[audio][pitch_tracked_carrier][saw][lpf]") {
-    PitchTrackedCarrier c;
-    c.prepare(48000.0, 512);
+    // Drive the same 1 kHz sine through two PitchTrackedCarrier instances.
+    // One has the default 2 kHz LPF; the other has the LPF effectively
+    // bypassed (cutoff set above Nyquist). At 5 kHz the LPF instance
+    // should show meaningfully less energy than the bypass instance.
+    auto runAndCollect = [](float lpfHz) {
+        PitchTrackedCarrier c;
+        c.setSawLowpassHz(lpfHz);     // BEFORE prepare so alpha is set
+        c.prepare(48000.0, 512);
 
-    SyntheticGuitar gen{48000.0};
-    std::vector<float> in(48000);
-    gen.sine(1000.0f, 0.4f, in.data(), in.size());  // F0=1 kHz, well-detected
+        SyntheticGuitar gen{48000.0};
+        std::vector<float> in(48000);
+        gen.sine(1000.0f, 0.4f, in.data(), in.size());
 
-    std::vector<float> sawOut(48000), blockOut(512);
-    for (std::size_t i = 0; i < in.size(); i += 512) {
-        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
-        c.process(in.data() + i, blockOut.data(), n);
-        std::copy(blockOut.begin(), blockOut.begin() + n, sawOut.begin() + i);
-    }
+        std::vector<float> sawOut(48000), blockOut(512);
+        for (std::size_t i = 0; i < in.size(); i += 512) {
+            const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+            c.process(in.data() + i, blockOut.data(), n);
+            std::copy(blockOut.begin(), blockOut.begin() + n, sawOut.begin() + i);
+        }
+        return sawOut;
+    };
 
-    auto goertzel = [&](float hz) {
+    auto goertzel = [](const std::vector<float>& buf, float hz) {
         const float omega = 2.0f * 3.14159265f * hz / 48000.0f;
         const float coef  = 2.0f * std::cos(omega);
         float s1 = 0.0f, s2 = 0.0f;
-        for (std::size_t i = 24000; i < sawOut.size(); ++i) {
-            const float s = sawOut[i] + coef * s1 - s2;
+        for (std::size_t i = 24000; i < buf.size(); ++i) {
+            const float s = buf[i] + coef * s1 - s2;
             s2 = s1; s1 = s;
         }
         return s1 * s1 + s2 * s2 - coef * s1 * s2;
     };
-    // The LPF cutoff is 2 kHz; energy at 5 kHz should be at least 12 dB below
-    // energy at the 1 kHz fundamental.
-    const float lowE  = goertzel(1000.0f);
-    const float highE = goertzel(5000.0f);
-    REQUIRE(highE * 16.0f < lowE);  // 12 dB = 4x amplitude = 16x power
+
+    const auto withLpf      = runAndCollect(2000.0f);    // default
+    const auto withoutLpf   = runAndCollect(40000.0f);   // above Nyquist -> alpha=1, pass-through
+
+    // At the FUNDAMENTAL (1 kHz), below cutoff, energy should be comparable.
+    const float lowWithLpf    = goertzel(withLpf,    1000.0f);
+    const float lowWithoutLpf = goertzel(withoutLpf, 1000.0f);
+    REQUIRE(lowWithLpf > 0.5f * lowWithoutLpf);
+
+    // At 5 kHz (above the 2 kHz cutoff), the LPF instance should have
+    // SUBSTANTIALLY less energy than the bypass instance — at least 5x less
+    // (~7 dB reduction). This pins the LPF's actual effect.
+    const float highWithLpf    = goertzel(withLpf,    5000.0f);
+    const float highWithoutLpf = goertzel(withoutLpf, 5000.0f);
+    REQUIRE(highWithLpf * 5.0f < highWithoutLpf);
 }
