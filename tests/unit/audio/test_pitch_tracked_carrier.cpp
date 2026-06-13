@@ -135,3 +135,64 @@ TEST_CASE("PitchTrackedCarrier YIN: warm-up suppresses voiced detection until ri
     }
     REQUIRE(s.voiced == false);
 }
+
+TEST_CASE("PitchTrackedCarrier saw: produces non-silent output when voiced",
+          "[audio][pitch_tracked_carrier][saw]") {
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(48000);
+    gen.sine(220.0f, 0.4f, in.data(), in.size());
+
+    std::vector<float> out(512);
+    // Process the first 0.5 s so YIN locks past warm-up, then capture peak
+    // in the second half.
+    float peakLast = 0.0f;
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        auto s = c.process(in.data() + i, out.data(), n);
+        if (s.voiced && i >= 24000) {
+            for (std::size_t k = 0; k < n; ++k)
+                peakLast = std::max(peakLast, std::abs(out[k]));
+        }
+    }
+    REQUIRE(peakLast > 0.1f);
+}
+
+TEST_CASE("PitchTrackedCarrier saw: spectral peak near detected fundamental",
+          "[audio][pitch_tracked_carrier][saw]") {
+    // Goertzel-based check: at the detected F0, output should have
+    // substantially more energy than at a non-harmonic probe frequency.
+    PitchTrackedCarrier c;
+    c.prepare(48000.0, 512);
+
+    SyntheticGuitar gen{48000.0};
+    std::vector<float> in(48000);
+    gen.sine(220.0f, 0.4f, in.data(), in.size());
+
+    std::vector<float> sawOut(48000);
+    std::vector<float> blockOut(512);
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        c.process(in.data() + i, blockOut.data(), n);
+        std::copy(blockOut.begin(), blockOut.begin() + n,
+                  sawOut.begin() + i);
+    }
+
+    // Goertzel magnitude over the last 0.5 s at 220 Hz (expected peak)
+    // and at 313 Hz (non-harmonic probe).
+    auto goertzel = [&](float hz) {
+        const float omega = 2.0f * 3.14159265f * hz / 48000.0f;
+        const float coef  = 2.0f * std::cos(omega);
+        float s1 = 0.0f, s2 = 0.0f;
+        for (std::size_t i = 24000; i < sawOut.size(); ++i) {
+            const float s = sawOut[i] + coef * s1 - s2;
+            s2 = s1;
+            s1 = s;
+        }
+        return s1 * s1 + s2 * s2 - coef * s1 * s2;
+    };
+
+    REQUIRE(goertzel(220.0f) > 4.0f * goertzel(313.0f));
+}

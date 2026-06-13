@@ -58,7 +58,9 @@ PitchTrackedCarrier::State PitchTrackedCarrier::process(
             }
         }
 
-        out[i] = 0.0f;  // Task 3 will fill this with the saw
+        out[i] = currentlyVoiced_ && currentFreqHz_ > 0.0f
+               ? nextSawSample(currentFreqHz_)
+               : 0.0f;
     }
 
     State s;
@@ -144,8 +146,29 @@ float PitchTrackedCarrier::runYin() noexcept {
     return f0;
 }
 
-float PitchTrackedCarrier::nextSawSample(float /*freqHz*/) noexcept {
-    return 0.0f;  // filled in Task 3
+float PitchTrackedCarrier::nextSawSample(float freqHz) noexcept {
+    // Phase increment per sample, in [0, 1).
+    const double dt = static_cast<double>(freqHz) / sampleRate_;
+    // Naive saw: value = 2*phase - 1.
+    float v = static_cast<float>(2.0 * sawPhase_ - 1.0);
+
+    // PolyBLEP correction at the phase=0 / phase=1 discontinuity.
+    auto polyBlep = [dt](double t) {
+        if (t < dt) {
+            t /= dt;
+            return t + t - t * t - 1.0;
+        }
+        if (t > 1.0 - dt) {
+            t = (t - 1.0) / dt;
+            return t * t + t + t + 1.0;
+        }
+        return 0.0;
+    };
+    v -= static_cast<float>(polyBlep(sawPhase_));
+
+    sawPhase_ += dt;
+    if (sawPhase_ >= 1.0) sawPhase_ -= 1.0;
+    return v;
 }
 
 } // namespace guitar_dsp::audio
