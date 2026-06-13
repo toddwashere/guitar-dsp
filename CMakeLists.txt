@@ -27,6 +27,47 @@ if(GUITAR_DSP_UBSAN)
     add_link_options(-fsanitize=undefined)
 endif()
 
+# Auto-fetch runtime assets that are gitignored (too large to commit).
+# Set GUITAR_DSP_AUTO_FETCH_ASSETS=OFF to skip — useful in CI or when assets
+# have been mounted from a cache.
+option(GUITAR_DSP_AUTO_FETCH_ASSETS
+       "Run scripts/fetch_*.sh during configure if required assets are missing" ON)
+
+if(GUITAR_DSP_AUTO_FETCH_ASSETS)
+    # Piper TTS binary + en_US-amy-medium voice (~65 MB total). Required for
+    # scene 7 (Speaking — Piper word-by-word). The fetched tarball from
+    # rhasspy/piper may currently be missing the .dylib runtime libs on macOS;
+    # if scene 7 fails to speak, build the missing dylibs from source — see
+    # docs/ for instructions.
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/piper/piper"
+       OR NOT EXISTS "${CMAKE_SOURCE_DIR}/assets/piper/voices/en_US-amy-medium.onnx")
+        message(STATUS "Piper assets missing — running scripts/fetch_piper.sh")
+        execute_process(
+            COMMAND "${CMAKE_SOURCE_DIR}/scripts/fetch_piper.sh"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            RESULT_VARIABLE _piper_fetch_rc)
+        if(NOT _piper_fetch_rc EQUAL 0)
+            message(WARNING "Piper fetch failed (exit ${_piper_fetch_rc}). "
+                "Scene 7 (Speaking — Piper) won't work until you run "
+                "scripts/fetch_piper.sh manually and resolve the cause.")
+        endif()
+    endif()
+
+    # Whisper STT model (~150 MB). Required for the conversational-AI feature.
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Resources/whisper/ggml-base.en.bin")
+        message(STATUS "Whisper model missing — running scripts/fetch_whisper.sh")
+        execute_process(
+            COMMAND "${CMAKE_SOURCE_DIR}/scripts/fetch_whisper.sh"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            RESULT_VARIABLE _whisper_fetch_rc)
+        if(NOT _whisper_fetch_rc EQUAL 0)
+            message(WARNING "Whisper fetch failed (exit ${_whisper_fetch_rc}). "
+                "Conversational-AI STT won't work until you run "
+                "scripts/fetch_whisper.sh manually.")
+        endif()
+    endif()
+endif()
+
 # Pull in JUCE
 add_subdirectory(external/JUCE)
 

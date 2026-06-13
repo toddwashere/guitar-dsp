@@ -69,89 +69,49 @@ target_link_libraries(guitar_dsp_app
         juce::juce_recommended_warning_flags
 )
 
-# Copy assets/ into each built plugin bundle's Resources directory.
-# Stamp-file pattern re-runs the copy whenever any file under assets/ changes.
-set(GUITAR_DSP_ASSETS_SRC "${CMAKE_SOURCE_DIR}/assets")
-file(GLOB_RECURSE GUITAR_DSP_ASSET_FILES CONFIGURE_DEPENDS
-    "${GUITAR_DSP_ASSETS_SRC}/*")
-
-# One copy command per format target. Each format's executable lives at
-# <bundle>/Contents/MacOS, so ../Resources is the bundle's Resources dir.
-function(guitar_dsp_copy_assets_to format_target)
-    set(dest "$<TARGET_FILE_DIR:${format_target}>/../Resources/assets")
-    set(stamp "${CMAKE_CURRENT_BINARY_DIR}/assets_copied_${format_target}.stamp")
-    add_custom_command(
-        OUTPUT "${stamp}"
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${dest}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${GUITAR_DSP_ASSETS_SRC}" "${dest}"
-        COMMAND ${CMAKE_COMMAND} -E touch "${stamp}"
-        DEPENDS ${GUITAR_DSP_ASSET_FILES} ${format_target}
-        COMMENT "Copying assets/ into ${format_target} bundle Resources/"
-        VERBATIM)
-    add_custom_target(copy_assets_${format_target} ALL DEPENDS "${stamp}")
-endfunction()
-
-guitar_dsp_copy_assets_to(guitar_dsp_app_Standalone)
-if(TARGET guitar_dsp_app_AU)
-    guitar_dsp_copy_assets_to(guitar_dsp_app_AU)
-    # COPY_PLUGIN_AFTER_BUILD installs the .component to the user's Components
-    # folder BEFORE the in-tree asset copy runs, so the installed copy would
-    # otherwise lack assets. Copy assets into the installed bundle too.
-    set(GUITAR_DSP_AU_INSTALLED
-        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${GUITAR_DSP_PRODUCT_NAME}.component/Contents/Resources/assets")
-    set(GUITAR_DSP_AU_INSTALLED_STAMP
-        "${CMAKE_CURRENT_BINARY_DIR}/assets_copied_AU_installed.stamp")
-    add_custom_command(
-        OUTPUT "${GUITAR_DSP_AU_INSTALLED_STAMP}"
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_AU_INSTALLED}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${GUITAR_DSP_ASSETS_SRC}" "${GUITAR_DSP_AU_INSTALLED}"
-        COMMAND ${CMAKE_COMMAND} -E touch "${GUITAR_DSP_AU_INSTALLED_STAMP}"
-        DEPENDS ${GUITAR_DSP_ASSET_FILES} guitar_dsp_app_AU
-        COMMENT "Copying assets/ into the installed AU .component"
-        VERBATIM)
-    add_custom_target(copy_assets_AU_installed ALL
-        DEPENDS "${GUITAR_DSP_AU_INSTALLED_STAMP}")
-endif()
-
-# Copy Resources/whisper/ (contains ggml-base.en.bin) into each built bundle.
-# Same stamp-file pattern as the assets copy above.
+# Copy runtime assets into each built bundle's Resources directory.
+#
+# History: previously this used `add_custom_target(... ALL DEPENDS stamp)` —
+# which only fired on a default build. `cmake --build build --target
+# guitar_dsp_app_Standalone` (or _AU) would skip the copy and ship an empty
+# bundle, breaking scene loading and STT. Switching to POST_BUILD on the format
+# target itself makes the copy run whenever the target rebuilds, regardless of
+# how the build was invoked.
+#
+# We intentionally do NOT `rm -rf` the destination first — `copy_directory` is
+# incremental (touches only changed files), so incremental builds stay fast.
+# Trade-off: if you remove an asset from source, you must wipe the bundle by
+# hand or do a clean rebuild.
+set(GUITAR_DSP_ASSETS_SRC  "${CMAKE_SOURCE_DIR}/assets")
 set(GUITAR_DSP_WHISPER_SRC "${CMAKE_SOURCE_DIR}/Resources/whisper")
-file(GLOB_RECURSE GUITAR_DSP_WHISPER_FILES CONFIGURE_DEPENDS
-    "${GUITAR_DSP_WHISPER_SRC}/*")
 
-function(guitar_dsp_copy_whisper_to format_target)
-    set(dest "$<TARGET_FILE_DIR:${format_target}>/../Resources/whisper")
-    set(stamp "${CMAKE_CURRENT_BINARY_DIR}/whisper_copied_${format_target}.stamp")
-    add_custom_command(
-        OUTPUT "${stamp}"
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${dest}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${GUITAR_DSP_WHISPER_SRC}" "${dest}"
-        COMMAND ${CMAKE_COMMAND} -E touch "${stamp}"
-        DEPENDS ${GUITAR_DSP_WHISPER_FILES} ${format_target}
-        COMMENT "Copying whisper model into ${format_target} bundle Resources/"
+function(guitar_dsp_post_build_copy format_target src_dir dest_subdir)
+    add_custom_command(TARGET ${format_target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${src_dir}"
+            "$<TARGET_FILE_DIR:${format_target}>/../Resources/${dest_subdir}"
+        COMMENT "Copying ${dest_subdir}/ into ${format_target} bundle"
         VERBATIM)
-    add_custom_target(copy_whisper_${format_target} ALL DEPENDS "${stamp}")
 endfunction()
 
-guitar_dsp_copy_whisper_to(guitar_dsp_app_Standalone)
+guitar_dsp_post_build_copy(guitar_dsp_app_Standalone "${GUITAR_DSP_ASSETS_SRC}"  assets)
+guitar_dsp_post_build_copy(guitar_dsp_app_Standalone "${GUITAR_DSP_WHISPER_SRC}" whisper)
+
 if(TARGET guitar_dsp_app_AU)
-    guitar_dsp_copy_whisper_to(guitar_dsp_app_AU)
-    # COPY_PLUGIN_AFTER_BUILD installs the .component before this copy runs,
-    # so also copy the whisper model into the installed bundle.
-    set(GUITAR_DSP_AU_WHISPER_INSTALLED
-        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${GUITAR_DSP_PRODUCT_NAME}.component/Contents/Resources/whisper")
-    set(GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP
-        "${CMAKE_CURRENT_BINARY_DIR}/whisper_copied_AU_installed.stamp")
-    add_custom_command(
-        OUTPUT "${GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP}"
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_AU_WHISPER_INSTALLED}"
+    guitar_dsp_post_build_copy(guitar_dsp_app_AU "${GUITAR_DSP_ASSETS_SRC}"  assets)
+    guitar_dsp_post_build_copy(guitar_dsp_app_AU "${GUITAR_DSP_WHISPER_SRC}" whisper)
+
+    # COPY_PLUGIN_AFTER_BUILD installs the .component into ~/Library/Audio/
+    # Plug-Ins/Components/ as a separate POST_BUILD step inside juce_add_plugin.
+    # Our POST_BUILD commands are declared AFTER that block, so they run after
+    # the installed bundle exists — copy assets + whisper into it too.
+    set(GUITAR_DSP_AU_INSTALLED_ROOT
+        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${GUITAR_DSP_PRODUCT_NAME}.component/Contents/Resources")
+    add_custom_command(TARGET guitar_dsp_app_AU POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${GUITAR_DSP_WHISPER_SRC}" "${GUITAR_DSP_AU_WHISPER_INSTALLED}"
-        COMMAND ${CMAKE_COMMAND} -E touch "${GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP}"
-        DEPENDS ${GUITAR_DSP_WHISPER_FILES} guitar_dsp_app_AU
-        COMMENT "Copying whisper model into the installed AU .component"
+            "${GUITAR_DSP_ASSETS_SRC}" "${GUITAR_DSP_AU_INSTALLED_ROOT}/assets"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${GUITAR_DSP_WHISPER_SRC}" "${GUITAR_DSP_AU_INSTALLED_ROOT}/whisper"
+        COMMENT "Copying assets/ + whisper/ into the installed AU .component"
         VERBATIM)
-    add_custom_target(copy_whisper_AU_installed ALL
-        DEPENDS "${GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP}")
 endif()
