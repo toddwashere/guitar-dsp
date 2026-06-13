@@ -6,10 +6,14 @@ namespace guitar_dsp::midi {
 
 class FCB1010Mapping;
 
-// Scan a MIDI buffer for scene-activating messages, returning the scene id
-// of the LAST such message in the block, or -1 if none. Allocation-free and
-// safe to call on the audio thread (processBlock); the caller stores the
-// result for the message thread to apply (activateScene is message-thread API).
-int sceneFromMidiBuffer(const juce::MidiBuffer& midi, const FCB1010Mapping& mapping);
+int  sceneFromMidiBuffer(const juce::MidiBuffer& midi, const FCB1010Mapping& mapping);
+
+// Returns true if the buffer contains at least one CC matching the
+// FCB1010Mapping's pitchSinging toggle (CC#80 by default, value >= 64).
+// Each such message represents one user "press"; the caller flips the
+// app's toggle once per call where this returns true (debounce is on the
+// FCB side — single press = single CC>=64 message).
+bool pitchSingingToggleFromMidiBuffer(const juce::MidiBuffer& midi,
+                                      const FCB1010Mapping& mapping);
 
 } // namespace guitar_dsp::midi

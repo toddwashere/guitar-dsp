@@ -29,3 +29,27 @@ TEST_CASE("sceneFromMidiBuffer: last scene message in the block wins", "[midi][h
     buf.addEvent(juce::MidiMessage::programChange(1, 5), 10);
     REQUIRE(sceneFromMidiBuffer(buf, mapping) == 5);
 }
+
+TEST_CASE("pitchSingingToggleFromMidiBuffer: returns true when CC#80 >=64 present",
+          "[midi][host_router][pitch_singing]") {
+    using namespace guitar_dsp::midi;
+    FCB1010Mapping mapping = FCB1010Mapping::stockDefaults();
+
+    juce::MidiBuffer buf;
+    buf.addEvent(juce::MidiMessage::controllerEvent(1, 80, 100), 0);
+
+    REQUIRE(pitchSingingToggleFromMidiBuffer(buf, mapping) == true);
+}
+
+TEST_CASE("pitchSingingToggleFromMidiBuffer: returns false on empty / unrelated msgs",
+          "[midi][host_router][pitch_singing]") {
+    using namespace guitar_dsp::midi;
+    FCB1010Mapping mapping = FCB1010Mapping::stockDefaults();
+
+    juce::MidiBuffer empty;
+    REQUIRE(pitchSingingToggleFromMidiBuffer(empty, mapping) == false);
+
+    juce::MidiBuffer pcOnly;
+    pcOnly.addEvent(juce::MidiMessage::programChange(1, 3), 0);
+    REQUIRE(pitchSingingToggleFromMidiBuffer(pcOnly, mapping) == false);
+}

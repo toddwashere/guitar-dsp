@@ -17,4 +17,16 @@ int sceneFromMidiBuffer(const juce::MidiBuffer& midi, const FCB1010Mapping& mapp
     return scene;
 }
 
+bool pitchSingingToggleFromMidiBuffer(const juce::MidiBuffer& midi,
+                                      const FCB1010Mapping& mapping) {
+    for (const auto metadata : midi) {
+        const auto msg = metadata.getMessage();
+        if (auto cmd = mapping.translate(msg)) {
+            if (cmd->type == SceneCommandType::TogglePitchSinging)
+                return true;
+        }
+    }
+    return false;
+}
+
 } // namespace guitar_dsp::midi
