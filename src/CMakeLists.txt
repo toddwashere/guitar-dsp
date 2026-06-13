@@ -51,6 +51,21 @@ target_compile_features(guitar_dsp_scenes PUBLIC cxx_std_20)
 
 target_link_libraries(guitar_dsp_scenes PUBLIC juce::juce_core)
 
+# AI module — STT, LLM clients, conversation orchestration. Pure C++ + JUCE.
+add_library(guitar_dsp_ai STATIC
+    ai/AiModule.cpp
+)
+
+target_include_directories(guitar_dsp_ai PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_compile_features(guitar_dsp_ai PUBLIC cxx_std_20)
+target_link_libraries(guitar_dsp_ai
+    PUBLIC
+        juce::juce_core
+        juce::juce_events
+)
+
 add_library(guitar_dsp_midi STATIC
     midi/FCB1010Mapping.cpp
     midi/HostMidiSceneRouter.cpp
