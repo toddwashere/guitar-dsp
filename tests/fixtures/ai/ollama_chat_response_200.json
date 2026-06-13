@@ -1,0 +1,6 @@
+{
+  "model": "llama3.2:3b",
+  "message": {"role": "assistant", "content": "I've been played by three guys."},
+  "done": true,
+  "total_duration": 1200000000
+}
