@@ -57,21 +57,29 @@ TEST_CASE("OnsetDetector: debounce suppresses a rapid double-hit",
     REQUIRE(countOnsets(d, buf) == 1);
 }
 
-TEST_CASE("OnsetDetector: default min-interval suppresses second onset 60 ms after first",
+TEST_CASE("OnsetDetector: 80 ms default debounce blocks a second pulse at 60 ms",
           "[audio][onset_detector][debounce]") {
+    // Pulse #1 amp 0.12 so env decays below rearm threshold (0.02) by ~50 ms
+    // (release time 30 ms): 0.12 * exp(-50/30) ~= 0.0227, 0.12 * exp(-60/30)
+    // ~= 0.0162 < 0.02. That isolates the debounce window from arm/rearm
+    // hysteresis: by 60 ms the detector is armed again.
+    //
+    // Pulse #2 amp 0.08 is just above attack threshold (0.05) -- it would
+    // fire instantly IF debounce were <=60 ms (count==2). At the 80 ms
+    // default, the gate is closed at t=60 ms; by the time the gate opens at
+    // t=80 ms the pulse has decayed to 0.08 * exp(-20/30) ~= 0.041 < attack,
+    // so no late-fire either. count==1 pins the 80 ms default.
     using guitar_dsp::audio::OnsetDetector;
     OnsetDetector det;
     det.prepare(48000.0);
 
-    // Two transient pulses 60 ms apart.
-    constexpr int kSamples = 48000 / 5;  // 0.2 s
+    constexpr int kSamples = 48000 / 5;        // 200 ms
     std::vector<float> buf(kSamples, 0.0f);
-    buf[0]    = 0.8f;      // pulse #1 at t=0
-    buf[2880] = 0.8f;      // pulse #2 at t=60 ms
+    buf[0]    = 0.12f;                          // pulse #1 at t=0 (fires)
+    buf[2880] = 0.08f;                          // pulse #2 at t=60 ms
 
     int onsetCount = 0;
     for (float s : buf)
         if (det.processSample(s)) ++onsetCount;
-    // With 80 ms default min-interval, only the first pulse fires.
     REQUIRE(onsetCount == 1);
 }
