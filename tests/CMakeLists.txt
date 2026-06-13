@@ -39,6 +39,7 @@ add_executable(guitar_dsp_tests
     unit/ai/test_conversation_buffer.cpp
     unit/ai/test_persona_registry.cpp
     unit/ai/test_app_preferences.cpp
+    unit/ai/test_http_transport_smoke.cpp
     unit/app/test_plugin_state.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
     integration/test_passthrough_golden.cpp
