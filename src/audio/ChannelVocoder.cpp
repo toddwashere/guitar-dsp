@@ -58,7 +58,7 @@ void ChannelVocoder::recomputeCoefficients() {
         coefs_[static_cast<std::size_t>(i)] = c;
     }
 
-    // 15 ms envelope follower one-pole: coef = exp(-1/(t*fs)).
+    // 25 ms envelope follower one-pole: coef = exp(-1/(t*fs)).
     constexpr float envT = 0.025f;  // softer release, sounds less robotic
     envelopeCoef_ = std::exp(-1.0f / (envT * fs));
 }
