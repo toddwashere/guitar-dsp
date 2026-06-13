@@ -110,3 +110,45 @@ if(TARGET guitar_dsp_app_AU)
     add_custom_target(copy_assets_AU_installed ALL
         DEPENDS "${GUITAR_DSP_AU_INSTALLED_STAMP}")
 endif()
+
+# Copy Resources/whisper/ (contains ggml-base.en.bin) into each built bundle.
+# Same stamp-file pattern as the assets copy above.
+set(GUITAR_DSP_WHISPER_SRC "${CMAKE_SOURCE_DIR}/Resources/whisper")
+file(GLOB_RECURSE GUITAR_DSP_WHISPER_FILES CONFIGURE_DEPENDS
+    "${GUITAR_DSP_WHISPER_SRC}/*")
+
+function(guitar_dsp_copy_whisper_to format_target)
+    set(dest "$<TARGET_FILE_DIR:${format_target}>/../Resources/whisper")
+    set(stamp "${CMAKE_CURRENT_BINARY_DIR}/whisper_copied_${format_target}.stamp")
+    add_custom_command(
+        OUTPUT "${stamp}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${dest}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${GUITAR_DSP_WHISPER_SRC}" "${dest}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${stamp}"
+        DEPENDS ${GUITAR_DSP_WHISPER_FILES} ${format_target}
+        COMMENT "Copying whisper model into ${format_target} bundle Resources/"
+        VERBATIM)
+    add_custom_target(copy_whisper_${format_target} ALL DEPENDS "${stamp}")
+endfunction()
+
+guitar_dsp_copy_whisper_to(guitar_dsp_app_Standalone)
+if(TARGET guitar_dsp_app_AU)
+    guitar_dsp_copy_whisper_to(guitar_dsp_app_AU)
+    # COPY_PLUGIN_AFTER_BUILD installs the .component before this copy runs,
+    # so also copy the whisper model into the installed bundle.
+    set(GUITAR_DSP_AU_WHISPER_INSTALLED
+        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${GUITAR_DSP_PRODUCT_NAME}.component/Contents/Resources/whisper")
+    set(GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP
+        "${CMAKE_CURRENT_BINARY_DIR}/whisper_copied_AU_installed.stamp")
+    add_custom_command(
+        OUTPUT "${GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_AU_WHISPER_INSTALLED}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${GUITAR_DSP_WHISPER_SRC}" "${GUITAR_DSP_AU_WHISPER_INSTALLED}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP}"
+        DEPENDS ${GUITAR_DSP_WHISPER_FILES} guitar_dsp_app_AU
+        COMMENT "Copying whisper model into the installed AU .component"
+        VERBATIM)
+    add_custom_target(copy_whisper_AU_installed ALL
+        DEPENDS "${GUITAR_DSP_AU_WHISPER_INSTALLED_STAMP}")
+endif()
