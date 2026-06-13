@@ -96,3 +96,99 @@ TEST_CASE("Engine: setLlmClient ignored when not Idle",
     REQUIRE(h.llm.callCount.load() == 1);
     REQUIRE(other.callCount.load() == 0);
 }
+
+TEST_CASE("Engine: cancel during Thinking returns to Idle, no assistant message",
+          "[ai][engine][cancel]") {
+    Harness h;
+    h.llm.delay = std::chrono::milliseconds{1000};
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Thinking);
+    h.engine.cancelTurn();
+    h.waitForState(ConversationEngine::State::Idle);
+
+    auto snap = h.buf.snapshot();
+    REQUIRE(snap.size() == 1);                       // only user message added
+    REQUIRE(snap[0].role == Message::Role::User);
+}
+
+TEST_CASE("Engine: LLM error transitions to Error state with reason",
+          "[ai][engine][error]") {
+    Harness h;
+    h.llm.scriptedError = "API key invalid";
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Error);
+    REQUIRE(h.engine.lastError() == "API key invalid");
+}
+
+TEST_CASE("Engine: STT empty-text error returns Idle with 'couldn't transcribe'",
+          "[ai][engine][error]") {
+    Harness h;
+    h.stt.scriptedText = "";
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Idle);
+    REQUIRE(h.engine.lastError().find("transcribe") != std::string::npos);
+}
+
+TEST_CASE("Engine: STT scripted error surfaces verbatim",
+          "[ai][engine][error]") {
+    Harness h;
+    h.stt.scriptedError = "model not loaded";
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Idle);
+    REQUIRE(h.engine.lastError() == "model not loaded");
+}
+
+TEST_CASE("Engine: too-short mic capture surfaces friendly error",
+          "[ai][engine][error]") {
+    Harness h;
+    h.mic.tooShort = true;
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Idle);
+    REQUIRE(h.engine.lastError().find("didn't hear") != std::string::npos);
+}
+
+TEST_CASE("Engine: destructor mid-turn joins cleanly without deadlock",
+          "[ai][engine][cancel]") {
+    auto stt = std::make_unique<FakeTranscriber>();
+    auto llm = std::make_unique<FakeLlmClient>();
+    llm->delay = std::chrono::seconds{5};
+    auto mic = std::make_unique<FakeMicCapture>();
+    ConversationBuffer buf;
+    PersonaRegistry    personas;
+    std::vector<std::string> spoken;
+    {
+        ConversationEngine engine(*stt, *llm, *mic, buf, personas,
+            [&](std::string s){ spoken.push_back(std::move(s)); });
+        engine.startTurn();
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+        engine.endTurn();
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+        // Destructor fires here; must NOT hang on the 5-second LLM delay.
+    }
+    SUCCEED();
+}
+
+TEST_CASE("Engine: clear during Thinking cancels in-flight and empties buffer",
+          "[ai][engine][cancel]") {
+    Harness h;
+    h.llm.delay = std::chrono::milliseconds{500};
+    h.engine.startTurn();
+    h.waitForState(ConversationEngine::State::Capturing);
+    h.engine.endTurn();
+    h.waitForState(ConversationEngine::State::Thinking);
+    h.engine.clearConversation();
+    // Worker should process the Clear job and end up Idle with empty buffer.
+    std::this_thread::sleep_for(std::chrono::milliseconds{600});
+    REQUIRE(h.engine.state() == ConversationEngine::State::Idle);
+    REQUIRE(h.buf.snapshot().empty());
+}
