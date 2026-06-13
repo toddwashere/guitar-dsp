@@ -74,6 +74,8 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
                 s.tts.fallback = t->getProperty("fallback").toString().toStdString();
             if (t->hasProperty("trigger"))
                 s.tts.trigger = t->getProperty("trigger").toString().toStdString();
+            if (t->hasProperty("wordSync"))
+                s.tts.wordSync = t->getProperty("wordSync").toString().toStdString();
             if (t->hasProperty("clarity"))
                 s.tts.clarity = std::clamp(
                     static_cast<float>((double) t->getProperty("clarity")), 0.0f, 1.0f);

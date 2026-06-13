@@ -30,3 +30,17 @@ TEST_CASE("SceneLibrary: missing tts block leaves defaults", "[scenes][library][
     REQUIRE(s->tts.source.empty());
     REQUIRE(s->tts.clip.empty());
 }
+
+TEST_CASE("SceneLibrary: parses wordSync = syllable in TTS config",
+          "[scenes][library][word_sync]") {
+    auto s = SceneLibrary::loadOne(fixturePath("scenes/with_tts_word_sync.json"));
+    REQUIRE(s.has_value());
+    REQUIRE(s->tts.wordSync == "syllable");
+}
+
+TEST_CASE("SceneLibrary: missing wordSync defaults to \"global\"",
+          "[scenes][library][word_sync]") {
+    auto s = SceneLibrary::loadOne(fixturePath("scenes/with_tts_no_word_sync.json"));
+    REQUIRE(s.has_value());
+    REQUIRE(s->tts.wordSync == "global");
+}

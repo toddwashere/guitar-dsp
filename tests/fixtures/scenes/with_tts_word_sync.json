@@ -1,0 +1,12 @@
+{
+  "id": 99,
+  "name": "test",
+  "mixer": { "masterGainDb": 0.0, "dryWet": 1.0 },
+  "tts": {
+    "source": "prebaked",
+    "clip": "test_clip",
+    "text": "hello",
+    "trigger": "note",
+    "wordSync": "syllable"
+  }
+}
