@@ -29,6 +29,14 @@ To regenerate golden-file fixtures after an intentional DSP change:
 GUITAR_DSP_REGENERATE_GOLDENS=1 ctest --test-dir build --output-on-failure -R golden
 ```
 
+## Conversational AI (new)
+
+Press a foot pedal, speak, the guitar replies. Works in both the standalone app and inside Logic Pro (AU plugin, sidechain mic). Local Whisper STT, dual LLM backend (Anthropic cloud + Ollama local — pick from a dropdown), six persona presets with editable system prompts.
+
+Bundle size grows by ~150 MB for the included Whisper model.
+
+See [`docs/au-logic-setup.md`](docs/au-logic-setup.md) for the one-time per-project sidechain routing in Logic Pro and global setup (API key, Ollama).
+
 ## Audio Unit (Logic Pro)
 
 The same app builds as an AUv2 plugin alongside the standalone:
