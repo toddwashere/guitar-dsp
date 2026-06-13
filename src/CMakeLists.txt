@@ -15,6 +15,7 @@ add_library(guitar_dsp_audio STATIC
     audio/CarouselMod.cpp
     audio/Carousel.cpp
     audio/PitchShifter.cpp
+    audio/PitchTrackedCarrier.cpp
     audio/Harmonizer.cpp
     audio/Comb.cpp
     audio/Formant.cpp

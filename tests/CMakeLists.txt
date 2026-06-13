@@ -18,6 +18,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_carousel_mod.cpp
     unit/audio/test_carousel.cpp
     unit/audio/test_pitch_shifter.cpp
+    unit/audio/test_pitch_tracked_carrier.cpp
     unit/audio/test_harmonizer.cpp
     unit/audio/test_comb.cpp
     unit/audio/test_formant.cpp
