@@ -67,6 +67,21 @@ track to a bus and record that bus onto another track.
 **MIDI scene control in the plugin:** route the FCB1010 (Program Change) to the
 plugin's track in Logic; Program Change *n* selects scene *n*.
 
+### Pitch-tracked singing carrier (toggle)
+
+The vocoder can switch its carrier-floor source from broadband noise to a
+pitched sawtooth that tracks the guitar's note ("singing" voice). The toggle
+is bound to **MIDI CC#80**, value >= 64. The FCB1010 doesn't send CC#80 in
+its stock programming - reprogram one switch (any free pedal) to send
+`Controller 80, value 127` on press. The toggle persists in the plugin state.
+
+You can also click the **P  Pitch sing** pill in the diagnostic toggle bar.
+The pitch readout below the vocoder sliders shows the detected note + cents
++ Hz whether the toggle is on or off, so you can see what the algorithm has
+locked to.
+
+To pick a different CC, set `pitchSingingToggleCc` in your FCB mapping JSON.
+
 **Apple TTS in a plugin host:** `AVSpeechSynthesizer` needs a pumped main run loop to
 deliver its audio callbacks. Logic provides one during playback, so Apple TTS works;
 fully headless hosts (e.g. `auval`) do not, and those scenes fall back to prebaked
