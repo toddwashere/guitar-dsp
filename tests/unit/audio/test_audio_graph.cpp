@@ -147,6 +147,10 @@ TEST_CASE("AudioGraph: noise-carrier diagnostic lets a silent guitar vocode",
         // Disable the built-in broadband carrier floor so the only carrier
         // energy comes from the diagnostic toggle under test.
         g.setVocoderCarrierNoise(0.0f);
+        // Disable the speak-clearly blend — this test isolates the vocoder's
+        // carrier contribution, and any clarity > 0 would bleed unvocoded
+        // speech back in regardless of the carrier.
+        g.setClarity(0.0f);
 
         std::vector<float> in(48000, 0.0f), out(48000, 0.0f);  // silent guitar
         for (std::size_t i = 0; i < in.size(); i += 512) {

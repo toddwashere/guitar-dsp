@@ -110,7 +110,7 @@ private:
     std::uint32_t     diagNoiseState_ {0x9E3779B9u};  // carrier-noise xorshift state
 
     std::atomic<float> vocoderSibilance_ {0.5f};  // base sibilance (diag can override to 0)
-    std::atomic<float> clarity_ {0.0f};            // "speak clearly" crossfade 0..1
+    std::atomic<float> clarity_ {0.80f};           // "speak clearly" crossfade 0..1
 
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;

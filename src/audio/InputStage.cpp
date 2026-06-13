@@ -12,7 +12,7 @@ namespace {
 }
 
 InputStage::InputStage() {
-    setNoiseGateThreshold(-70.0f);  // permissive default — quiet guitar passes
+    setNoiseGateThreshold(-60.0f);
     setInputGainDb(0.0f);
 }
 
