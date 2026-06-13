@@ -113,8 +113,8 @@ guitar_dsp::audio::TTSClipPtr makeThreeWordClip() {
     using guitar_dsp::audio::WordSegment;
     auto clip = std::make_shared<TTSClip>();
     clip->sampleRate = 48000.0;
-    constexpr int wordSamples = 48000 / 5;     // 200 ms
-    constexpr int gapSamples  = 48000 / 10;    // 100 ms
+    constexpr int wordSamples = (48000 * 8) / 10;  // 800 ms per word — long
+    constexpr int gapSamples  = 48000 / 5;         // 200 ms gap
     clip->samples.resize(3 * (wordSamples + gapSamples), 0.0f);
     const float freqs[3] = { 220.0f, 330.0f, 440.0f };
     for (int w = 0; w < 3; ++w) {
@@ -138,45 +138,46 @@ void plantOnset(std::vector<float>& buf, std::size_t at, float amp = 0.6f) {
 
 } // namespace
 
-TEST_CASE("NoteSteppedTTSPlayer Latch: onset during playback is ignored",
+TEST_CASE("NoteSteppedTTSPlayer Latch: second onset 250 ms in is ignored mid-word",
           "[audio][note_stepped][latch]") {
+    // Word 0 is 800 ms long. First onset at t≈2 ms starts playback. Second
+    // onset at t≈250 ms — well past OnsetDetector's 80 ms debounce, with a
+    // big enough amplitude that env clears the rearm threshold before
+    // arrival — would advance to word 1 if Latch weren't holding the guard.
     using namespace guitar_dsp::audio;
     NoteSteppedTTSPlayer player;
     player.prepare(48000.0, 512);
     player.setMode(WordSyncMode::Latch);
     player.setClip(makeThreeWordClip());
 
-    // Two onsets 100 ms apart. With Latch, only the first should advance the
-    // word index (the first word is 200 ms long, so the second onset arrives
-    // mid-word and should be ignored).
     std::vector<float> onsets(48000, 0.0f);
-    plantOnset(onsets,  100);     // t ~ 2 ms
-    plantOnset(onsets, 4900);     // t ~ 102 ms - should be ignored
+    plantOnset(onsets,    100, 0.9f);   // pulse #1 amplitude 0.9 (clear)
+    plantOnset(onsets,  12000, 0.9f);   // pulse #2 at t≈250 ms, also 0.9
 
     std::vector<float> out(48000);
     for (std::size_t i = 0; i < onsets.size(); i += 512) {
         const std::size_t n = std::min<std::size_t>(512, onsets.size() - i);
         player.process(onsets.data() + i, out.data() + i, n);
     }
-    // Word index should have advanced exactly once (-1 -> 0).
     REQUIRE(player.currentWordIndex() == 0);
 }
 
-TEST_CASE("NoteSteppedTTSPlayer Latch: onset after current word advances",
+TEST_CASE("NoteSteppedTTSPlayer Latch: second onset after word completes advances",
           "[audio][note_stepped][latch]") {
+    // Word 0 is 800 ms long. Second onset arrives at t=1100 ms — well past
+    // word completion + gap. Latch lets it through; word index 0 -> 1.
     using namespace guitar_dsp::audio;
     NoteSteppedTTSPlayer player;
     player.prepare(48000.0, 512);
     player.setMode(WordSyncMode::Latch);
     player.setClip(makeThreeWordClip());
 
-    // First onset at t=2 ms; second onset at t=350 ms (well past 200 ms word
-    // duration + 100 ms gap, so playing_ has flipped false).
-    std::vector<float> onsets(48000, 0.0f);
-    plantOnset(onsets,    100);
-    plantOnset(onsets,  16800);  // t ~ 350 ms
+    constexpr std::size_t N = 48000 * 3 / 2;  // 1.5 seconds
+    std::vector<float> onsets(N, 0.0f);
+    plantOnset(onsets,      100, 0.9f);
+    plantOnset(onsets,    52800, 0.9f);  // t ≈ 1100 ms — past word 0 (800ms + 200ms gap)
 
-    std::vector<float> out(48000);
+    std::vector<float> out(N);
     for (std::size_t i = 0; i < onsets.size(); i += 512) {
         const std::size_t n = std::min<std::size_t>(512, onsets.size() - i);
         player.process(onsets.data() + i, out.data() + i, n);
