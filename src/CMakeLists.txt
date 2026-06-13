@@ -69,6 +69,8 @@ target_link_libraries(guitar_dsp_ai
     PUBLIC
         juce::juce_core
         juce::juce_events
+    PRIVATE
+        whisper
 )
 
 add_library(guitar_dsp_midi STATIC

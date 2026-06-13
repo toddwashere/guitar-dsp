@@ -4,3 +4,6 @@
 [submodule "external/Catch2"]
 	path = external/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "external/whisper.cpp"]
+	path = external/whisper.cpp
+	url = https://github.com/ggerganov/whisper.cpp.git

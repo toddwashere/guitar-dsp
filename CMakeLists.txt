@@ -33,6 +33,20 @@ add_subdirectory(external/JUCE)
 # Pull in Catch2
 add_subdirectory(external/Catch2)
 
+# Pull in whisper.cpp (STT). Skip its examples + tests + server — we only need the lib.
+# Disable native-arch optimisation: we build universal2 (arm64 + x86_64) so -march=native
+# would pick the host arch and break the fat binary.
+set(WHISPER_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(WHISPER_BUILD_SERVER   OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS      OFF CACHE BOOL "" FORCE)
+set(GGML_NATIVE            OFF CACHE BOOL "" FORCE)
+# Disable GPU backends — we need CPU transcription only, and the Metal backend
+# has narrowing-conversion errors that break compilation with our Clang flags.
+set(GGML_METAL             OFF CACHE BOOL "" FORCE)
+set(GGML_BLAS              OFF CACHE BOOL "" FORCE)
+add_subdirectory(external/whisper.cpp)
+
 # Application source tree
 add_subdirectory(src)
 
