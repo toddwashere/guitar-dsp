@@ -22,8 +22,23 @@ void MicShaper::reset() {
 }
 
 void MicShaper::process(const float* in, float* out, std::size_t numSamples) noexcept {
-    // Stub: copy input straight through. Behavior added in next tasks.
-    std::copy(in, in + numSamples, out);
+    for (std::size_t i = 0; i < numSamples; ++i) {
+        const float x = in[i];
+        const float absx = std::fabs(x);
+
+        // Per-sample envelope follower with attack/release smoothing on the
+        // gate's open/closed target. The target is 1 when |x| > threshold,
+        // 0 otherwise; the smoothed gateGain_ approaches the target.
+        const float target = (absx > kGateThreshold) ? 1.0f : 0.0f;
+        const float coef   = (target > gateGain_) ? gateAttackCoef_ : gateReleaseCoef_;
+        gateGain_ += coef * (target - gateGain_);
+
+        // Apply gate + makeup gain. Hard-limit to ±1.0 to protect the vocoder.
+        float y = x * gateGain_ * kMakeupGainLinear;
+        if (y >  1.0f) y =  1.0f;
+        if (y < -1.0f) y = -1.0f;
+        out[i] = y;
+    }
 }
 
 } // namespace guitar_dsp::audio
