@@ -21,6 +21,10 @@ void WordReadout::timerCallback() {
         lastSceneId_ = sceneId;
         repaint();
     }
+    // Mic scenes have no cursor or word index to poll — skip per-tick polling.
+    if (processor_.activeSceneIsMic()) {
+        return;
+    }
     if (processor_.activeSceneIsClipBank()) {
         const int curCursor = processor_.clipBankCursor();
         if (curCursor != lastIndex_) {
@@ -38,6 +42,20 @@ juce::Rectangle<int> WordReadout::rewindButtonBounds() const {
 
 void WordReadout::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour::fromRGB(12, 13, 18));
+
+    if (processor_.activeSceneIsMic()) {
+        auto bounds = getLocalBounds().reduced(8);
+        const float h = (float) std::min(bounds.getHeight(),
+                                          (int) WordReadout::kCenterBaseHeight * 2);
+
+        g.setColour(juce::Colour::fromRGB(0xE8, 0xE8, 0xE8));
+        g.setFont(juce::Font{juce::FontOptions{}.withHeight(h)});
+        g.drawFittedText(juce::String::fromUTF8("\xF0\x9F\x8E\xA4 MIC"),
+                         bounds.removeFromTop(bounds.getHeight() - kPipStripHeight),
+                         juce::Justification::centred, 1);
+        // No Rewind pill on mic scenes — nothing to rewind.
+        return;
+    }
 
     if (processor_.activeSceneIsClipBank()) {
         const int cursor = processor_.clipBankCursor();

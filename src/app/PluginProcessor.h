@@ -184,6 +184,12 @@ public:
     bool activeSceneIsClipBank() const {
         return sceneEngine_.activeTtsConfig().source == "clipBank";
     }
+
+    // Phase B — Mic Talkbox (Scene 3). True when the active scene uses
+    // the mic modulator source.
+    bool activeSceneIsMic() const {
+        return sceneEngine_.activeTtsConfig().source == "mic";
+    }
     int  clipBankCursor() const { return graph_.clipBankPlayer().currentClipIndex(); }
     int  clipBankSize()   const { return graph_.clipBankPlayer().bankSize(); }
     // Returns the current clip's key (e.g. "03_new") or empty when idle.
@@ -195,8 +201,9 @@ public:
     }
     // Issued by the Rewind pill on WordReadout. Picks the right player.
     void rewindActive() noexcept {
-        if (activeSceneIsClipBank()) graph_.rewindClipBank();
-        else                          graph_.rewindSpoken();
+        if (activeSceneIsMic())          /* no-op: no clip to rewind */ return;
+        if (activeSceneIsClipBank())     graph_.rewindClipBank();
+        else                              graph_.rewindSpoken();
     }
 
     // Apple-TTS "type and say" plumbing for the message-thread UI.
