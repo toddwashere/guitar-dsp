@@ -12,6 +12,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     mixer_.prepare(sampleRate, blockSize);
     ttsClipPlayer_.prepare(sampleRate, blockSize);
     noteSteppedPlayer_.prepare(sampleRate, blockSize);
+    clipBankPlayer_.prepare(sampleRate, blockSize);
     vocoder_.prepare(sampleRate, blockSize);
     vocoder_.setWetLevel(1.0f);
     vocoder_.setSibilance(0.3f);
@@ -47,6 +48,7 @@ void AudioGraph::reset() {
     mixer_.reset();
     ttsClipPlayer_.reset();
     noteSteppedPlayer_.reset();
+    clipBankPlayer_.reset();
     vocoder_.reset();
     pitchCarrier_.reset();
     std::fill(pitchCarrierBuffer_.begin(), pitchCarrierBuffer_.end(), 0.0f);
@@ -73,11 +75,15 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
     } else {
         // Vocoder branch: modulator from the selected TTS player, carrier =
         // post-input guitar.
-        if (modulatorSource_.load(std::memory_order_relaxed)
-                == static_cast<int>(ModulatorSource::NoteStepped)) {
+        const int modSrc = modulatorSource_.load(std::memory_order_relaxed);
+        if (modSrc == static_cast<int>(ModulatorSource::NoteStepped)) {
             // Onset source = clean guitar (postInputBuffer_); writes modulator.
             noteSteppedPlayer_.process(postInputBuffer_.data(),
                                        wetBuffer_.data(), numSamples);
+        } else if (modSrc == static_cast<int>(ModulatorSource::ClipBank)) {
+            // Same shape as NoteStepped — onset source is the clean guitar.
+            clipBankPlayer_.process(postInputBuffer_.data(),
+                                    wetBuffer_.data(), numSamples);
         } else {
             ttsClipPlayer_.process(wetBuffer_.data(), numSamples);
         }
