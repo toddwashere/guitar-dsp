@@ -71,6 +71,23 @@ struct CarouselConfig {
     Vowel formantVowel  = Vowel::None;  // None = bypass formant
     float formantAmount = 0.0f;
 
+    // --- Phase C (Auto-Vocal Formant) -----------------------------------
+    // Drives Formant's vowel position over time. Defaults to Static + empty
+    // breakpoints, which is back-compat with the existing static-vowel API:
+    // CarouselMod calls Formant::setVowel(formantVowel) and the position is
+    // pinned. Set `formantMode = Lfo` (or Envelope) and populate
+    // `formantBreakpoints` to use the new continuous-vowel-space path.
+    enum class FormantMode { Static, Lfo, Envelope };
+    FormantMode        formantMode = FormantMode::Static;
+
+    // Vowel position breakpoints in [0,1). Anchors: 0.0=EE, 0.25=EH, 0.5=AH,
+    // 0.75=OH, ~1.0=OO (wraps back to EE in the circular vowel space).
+    // Empty in Static mode; populated in Lfo/Envelope mode.
+    std::vector<float> formantBreakpoints;
+
+    float              formantLfoHz       = 0.0f;    // Lfo mode: cycles/s
+    float              formantEnvAttackMs = 30.0f;   // Envelope mode: attack ramp
+
     float outputTrimDb = 0.0f;
 };
 
