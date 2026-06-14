@@ -11,13 +11,5 @@
     ],
     "trigger": "note",
     "clarity": 0.1
-  },
-  "carousel": {
-    "enabled": true,
-    "drive": 8.0,
-    "waveshaper": { "type": "tanh", "amount": 1.2 },
-    "harmonizer": { "intervals": [7, 12], "detuneCents": [0, 0], "mix": 0.35 },
-    "reverb": { "roomSize": 0.25, "wet": 0.12 },
-    "outputTrimDb": -3.0
   }
 }

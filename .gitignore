@@ -48,6 +48,9 @@ Resources/whisper/*.bin
 
 # Piper binary + voices (download via scripts/fetch_piper.sh)
 assets/piper/piper
+assets/piper/piper_phonemize
+assets/piper/espeak-ng
+assets/piper/libtashkeel_model.ort
 assets/piper/*.dylib
 assets/piper/*.so
 assets/piper/espeak-ng-data/
