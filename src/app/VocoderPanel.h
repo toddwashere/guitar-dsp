@@ -32,6 +32,7 @@ private:
                  gateThresholdLabel_;
     float lastSceneClarity_ = -1.0f;  // sentinel — forces first paint
     float lastMicPeak_      = 0.0f;
+    int   lastMicSource_    = -1;     // -1 forces first paint
     NoteReadout  noteReadout_;
     WordSyncSelector wordSyncSelector_;
     juce::String lastCarrierNoiseLabel_;

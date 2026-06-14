@@ -42,7 +42,11 @@ private:
 
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
-        .withInput ("Input",  juce::AudioChannelSet::mono(),   true)
+        // Input is declared STEREO so the standalone wrapper exposes 2 channels
+        // when the user enables a stereo input device (e.g., Scarlett "Input
+        // 1+2"). In standalone, ch 0 = guitar, ch 1 = mic. isBusesLayoutSupported
+        // also accepts mono, so single-channel interfaces still work.
+        .withInput ("Input",  juce::AudioChannelSet::stereo(), true)
         .withInput ("Mic",    juce::AudioChannelSet::mono(),   false)  // sidechain, disabled by default
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
     midiRouter_ = std::make_unique<midi::MidiRouter>(
@@ -554,20 +558,34 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     const int numSamples = std::min(buffer.getNumSamples(),
                                     static_cast<int>(monoScratch_.size()));
 
-    // Mic bus extraction (sidechain bus 1 in AU; main bus 0 in standalone).
-    // Runs every block, BEFORE graph_.process(), so:
-    //   - the vocoder gets a fresh mic block when ModulatorSource::Mic is active
-    //     (no one-block staleness in the modulator path)
-    //   - the always-visible mic level meter stays live on every scene
-    //   - whisper capture (when active) still gets fed
+    // ------------------------------------------------------------------
+    // Decide mic + guitar routing once, then extract both before
+    // graph_.process(). Three cases:
+    //   1. AU plugin with sidechain ENABLED → bus 1 = mic, bus 0 = guitar
+    //      (mono or stereo, downmixed if stereo).
+    //   2. Standalone with 2 input channels on bus 0 (e.g., Scarlett with
+    //      "Input 1+2" active) → bus 0 ch 0 = guitar, bus 0 ch 1 = mic.
+    //   3. Single input channel (bus 0 mono) → mic == guitar (self-mod).
+    // ------------------------------------------------------------------
+    const bool hasSidechainMic = (getBusCount(/*isInput=*/true) >= 2
+                                  && getChannelCountOfBus(true, 1) > 0);
+    auto bus0 = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/0);
+    const int bus0Channels = bus0.getNumChannels();
+    // Only standalone treats bus 0 ch 1 as the mic. In AU/AAX/VST3 hosts,
+    // both bus 0 channels are guitar (e.g., a stereo guitar track in Logic).
+    const bool standaloneStereo = (wrapperType == wrapperType_Standalone)
+                                  && !hasSidechainMic
+                                  && bus0Channels >= 2;
+
+    // --- Mic extraction --------------------------------------------------
     {
         const float* micPtr = nullptr;
         int           micLen = 0;
         constexpr int kMaxBlock = 8192;
-        float         tmp[kMaxBlock];
+        float         micTmp[kMaxBlock];
+        int           micSourceTag = 0;  // 0=none, 1=sidechain, 2=ch2, 3=self-mod
 
-        if (getBusCount(/*isInput=*/true) >= 2
-                && getChannelCountOfBus(true, 1) > 0) {
+        if (hasSidechainMic) {
             auto micBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/1);
             const int n = std::min(micBus.getNumSamples(), kMaxBlock);
             if (micBus.getNumChannels() == 1) {
@@ -576,36 +594,46 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             } else if (micBus.getNumChannels() >= 2) {
                 const float* L = micBus.getReadPointer(0);
                 const float* R = micBus.getReadPointer(1);
-                for (int i = 0; i < n; ++i) tmp[i] = 0.5f * (L[i] + R[i]);
-                micPtr = tmp;
+                for (int i = 0; i < n; ++i) micTmp[i] = 0.5f * (L[i] + R[i]);
+                micPtr = micTmp;
                 micLen = n;
             }
-        } else {
-            // Standalone fallback: bus 0 doubles as the mic input. The
-            // vocoder self-modulates on the guitar; not the talkbox effect,
-            // but documented in the spec as the standalone behavior.
-            auto mainBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/0);
-            if (mainBus.getNumChannels() >= 1) {
-                micPtr = mainBus.getReadPointer(0);
-                micLen = mainBus.getNumSamples();
-            }
+            micSourceTag = 1;
+        } else if (standaloneStereo) {
+            // Standalone stereo input: channel 1 is the mic.
+            micPtr = bus0.getReadPointer(1);
+            micLen = bus0.getNumSamples();
+            micSourceTag = 2;
+        } else if (bus0Channels >= 1) {
+            // Single-channel input: self-modulation fallback.
+            micPtr = bus0.getReadPointer(0);
+            micLen = bus0.getNumSamples();
+            micSourceTag = 3;
         }
+
+        micRoutingSource_.store(micSourceTag, std::memory_order_relaxed);
 
         if (micPtr != nullptr && micLen > 0) {
             graph_.setMicBlock(micPtr, static_cast<std::size_t>(micLen));
             if (micCapture_.isCapturing())
                 micCapture_.appendFromAudioBlock(micPtr, micLen);
         } else {
-            graph_.setMicBlock(nullptr, 0);  // clears the scratch + zeroes the meter
+            graph_.setMicBlock(nullptr, 0);
         }
     }
 
-    // Build a mono input — downmixing stereo by averaging — so the DSP graph
-    // sees a single channel regardless of how the host configures the bus.
+    // --- Guitar carrier --------------------------------------------------
+    // The guitar carrier always comes from bus 0. We downmix to mono only
+    // when bus 0 is genuinely stereo guitar (AU plugin sidechain case);
+    // when bus 0 channel 1 is the mic (standalone stereo case), we use
+    // channel 0 only so the mic doesn't contaminate the carrier.
     float inPeak = 0.0f;
-    if (totalIn >= 2) {
-        const float* l = buffer.getReadPointer(0);
-        const float* r = buffer.getReadPointer(1);
+    if (bus0Channels == 0) {
+        std::fill_n(monoScratch_.begin(), numSamples, 0.0f);
+    } else if (hasSidechainMic && bus0Channels >= 2) {
+        // AU with stereo guitar bus: downmix L+R.
+        const float* l = bus0.getReadPointer(0);
+        const float* r = bus0.getReadPointer(1);
         for (int i = 0; i < numSamples; ++i) {
             const float m = 0.5f * (l[i] + r[i]);
             monoScratch_[static_cast<std::size_t>(i)] = m;
@@ -614,16 +642,15 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         }
         graph_.process(monoScratch_.data(), monoScratch_.data(),
                        static_cast<std::size_t>(numSamples));
-    } else if (totalIn == 1) {
-        const float* in = buffer.getReadPointer(0);
+    } else {
+        // Standalone stereo (ch 0 = guitar), or any single-channel bus 0.
+        const float* in = bus0.getReadPointer(0);
         for (int i = 0; i < numSamples; ++i) {
             const float a = std::abs(in[i]);
             if (a > inPeak) inPeak = a;
         }
         graph_.process(in, monoScratch_.data(),
                        static_cast<std::size_t>(numSamples));
-    } else {
-        std::fill_n(monoScratch_.begin(), numSamples, 0.0f);
     }
 
     // Output peak from the post-DSP mono scratch.

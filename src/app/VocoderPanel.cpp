@@ -69,8 +69,10 @@ void VocoderPanel::timerCallback() {
     }
 
     const float p = processor_.micPeak();
-    if (std::fabs(p - lastMicPeak_) > 0.005f) {
-        lastMicPeak_ = p;
+    const int  src = processor_.micRoutingSource();
+    if (std::fabs(p - lastMicPeak_) > 0.005f || src != lastMicSource_) {
+        lastMicPeak_   = p;
+        lastMicSource_ = src;
         repaint();
     }
 }
@@ -94,33 +96,57 @@ void VocoderPanel::paint(juce::Graphics& g) {
     g.drawText("VOCODER", getLocalBounds().removeFromTop(12).reduced(6, 0),
                juce::Justification::topLeft);
 
-    // Mic level meter — always-visible thin strip at the bottom of the panel.
-    // Driven by AudioGraph::micPeak() via timerCallback.
-    const auto micStripBounds = getLocalBounds()
-                                    .removeFromBottom(8)
-                                    .reduced(4, 1);
+    // Mic level meter — always-visible strip at the bottom of the panel.
+    // Tall enough to show a numeric dB readout and the routing source so the
+    // operator can see at a glance which physical input is being read.
+    const auto micStripFull = getLocalBounds().removeFromBottom(20).reduced(4, 2);
     g.setColour(juce::Colour::fromRGB(0x22, 0x22, 0x22));
-    g.fillRect(micStripBounds);
+    g.fillRect(micStripFull);
 
+    // Source label on the left (e.g., "MIC ch2", "MIC SC", "MIC self").
+    auto leftLabel = micStripFull.withWidth(56);
+    g.setColour(juce::Colour::fromRGB(0xB0, 0xB0, 0xB0));
+    g.setFont(juce::Font{juce::FontOptions{}.withHeight(10.0f)});
+    const char* srcText = "MIC --";
+    switch (lastMicSource_) {
+        case 1: srcText = "MIC SC";   break;  // sidechain (AU)
+        case 2: srcText = "MIC ch2";  break;  // standalone stereo, ch 1
+        case 3: srcText = "MIC self"; break;  // mono / self-mod
+        default: break;
+    }
+    g.drawText(srcText, leftLabel, juce::Justification::centredLeft);
+
+    // Bar fills the middle.
+    auto bar = micStripFull.withTrimmedLeft(60).withTrimmedRight(56);
     if (lastMicPeak_ > 0.0001f) {
-        const int w = static_cast<int>(micStripBounds.getWidth()
-                                        * std::min(1.0f, lastMicPeak_));
-        auto fill = micStripBounds.withWidth(w);
+        const int w = static_cast<int>(bar.getWidth() * std::min(1.0f, lastMicPeak_));
+        auto fill = bar.withWidth(w);
         const juce::Colour colour = lastMicPeak_ > 0.7f
             ? juce::Colour::fromRGB(0xE0, 0x60, 0x40)
             : juce::Colour::fromRGB(0x40, 0xC0, 0x60);
         g.setColour(colour);
         g.fillRect(fill);
     } else {
-        g.setColour(juce::Colour::fromRGB(0x55, 0x55, 0x55));
-        g.setFont(juce::Font{juce::FontOptions{}.withHeight(8.0f)});
-        g.drawText("no mic", micStripBounds, juce::Justification::centred);
+        g.setColour(juce::Colour::fromRGB(0x40, 0x40, 0x40));
+        g.fillRect(bar);
     }
+
+    // dB readout on the right.
+    auto rightLabel = micStripFull.withTrimmedLeft(micStripFull.getWidth() - 52);
+    juce::String dbStr;
+    if (lastMicPeak_ < 0.0001f) {
+        dbStr = "-inf dB";
+    } else {
+        const float dbfs = 20.0f * std::log10(lastMicPeak_);
+        dbStr = juce::String(static_cast<int>(std::round(dbfs))) + " dB";
+    }
+    g.setColour(juce::Colour::fromRGB(0xCC, 0xCC, 0xCC));
+    g.drawText(dbStr, rightLabel, juce::Justification::centredRight);
 }
 
 void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
-    area.removeFromBottom(8);  // mic-meter strip (painted directly in paint())
+    area.removeFromBottom(20);  // mic-meter strip (painted directly in paint())
     area.removeFromTop(12);    // header band
 
     constexpr int selectorH = 22;
