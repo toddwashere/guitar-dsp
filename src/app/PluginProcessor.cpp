@@ -371,6 +371,40 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             else if (cfg.wordSync == "syllable")
                 graph_.setWordSyncMode(audio::WordSyncMode::Syllable);
 
+            // -------------------------------------------------------------
+            // Clip-bank source (Phase A — Vocal Guitar, Scene 2)
+            // -------------------------------------------------------------
+            // Distinct from "prebaked": the unit of playback is the BANK,
+            // not a single clip. Each onset advances to the next clip.
+            // Skip the synthesizeWithFallback chain and the
+            // currentTtsClipKey_ short-circuit entirely.
+            if (cfg.source == "clipBank") {
+                // Build a stable key from the bank contents so a re-entry
+                // to the same scene with an unchanged bank short-circuits.
+                std::string bankKey = "clipBank:";
+                for (const auto& k : cfg.bank) { bankKey += k; bankKey += '|'; }
+                if (bankKey == currentTtsClipKey_) return;
+                currentTtsClipKey_ = bankKey;
+
+                std::vector<audio::TTSClipPtr> clips;
+                clips.reserve(cfg.bank.size());
+                if (vocalGuitarSource_) {
+                    for (const auto& clipKey : cfg.bank) {
+                        auto clip = vocalGuitarSource_->synthesize(clipKey);
+                        if (clip && !clip->samples.empty())
+                            clips.push_back(std::move(clip));
+                    }
+                }
+
+                graph_.clipBankPlayer().setBank(std::move(clips));
+                graph_.clipBankPlayer().rewind();  // start at clip 0 on entry
+                graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::ClipBank);
+                graph_.ttsClipPlayer().setClip(nullptr);
+                graph_.noteSteppedPlayer().setClip(nullptr);
+                lastResolvedSource_.store(1, std::memory_order_relaxed);  // "prebaked-ish"
+                return;
+            }
+
             // Build a per-source key (matches what synthesize() expects).
             std::string key;
             if (cfg.source == "prebaked") key = cfg.clip;
