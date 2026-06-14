@@ -588,37 +588,48 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         std::memcpy(out, monoScratch_.data(), sizeof(float) * static_cast<std::size_t>(numSamples));
     }
 
-    // MicCapture sidechain routing (RT-safe, allocation-free).
-    // In AU: bus 1 carries the sidechain mic; in standalone, bus 1 is absent so
-    // we fall back to bus 0 (the user routes their mic to the single input device
-    // selected in the JUCE standalone host).
-    if (micCapture_.isCapturing()) {
-        if (getBusCount(/*isInput=*/true) >= 2 && getChannelCountOfBus(true, 1) > 0) {
+    // Mic bus extraction (sidechain bus 1 in AU; main bus 0 in standalone).
+    // Runs every block so:
+    //   - the vocoder gets a fresh mic block when ModulatorSource::Mic is active
+    //   - the always-visible mic level meter stays live on every scene
+    //   - whisper capture (when active) still gets fed
+    {
+        const float* micPtr = nullptr;
+        int           micLen = 0;
+        constexpr int kMaxBlock = 8192;
+        float         tmp[kMaxBlock];
+
+        if (getBusCount(/*isInput=*/true) >= 2
+                && getChannelCountOfBus(true, 1) > 0) {
             auto micBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/1);
+            const int n = std::min(micBus.getNumSamples(), kMaxBlock);
             if (micBus.getNumChannels() == 1) {
-                micCapture_.appendFromAudioBlock(
-                    micBus.getReadPointer(0), micBus.getNumSamples());
+                micPtr = micBus.getReadPointer(0);
+                micLen = n;
             } else if (micBus.getNumChannels() >= 2) {
-                // Downmix stereo sidechain to mono using a stack buffer (no malloc).
-                constexpr int kMaxBlock = 8192;
-                float tmp[kMaxBlock];
-                const int n = std::min(micBus.getNumSamples(), kMaxBlock);
                 const float* L = micBus.getReadPointer(0);
                 const float* R = micBus.getReadPointer(1);
                 for (int i = 0; i < n; ++i) tmp[i] = 0.5f * (L[i] + R[i]);
-                micCapture_.appendFromAudioBlock(tmp, n);
+                micPtr = tmp;
+                micLen = n;
             }
         } else {
-            // Standalone (no sidechain): use main input as the mic source.
-            // Note: in standalone, the user picks an input device in the JUCE
-            // standalone host — that device feeds bus 0. So in standalone the
-            // user routes their mic to that single input. (Trade-off: in
-            // standalone, mic and guitar can't be on separate channels.)
+            // Standalone fallback: bus 0 doubles as the mic input. The
+            // vocoder self-modulates on the guitar; not the talkbox effect,
+            // but documented in the spec as the standalone behavior.
             auto mainBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/0);
             if (mainBus.getNumChannels() >= 1) {
-                micCapture_.appendFromAudioBlock(
-                    mainBus.getReadPointer(0), mainBus.getNumSamples());
+                micPtr = mainBus.getReadPointer(0);
+                micLen = mainBus.getNumSamples();
             }
+        }
+
+        if (micPtr != nullptr && micLen > 0) {
+            graph_.setMicBlock(micPtr, static_cast<std::size_t>(micLen));
+            if (micCapture_.isCapturing())
+                micCapture_.appendFromAudioBlock(micPtr, micLen);
+        } else {
+            graph_.setMicBlock(nullptr, 0);  // clears the scratch + zeroes the meter
         }
     }
 }
