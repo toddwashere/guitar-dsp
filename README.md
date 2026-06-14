@@ -175,6 +175,28 @@ Array length must match the syllable count (hyphen-split tokens in
 by ear: load `audio.wav` in Audacity, mark boundaries, edit the
 numbers. No rebuild — re-activate the scene to pick up changes.
 
+## Scenes
+
+### Scene 1 — "Developers!" asset
+
+Scene 1 plays Steve Ballmer's "DEVELOPERS!" chant from the 2000 Microsoft
+developer conference, one burst per guitar pluck. The audio file is not
+distributed with the repo. Generate it locally:
+
+1. Obtain a clean recording of the iconic ~25 s chant as `ballmer_source.wav`
+   (mono or stereo, 16-bit PCM, ≥ 22.05 kHz). The source is on YouTube;
+   `yt-dlp <url> -x --audio-format wav -o ballmer_source.wav` works.
+2. Run the chopper:
+   ```bash
+   python3 scripts/build_developers_clip.py path/to/ballmer_source.wav
+   ```
+3. The script writes `assets/tts/01_developers/audio.wav`. This file is
+   gitignored — re-run after fresh clone or asset edit.
+
+If your source's timing differs from the default chops, edit `SEGMENTS_S`
+at the top of `scripts/build_developers_clip.py` (14 `(start_s, end_s)`
+tuples; the last two are intentional peak duplicates).
+
 ## Project status
 
 This branch implements **Phase 5a: note-triggered word-by-word speech** — the
