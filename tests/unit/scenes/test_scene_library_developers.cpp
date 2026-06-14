@@ -3,7 +3,6 @@
 #include "scenes/SceneLibrary.h"
 
 #include <filesystem>
-#include <sstream>
 
 using guitar_dsp::scenes::SceneLibrary;
 using Catch::Matchers::WithinAbs;
@@ -28,23 +27,14 @@ TEST_CASE("SceneLibrary: parses the Developers! scene", "[scenes][library][devel
     REQUIRE(s->name == "Developers!");
     REQUIRE(s->colorRgb == 0x0078D4u);
 
-    REQUIRE_THAT(s->mixer.masterGainDb, WithinAbs(-3.0f, 1e-4f));
-    REQUIRE_THAT(s->mixer.dryWet,       WithinAbs(0.9f,  1e-4f));
-    REQUIRE_THAT(s->mixer.transitionMs, WithinAbs(30.0f, 1e-4f));
+    REQUIRE_THAT(s->mixer.masterGainDb, WithinAbs(-10.0f, 1e-4f));
+    REQUIRE_THAT(s->mixer.dryWet,       WithinAbs(0.9f,   1e-4f));
+    REQUIRE_THAT(s->mixer.transitionMs, WithinAbs(30.0f,  1e-4f));
 
-    REQUIRE(s->tts.source   == "apple");
+    REQUIRE(s->tts.source   == "prebaked");
     REQUIRE(s->tts.clip     == "01_developers");
-    REQUIRE(s->tts.fallback == "prebaked");
+    REQUIRE(s->tts.text     == "DEVELOPERS!");
     REQUIRE(s->tts.trigger  == "note");
     REQUIRE(s->tts.wordSync == "latch");
-    REQUIRE_THAT(s->tts.clarity, WithinAbs(1.0f, 1e-4f));
-
-    std::istringstream iss(s->tts.text);
-    std::string w;
-    int count = 0;
-    while (iss >> w) {
-        REQUIRE(w == "DEVELOPERS!");
-        ++count;
-    }
-    REQUIRE(count == 14);
+    REQUIRE_THAT(s->tts.clarity, WithinAbs(0.3f, 1e-4f));
 }
