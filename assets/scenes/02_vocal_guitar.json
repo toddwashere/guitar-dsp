@@ -1,0 +1,23 @@
+{
+  "id": 2,
+  "name": "Vocal Guitar — clip bank",
+  "color": "#e07b00",
+  "mixer": { "masterGainDb": -6.0, "dryWet": 0.9, "transitionMs": 30 },
+  "tts": {
+    "source": "clipBank",
+    "bank": [
+      "00_wee", "01_doo", "02_ner", "03_new", "04_yeah",
+      "05_brrr", "06_skronk", "07_weeeeee", "08_ahhhh", "09_ner-ner-ner"
+    ],
+    "trigger": "note",
+    "clarity": 0.1
+  },
+  "carousel": {
+    "enabled": true,
+    "drive": 8.0,
+    "waveshaper": { "type": "tanh", "amount": 1.2 },
+    "harmonizer": { "intervals": [7, 12], "detuneCents": [0, 0], "mix": 0.35 },
+    "reverb": { "roomSize": 0.25, "wet": 0.12 },
+    "outputTrimDb": -3.0
+  }
+}
