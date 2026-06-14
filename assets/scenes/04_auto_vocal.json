@@ -9,10 +9,10 @@
     "waveshaper": { "type": "tanh", "amount": 1.5 },
     "filter": { "mode": "lowpass", "cutoffHz": 6000, "resonance": 0.3, "mod": "static" },
     "formant": {
-      "amount": 0.85,
+      "amount": 1.0,
       "mode": "lfo",
-      "breakpoints": [0.0, 0.18],
-      "lfoHz": 9.0
+      "breakpoints": [0.0, 0.5],
+      "lfoHz": 7.0
     },
     "reverb": { "roomSize": 0.2, "wet": 0.08 },
     "outputTrimDb": -3.0

@@ -81,6 +81,9 @@ AiSettingsPanel::AiSettingsPanel(ai::AppPreferences& p, ai::PersonaRegistry& r,
         personas_.resetToDefault(kPersonas[idx].id);
         onPersonaChanged();
     };
+
+    addAndMakeVisible(closeBtn_);
+    closeBtn_.onClick = [this]{ if (onClose) onClose(); };
 }
 
 void AiSettingsPanel::populateBaseModels() {
@@ -165,6 +168,12 @@ void AiSettingsPanel::paint(juce::Graphics& g) {
 
 void AiSettingsPanel::resized() {
     auto r = getLocalBounds().reduced(8);
+
+    // Close button at top-right.
+    auto topBar = r.removeFromTop(28);
+    closeBtn_.setBounds(topBar.removeFromRight(80));
+    r.removeFromTop(4);
+
     auto rowH = [&](int h){ auto x = r.removeFromTop(h); r.removeFromTop(4); return x; };
 
     modelBox_      .setBounds(rowH(24));

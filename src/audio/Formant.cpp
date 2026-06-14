@@ -73,7 +73,13 @@ float Formant::processSample(float x) noexcept {
     }
     float sum = 0.0f;
     for (auto& p : peaks_) sum += p.processSample(0, x);
-    return (1.0f - amount_) * x + amount_ * sum;
+    // Additive: dry signal PLUS resonant formant peaks scaled by amount.
+    // The narrow bandpass output is much quieter than broadband input, so
+    // the prior `(1-amount)*x + amount*sum` formula made loud vowels
+    // inaudible — the formant just attenuated everything. Vocal character
+    // in real instruments is additive (the resonant cavity amplifies
+    // certain frequencies of the source spectrum), so we model that here.
+    return x + amount_ * sum;
 }
 
 } // namespace guitar_dsp::audio
