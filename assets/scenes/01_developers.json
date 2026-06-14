@@ -4,9 +4,11 @@
   "color": "#0078D4",
   "mixer": { "masterGainDb": -3.0, "dryWet": 0.9, "transitionMs": 30 },
   "tts": {
-    "source": "prebaked",
-    "clip": "01_developers",
+    "source": "apple",
     "text": "DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS!",
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "clip": "01_developers",
+    "fallback": "prebaked",
     "trigger": "note",
     "wordSync": "latch",
     "clarity": 1.0
