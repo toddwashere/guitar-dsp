@@ -124,6 +124,10 @@ public:
     // plays segment 0). Message thread; RT-safe via pending flag.
     void rewindSpoken() noexcept { noteSteppedPlayer_.rewind(); }
 
+    // Rewind the clip-bank cursor (Scene 2 / Phase A). Independent of the
+    // note-stepped rewind. Message thread; RT-safe via the player's pending flag.
+    void rewindClipBank() noexcept { clipBankPlayer_.rewind(); }
+
     // Latest detected pitch published from the audio thread for the UI. -1
     // midiNote / 0 Hz when unvoiced AND hold-decay has expired.
     int   detectedNoteMidi() const noexcept { return detectedNoteMidi_.load(std::memory_order_relaxed); }

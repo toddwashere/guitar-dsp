@@ -21,6 +21,13 @@ void WordReadout::timerCallback() {
         lastSceneId_ = sceneId;
         repaint();
     }
+    if (processor_.activeSceneIsClipBank()) {
+        const int curCursor = processor_.clipBankCursor();
+        if (curCursor != lastIndex_) {
+            lastIndex_ = curCursor;
+            repaint();
+        }
+    }
 }
 
 juce::Rectangle<int> WordReadout::rewindButtonBounds() const {
@@ -31,6 +38,43 @@ juce::Rectangle<int> WordReadout::rewindButtonBounds() const {
 
 void WordReadout::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour::fromRGB(12, 13, 18));
+
+    if (processor_.activeSceneIsClipBank()) {
+        const int cursor = processor_.clipBankCursor();
+        const int total  = processor_.clipBankSize();
+        const auto key   = processor_.clipBankCurrentKey();
+        juce::String label;
+        if (cursor < 0) {
+            label = juce::String("vocal guitar  \xE2\x80\xA2  ")
+                  + juce::String(total) + " clips";
+        } else {
+            label = juce::String(key) + "  \xE2\x80\xA2  "
+                  + juce::String(cursor + 1) + " / " + juce::String(total);
+        }
+
+        // Centered single-line render — match the same font-height path used
+        // by the note-stepped centered-word render so the type size feels
+        // consistent. Then draw the Rewind pill and return (skip pip strip).
+        auto bounds = getLocalBounds().reduced(8);
+        g.setColour(juce::Colour::fromRGB(0xE8, 0xE8, 0xE8));
+        const float h = static_cast<float>(
+            std::min(bounds.getHeight(),
+                     static_cast<int>(WordReadout::kCenterBaseHeight) * 2));
+        g.setFont(juce::Font{juce::FontOptions{}.withHeight(h)});
+        g.drawFittedText(label,
+                         bounds.removeFromTop(bounds.getHeight() - kPipStripHeight),
+                         juce::Justification::centred, 1);
+
+        // Rewind pill — same visual approach as the existing button.
+        const auto rb = rewindButtonBounds();
+        g.setColour(juce::Colour::fromRGB(40, 44, 56));
+        g.fillRoundedRectangle(rb.toFloat(), 4.0f);
+        g.setColour(juce::Colour::fromRGB(180, 185, 200));
+        g.setFont(juce::Font{juce::FontOptions{}.withHeight(11.0f)});
+        g.drawText("Rewind", rb, juce::Justification::centred);
+
+        return;
+    }
 
     const auto words = processor_.activeSceneWords();
     const int  idx   = processor_.currentSpokenWordIndex();
@@ -119,7 +163,7 @@ void WordReadout::paint(juce::Graphics& g) {
 
 void WordReadout::mouseDown(const juce::MouseEvent& e) {
     if (rewindButtonBounds().contains(e.getPosition())) {
-        processor_.rewindSpoken();
+        processor_.rewindActive();
         repaint();
     }
 }
