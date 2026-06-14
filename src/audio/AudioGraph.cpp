@@ -192,9 +192,16 @@ void AudioGraph::setMicBlock(const float* mono, std::size_t numSamples) noexcept
             std::fill(micScratchBuffer_.begin() + static_cast<std::ptrdiff_t>(n),
                       micScratchBuffer_.end(), 0.0f);
         micScratchValidSamples_ = n;
+
+        float peak = 0.0f;
+        for (std::size_t i = 0; i < n; ++i)
+            peak = std::max(peak, std::fabs(mono[i]));
+        micPeak_.store(peak, std::memory_order_relaxed);
     } else {
         std::fill(micScratchBuffer_.begin(), micScratchBuffer_.end(), 0.0f);
         micScratchValidSamples_ = 0;
+
+        micPeak_.store(0.0f, std::memory_order_relaxed);
     }
 }
 

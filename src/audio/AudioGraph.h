@@ -141,6 +141,11 @@ public:
     float detectedCents()    const noexcept { return detectedCents_.load(std::memory_order_relaxed); }
     float detectedHz()       const noexcept { return detectedHz_.load(std::memory_order_relaxed); }
 
+    // Latest mic input peak (linear 0..1) from the most recent setMicBlock()
+    // call. Updated whether or not ModulatorSource::Mic is active — drives
+    // the always-visible mic meter on VocoderPanel.
+    float micPeak() const noexcept { return micPeak_.load(std::memory_order_relaxed); }
+
 private:
     InputStage inputStage_;
     Mixer mixer_;
@@ -161,6 +166,7 @@ private:
 
     std::atomic<float> vocoderSibilance_ {0.3f};  // base sibilance (diag can override to 0)
     std::atomic<float> clarity_ {0.80f};           // "speak clearly" crossfade 0..1
+    std::atomic<float> micPeak_ {0.0f};
 
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;
