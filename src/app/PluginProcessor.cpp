@@ -372,6 +372,25 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 graph_.setWordSyncMode(audio::WordSyncMode::Syllable);
 
             // -------------------------------------------------------------
+            // Mic source (Phase B — Mic Talkbox, Scene 3)
+            // -------------------------------------------------------------
+            // No clip to load — the mic stream becomes the modulator. Clear
+            // the linear / note-stepped / clipBank players so a prior scene's
+            // state doesn't bleed into this scene's audio.
+            if (cfg.source == "mic") {
+                static const std::string kMicKey = "mic:";
+                if (currentTtsClipKey_ == kMicKey) return;
+                currentTtsClipKey_ = kMicKey;
+
+                graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Mic);
+                graph_.ttsClipPlayer().setClip(nullptr);
+                graph_.noteSteppedPlayer().setClip(nullptr);
+                graph_.clipBankPlayer().setBank({});
+                lastResolvedSource_.store(0, std::memory_order_relaxed);  // "none"
+                return;
+            }
+
+            // -------------------------------------------------------------
             // Clip-bank source (Phase A — Vocal Guitar, Scene 2)
             // -------------------------------------------------------------
             // Distinct from "prebaked": the unit of playback is the BANK,
