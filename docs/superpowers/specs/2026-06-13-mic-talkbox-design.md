@@ -292,8 +292,12 @@ spoken/vocalized audio).
   project — flag it in `docs/superpowers/specs/2026-06-12-au-plugin-design.md`
   and confirm Logic sidechain routing during implementation testing.
 
-## Deletes
+## Replaces (no hard deletes)
 
-- `assets/scenes/03_carousel_piano.json` (replaced by the new Scene 3 JSON
-  above). No C++ deletions — the pitch shifter and comb filter used by the
-  old Scene 3 are still used by other scenes.
+- `assets/scenes/03_carousel_piano.json` is *moved* to
+  `assets/scenes/archive/03_carousel_piano.json`, not deleted. This is the
+  "piano illusion" patch (octave pitch + comb filter + LP) — a distinct
+  sonic experiment worth keeping at hand. The archive subfolder is ignored
+  by `SceneLibrary::loadDirectory`.
+- No C++ deletions — the pitch shifter and comb filter the old patch used
+  are still used by other scenes.

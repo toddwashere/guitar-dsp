@@ -320,8 +320,13 @@ swap), same pattern as `TTSClipPlayer::setClip`.
   `ChannelVocoder.setOutputGain` for this scene; visible in the existing
   VocoderPanel so tuning is interactive.
 
-## Deletes
+## Replaces (no hard deletes)
 
-- `assets/scenes/02_carousel_distortion.json` (replaced by the new Scene 2 JSON
-  above). No C++ to delete — the carousel modules it used (waveshaper, filter,
-  reverb) remain in use by other scenes.
+- `assets/scenes/02_carousel_distortion.json` is *moved* to
+  `assets/scenes/archive/02_carousel_distortion.json`, not deleted.
+  `SceneLibrary::loadDirectory` uses non-recursive `directory_iterator`, so
+  the archive subfolder is inert (the file does not load) but stays at hand
+  for reuse, reference, or restoration in seconds. The new Scene 2 JSON
+  takes its place under `assets/scenes/`.
+- No C++ to delete — the carousel modules the old patch used (waveshaper,
+  filter, reverb) remain in use by other scenes.

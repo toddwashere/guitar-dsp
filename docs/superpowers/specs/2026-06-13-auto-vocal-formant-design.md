@@ -19,8 +19,11 @@ To do this well we need *smooth glides between vowels*, not three fixed
 filter shapes. "Weedly weedly" requires interpolating between EE and EH 8
 times per second; "neow neow" requires EE → OW glides on each pick. The
 current `Formant` class is fixed to three discrete vowels (Ah, Oh, Ee) with no
-interpolation — it cannot produce the target sound. This spec rewrites the
-formant engine to a continuous vowel space.
+interpolation — it cannot produce the target sound on its own. This spec
+*extends* the formant engine with a continuous vowel-space path
+(`setPosition`) alongside the existing static-vowel API (`setVowel`). The
+existing API and its observable behavior are preserved exactly so that
+current tests and any future static-vowel scene continue to work.
 
 ## Non-goals
 
@@ -69,7 +72,7 @@ the entire space.
 
 ### Modified components
 
-#### `src/audio/Formant.{h,cpp}` — rewrite
+#### `src/audio/Formant.{h,cpp}` — extend (existing API preserved)
 
 ```cpp
 namespace guitar_dsp::audio {
@@ -347,18 +350,28 @@ produces). In Envelope mode, picking is the trigger.
   keeping `formantVowel` honored is mild schema bloat. Acceptable in v1;
   if scenes proliferate, consider a `Scene.h` cleanup pass later.
 
-## Deletes
+## Replaces (no hard deletes)
 
-- `assets/scenes/04_carousel_8bit.json` (replaced by new Scene 4 JSON
-  above).
-- The existing `Formant::setVowel` implementation in `Formant.cpp` is
-  rewritten; the `Vowel` enum stays in `Scene.h` for back-compat (do not
-  delete it).
-- No deletion of `Crusher.cpp` / `Crusher.h` — after Scene 4 is replaced, no
-  current scene uses the bit-crusher stage, but the crusher is part of the
-  generic carousel effect rack (`CarouselConfig::crusherBits`,
+- `assets/scenes/04_carousel_8bit.json` is *moved* to
+  `assets/scenes/archive/04_carousel_8bit.json`, not deleted. The 8-bit
+  patch (4-bit crusher + 8× downsample) is a distinct sonic experiment
+  worth preserving. The archive subfolder is ignored by
+  `SceneLibrary::loadDirectory`.
+- `Formant.cpp` / `Formant.h` are *extended*, not rewritten. The existing
+  `setVowel(Vowel)` API and its observable behavior on samples remain
+  identical (existing tests in `tests/unit/audio/test_formant.cpp` and
+  `tests/unit/audio/test_carousel.cpp` must keep passing as-is). The shim's
+  formant frequencies for AH, OH, EE in the new anchor table must be
+  copied bit-for-bit from the current `Formant.cpp` per-vowel tables; only
+  the EH and OO anchors are new. `setPosition(float)` is added alongside
+  the existing API.
+- The `CarouselConfig::Vowel` enum stays in `Scene.h` and is still parsed
+  in `SceneLibrary.cpp`. Both old-style (`"vowel":"ah"`) and new-style
+  (`"mode":"lfo","breakpoints":[…]`) JSON inputs continue to work.
+- `Crusher.cpp` / `Crusher.h` stay in the engine. After Scene 4 is
+  replaced, no current scene uses the bit-crusher stage, but the crusher
+  is part of the generic carousel effect rack (`CarouselConfig::crusherBits`,
   `crusherDownsample`) and is wired through `CarouselMod`. Leaving it in
-  place preserves the rack's surface area for future scene authoring.
-  Deleting it would require removing the schema fields, parsing in
-  `SceneLibrary`, and rack wiring — a wider blast radius than the design
-  intent of "replace three scene JSONs."
+  place preserves the rack's surface area for future scene authoring and
+  matches the project's preservation principle (see
+  `feedback_prefer_preservation.md` in the user's memory).
