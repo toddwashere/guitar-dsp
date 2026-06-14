@@ -55,3 +55,28 @@ TEST_CASE("FormantModulator Lfo: empty breakpoints -> constant 0",
 
     for (float p : pos) REQUIRE(p == 0.0f);
 }
+
+TEST_CASE("FormantModulator Envelope: advances one breakpoint per onset",
+          "[audio][formant_modulator][envelope]") {
+    FormantModulator m;
+    m.prepare(48000.0);
+    m.setMode(FormantModulator::Mode::Envelope);
+    m.setBreakpoints({ 0.0f, 0.5f, 0.75f });
+    m.setEnvelopeAttackMs(5.0f);
+
+    constexpr std::size_t N = 48000 * 2;
+    std::vector<float> onset(N, 0.0f), pos(N, 0.0f);
+    for (std::size_t i = 0; i < 64; ++i) onset[100         + i] = 0.9f * std::exp(-(int)i * 0.05f);
+    for (std::size_t i = 0; i < 64; ++i) onset[100 + 24000 + i] = 0.9f * std::exp(-(int)i * 0.05f);
+    for (std::size_t i = 0; i < 64; ++i) onset[100 + 48000 + i] = 0.9f * std::exp(-(int)i * 0.05f);
+
+    constexpr std::size_t blockSize = 512;
+    for (std::size_t i = 0; i < N; i += blockSize) {
+        const std::size_t n = std::min<std::size_t>(blockSize, N - i);
+        m.process(onset.data() + i, pos.data() + i, n);
+    }
+
+    REQUIRE(std::fabs(pos[12000]                 - 0.0f)  < 0.05f);
+    REQUIRE(std::fabs(pos[100 + 24000 + 12000]   - 0.5f)  < 0.05f);
+    REQUIRE(std::fabs(pos[N - 100]               - 0.75f) < 0.05f);
+}

@@ -33,7 +33,7 @@ void FormantModulator::setEnvelopeAttackMs(float ms) noexcept {
     envRampPerSample_ = (samples > 0.0f) ? (1.0f / samples) : 1.0f;
 }
 
-void FormantModulator::process(const float* /*onsetSrc*/, float* posOut,
+void FormantModulator::process(const float* onsetSrc, float* posOut,
                                 std::size_t numSamples) noexcept {
     switch (mode_) {
         case Mode::Static: {
@@ -63,8 +63,25 @@ void FormantModulator::process(const float* /*onsetSrc*/, float* posOut,
             break;
         }
         case Mode::Envelope: {
-            // Implemented in Task 7.
-            std::fill(posOut, posOut + numSamples, staticPos_);
+            if (breakpoints_.empty()) {
+                std::fill(posOut, posOut + numSamples, 0.0f);
+                break;
+            }
+            for (std::size_t i = 0; i < numSamples; ++i) {
+                if (onset_.processSample(onsetSrc[i])) {
+                    const int n = static_cast<int>(breakpoints_.size());
+                    envIndex_ = (envIndex_ + 1) % n;
+                    envTargetPos_ = breakpoints_[static_cast<std::size_t>(envIndex_)];
+                }
+                if (envCurrentPos_ < envTargetPos_) {
+                    envCurrentPos_ += envRampPerSample_;
+                    if (envCurrentPos_ > envTargetPos_) envCurrentPos_ = envTargetPos_;
+                } else if (envCurrentPos_ > envTargetPos_) {
+                    envCurrentPos_ -= envRampPerSample_;
+                    if (envCurrentPos_ < envTargetPos_) envCurrentPos_ = envTargetPos_;
+                }
+                posOut[i] = envCurrentPos_;
+            }
             break;
         }
     }
