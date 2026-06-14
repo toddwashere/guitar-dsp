@@ -30,6 +30,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
     unit/scenes/test_scene_library_tts_text.cpp
+    unit/scenes/test_scene_library_tts_bank.cpp
     unit/scenes/test_scene_library_tts_fallback.cpp
     unit/scenes/test_scene_library_tts_trigger.cpp
     unit/scenes/test_scene_library_carousel.cpp

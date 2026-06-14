@@ -79,6 +79,15 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
             if (t->hasProperty("clarity"))
                 s.tts.clarity = std::clamp(
                     static_cast<float>((double) t->getProperty("clarity")), 0.0f, 1.0f);
+            if (t->hasProperty("bank")) {
+                if (auto* arr = t->getProperty("bank").getArray()) {
+                    s.tts.bank.clear();
+                    s.tts.bank.reserve(static_cast<std::size_t>(arr->size()));
+                    for (int i = 0; i < arr->size(); ++i)
+                        s.tts.bank.push_back(
+                            (*arr)[i].toString().toStdString());
+                }
+            }
         }
     }
 

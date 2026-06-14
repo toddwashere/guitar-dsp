@@ -1,0 +1,12 @@
+{
+  "id": 99,
+  "name": "Test — clip bank",
+  "color": "#ff0000",
+  "mixer": { "masterGainDb": -6.0, "dryWet": 0.9, "transitionMs": 20 },
+  "tts": {
+    "source": "clipBank",
+    "bank": ["a", "b", "c"],
+    "trigger": "note",
+    "clarity": 0.1
+  }
+}
