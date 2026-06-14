@@ -32,10 +32,11 @@ TEST_CASE("SceneLibrary: parses the Developers! scene", "[scenes][library][devel
     REQUIRE_THAT(s->mixer.dryWet,       WithinAbs(0.9f,  1e-4f));
     REQUIRE_THAT(s->mixer.transitionMs, WithinAbs(30.0f, 1e-4f));
 
-    REQUIRE(s->tts.source  == "prebaked");
-    REQUIRE(s->tts.clip    == "01_developers");
-    REQUIRE(s->tts.trigger == "note");
-    REQUIRE_THAT(s->tts.clarity, WithinAbs(0.25f, 1e-4f));
+    REQUIRE(s->tts.source   == "prebaked");
+    REQUIRE(s->tts.clip     == "01_developers");
+    REQUIRE(s->tts.trigger  == "note");
+    REQUIRE(s->tts.wordSync == "latch");
+    REQUIRE_THAT(s->tts.clarity, WithinAbs(1.0f, 1e-4f));
 
     std::istringstream iss(s->tts.text);
     std::string w;

@@ -98,7 +98,9 @@ void WordReadout::paint(juce::Graphics& g) {
 
     g.setColour(centerColor);
     g.setFont(juce::Font{juce::FontOptions{}.withHeight(fontH).withStyle("Bold")});
-    g.drawText(dim(idx), mid, juce::Justification::centred);
+    // drawFittedText squeezes horizontally (down to 50%) when the ramped font
+    // overflows the center slot — prevents "DEVELO..." truncation at peak.
+    g.drawFittedText(dim(idx), mid, juce::Justification::centred, 1, 0.5f);
 
     // Pip strip: N pips evenly distributed. Past=dim, current=full, upcoming=very dim.
     const float w = static_cast<float>(pipStrip.getWidth());

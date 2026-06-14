@@ -8,6 +8,7 @@
     "clip": "01_developers",
     "text": "DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS! DEVELOPERS!",
     "trigger": "note",
-    "clarity": 0.25
+    "wordSync": "latch",
+    "clarity": 1.0
   }
 }
