@@ -339,6 +339,37 @@ TEST_CASE("AudioGraph: pitchSinging toggle on -> detected note published",
     REQUIRE(graph.detectedHz() < 450.0f);
 }
 
+TEST_CASE("AudioGraph: ClipBank modulator source routes clip bank to vocoder",
+          "[audio][graph][clip_bank]") {
+    using guitar_dsp::audio::AudioGraph;
+    using guitar_dsp::audio::TTSClip;
+
+    AudioGraph g;
+    g.prepare(48000.0, 512);
+
+    // Put a single clip in the bank so onsets emit a known value.
+    auto clip = std::make_shared<TTSClip>();
+    clip->sampleRate = 48000.0;
+    clip->samples.assign(2000, 0.4f);
+    g.clipBankPlayer().setBank({ clip });
+    g.setModulatorSource(AudioGraph::ModulatorSource::ClipBank);
+    g.mixer().setDryWet(1.0f);  // route wet so vocoder output reaches the mix
+
+    // Drive a pluck-shaped guitar input — both carrier AND onset for the
+    // clip-bank player.
+    std::vector<float> in(2000, 0.0f), out(2000, 0.0f);
+    for (std::size_t i = 0; i < 64; ++i)
+        in[i] = 0.9f * std::exp(-static_cast<float>(i) * 0.05f);
+
+    for (std::size_t i = 0; i < in.size(); i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, in.size() - i);
+        g.process(in.data() + i, out.data() + i, n);
+    }
+
+    // The cursor must have advanced (proving the clip-bank branch was taken).
+    REQUIRE(g.clipBankPlayer().currentClipIndex() == 0);
+}
+
 TEST_CASE("AudioGraph: pitchSinging on with TTS modulator -> wet path peak at guitar's F0",
           "[audio][graph][pitch_singing][vocoder]") {
     AudioGraph graph;

@@ -179,6 +179,26 @@ public:
     // the scene's authored default.
     float activeSceneClarity() const { return sceneEngine_.activeTtsConfig().clarity; }
 
+    // Phase A — Vocal Guitar (Scene 2). True when the active scene uses
+    // the clip-bank modulator source.
+    bool activeSceneIsClipBank() const {
+        return sceneEngine_.activeTtsConfig().source == "clipBank";
+    }
+    int  clipBankCursor() const { return graph_.clipBankPlayer().currentClipIndex(); }
+    int  clipBankSize()   const { return graph_.clipBankPlayer().bankSize(); }
+    // Returns the current clip's key (e.g. "03_new") or empty when idle.
+    std::string clipBankCurrentKey() const {
+        const auto cfg = sceneEngine_.activeTtsConfig();
+        const int  idx = clipBankCursor();
+        if (idx < 0 || idx >= static_cast<int>(cfg.bank.size())) return {};
+        return cfg.bank[static_cast<std::size_t>(idx)];
+    }
+    // Issued by the Rewind pill on WordReadout. Picks the right player.
+    void rewindActive() noexcept {
+        if (activeSceneIsClipBank()) graph_.rewindClipBank();
+        else                          graph_.rewindSpoken();
+    }
+
     // Apple-TTS "type and say" plumbing for the message-thread UI.
     //
     // enqueueSayText() kicks off background synthesis via the existing
@@ -230,6 +250,7 @@ private:
     std::unique_ptr<AssetsPoller> assetsPoller_;
 
     std::unique_ptr<audio::PrebakedTTSSource> prebakedTtsSource_;
+    std::unique_ptr<audio::PrebakedTTSSource> vocalGuitarSource_;
     std::unique_ptr<audio::AppleTTSSource>    appleTtsSource_;
     std::unique_ptr<audio::TTSPrewarmer>      applePrewarmer_;
     std::unique_ptr<audio::PiperTTSSource>    piperTtsSource_;

@@ -25,11 +25,13 @@ add_executable(guitar_dsp_tests
     unit/audio/test_onset_detector.cpp
     unit/audio/test_word_aligner.cpp
     unit/audio/test_note_stepped_player.cpp
+    unit/audio/test_clip_bank_player.cpp
     unit/audio/test_mic_capture.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
     unit/scenes/test_scene_library_tts_text.cpp
+    unit/scenes/test_scene_library_tts_bank.cpp
     unit/scenes/test_scene_library_tts_fallback.cpp
     unit/scenes/test_scene_library_tts_trigger.cpp
     unit/scenes/test_scene_library_carousel.cpp
@@ -67,6 +69,7 @@ add_executable(guitar_dsp_tests
     integration/test_fallback_chain.cpp
     integration/test_carousel_scene.cpp
     integration/test_note_triggered_speech.cpp
+    integration/test_vocal_guitar_clip_bank_scene.cpp
     integration/test_whisper_transcriber.cpp
     integration/test_sidechain_routing.cpp
     integration/test_realtime_safety_ai.cpp

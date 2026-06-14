@@ -10,6 +10,7 @@
 #include "ChannelVocoder.h"
 #include "InputStage.h"
 #include "Mixer.h"
+#include "ClipBankPlayer.h"
 #include "NoteSteppedTTSPlayer.h"
 #include "PitchTrackedCarrier.h"
 #include "TTSClipPlayer.h"
@@ -39,6 +40,8 @@ public:
     TTSClipPlayer& ttsClipPlayer() { return ttsClipPlayer_; }
     NoteSteppedTTSPlayer& noteSteppedPlayer() { return noteSteppedPlayer_; }
     const NoteSteppedTTSPlayer& noteSteppedPlayer() const { return noteSteppedPlayer_; }
+    ClipBankPlayer& clipBankPlayer() { return clipBankPlayer_; }
+    const ClipBankPlayer& clipBankPlayer() const { return clipBankPlayer_; }
     ChannelVocoder& vocoder() { return vocoder_; }
     Carousel& carousel() { return carousel_; }
 
@@ -48,7 +51,7 @@ public:
         wetSource_.store(static_cast<int>(s), std::memory_order_relaxed);
     }
 
-    enum class ModulatorSource { Linear, NoteStepped };
+    enum class ModulatorSource { Linear, NoteStepped, ClipBank };
     // Message-thread: choose which TTS player feeds the vocoder modulator.
     void setModulatorSource(ModulatorSource s) noexcept {
         modulatorSource_.store(static_cast<int>(s), std::memory_order_relaxed);
@@ -121,6 +124,10 @@ public:
     // plays segment 0). Message thread; RT-safe via pending flag.
     void rewindSpoken() noexcept { noteSteppedPlayer_.rewind(); }
 
+    // Rewind the clip-bank cursor (Scene 2 / Phase A). Independent of the
+    // note-stepped rewind. Message thread; RT-safe via the player's pending flag.
+    void rewindClipBank() noexcept { clipBankPlayer_.rewind(); }
+
     // Latest detected pitch published from the audio thread for the UI. -1
     // midiNote / 0 Hz when unvoiced AND hold-decay has expired.
     int   detectedNoteMidi() const noexcept { return detectedNoteMidi_.load(std::memory_order_relaxed); }
@@ -132,6 +139,7 @@ private:
     Mixer mixer_;
     TTSClipPlayer ttsClipPlayer_;
     NoteSteppedTTSPlayer noteSteppedPlayer_;
+    ClipBankPlayer clipBankPlayer_;
     ChannelVocoder vocoder_;
     Carousel carousel_;
 

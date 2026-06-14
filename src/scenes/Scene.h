@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace guitar_dsp::scenes {
 
@@ -17,6 +18,7 @@ struct TtsConfig {
     std::string text;     // text passed to live sources (apple, piper)
     std::string voice;    // optional voice id for live sources
     std::string fallback; // source name to try if primary fails ("" = none)
+    std::vector<std::string> bank; // ordered clip keys when source == "clipBank"; empty otherwise
     std::string trigger;  // "auto"/"" (whole clip, default) | "note" (per-note word stepping)
     std::string wordSync = "global";  // "global"|"latch"|"advance"|"syllable"
     float clarity = 0.0f; // 0 = fully vocoded; 1 = dry TTS (speak-clearly mode)

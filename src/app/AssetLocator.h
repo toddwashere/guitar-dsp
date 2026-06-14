@@ -15,6 +15,11 @@ public:
     static std::string midiDirectory();
     static std::string ttsDirectory();
 
+    // Returns <assetsRoot>/clips/vocal-guitar/ — the root for the Phase A
+    // "vocal guitar" clip bank (Scene 2). Each subdir is one clip key, with
+    // an `audio.wav` inside. No `meta.json` needed.
+    static std::string vocalGuitarClipsDirectory();
+
     // Returns the path to the bundled Piper binary, or empty if not bundled.
     // Path: <assetsRoot>/piper/piper
     static std::string piperBinaryPath();
