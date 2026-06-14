@@ -120,7 +120,8 @@ void VocoderPanel::paint(juce::Graphics& g) {
 
 void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
-    area.removeFromTop(12);  // header band
+    area.removeFromBottom(8);  // mic-meter strip (painted directly in paint())
+    area.removeFromTop(12);    // header band
 
     constexpr int selectorH = 22;
     wordSyncSelector_.setBounds(area.removeFromBottom(selectorH));

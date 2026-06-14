@@ -554,6 +554,52 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     const int numSamples = std::min(buffer.getNumSamples(),
                                     static_cast<int>(monoScratch_.size()));
 
+    // Mic bus extraction (sidechain bus 1 in AU; main bus 0 in standalone).
+    // Runs every block, BEFORE graph_.process(), so:
+    //   - the vocoder gets a fresh mic block when ModulatorSource::Mic is active
+    //     (no one-block staleness in the modulator path)
+    //   - the always-visible mic level meter stays live on every scene
+    //   - whisper capture (when active) still gets fed
+    {
+        const float* micPtr = nullptr;
+        int           micLen = 0;
+        constexpr int kMaxBlock = 8192;
+        float         tmp[kMaxBlock];
+
+        if (getBusCount(/*isInput=*/true) >= 2
+                && getChannelCountOfBus(true, 1) > 0) {
+            auto micBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/1);
+            const int n = std::min(micBus.getNumSamples(), kMaxBlock);
+            if (micBus.getNumChannels() == 1) {
+                micPtr = micBus.getReadPointer(0);
+                micLen = n;
+            } else if (micBus.getNumChannels() >= 2) {
+                const float* L = micBus.getReadPointer(0);
+                const float* R = micBus.getReadPointer(1);
+                for (int i = 0; i < n; ++i) tmp[i] = 0.5f * (L[i] + R[i]);
+                micPtr = tmp;
+                micLen = n;
+            }
+        } else {
+            // Standalone fallback: bus 0 doubles as the mic input. The
+            // vocoder self-modulates on the guitar; not the talkbox effect,
+            // but documented in the spec as the standalone behavior.
+            auto mainBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/0);
+            if (mainBus.getNumChannels() >= 1) {
+                micPtr = mainBus.getReadPointer(0);
+                micLen = mainBus.getNumSamples();
+            }
+        }
+
+        if (micPtr != nullptr && micLen > 0) {
+            graph_.setMicBlock(micPtr, static_cast<std::size_t>(micLen));
+            if (micCapture_.isCapturing())
+                micCapture_.appendFromAudioBlock(micPtr, micLen);
+        } else {
+            graph_.setMicBlock(nullptr, 0);  // clears the scratch + zeroes the meter
+        }
+    }
+
     // Build a mono input — downmixing stereo by averaging — so the DSP graph
     // sees a single channel regardless of how the host configures the bus.
     float inPeak = 0.0f;
@@ -607,50 +653,6 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         std::memcpy(out, monoScratch_.data(), sizeof(float) * static_cast<std::size_t>(numSamples));
     }
 
-    // Mic bus extraction (sidechain bus 1 in AU; main bus 0 in standalone).
-    // Runs every block so:
-    //   - the vocoder gets a fresh mic block when ModulatorSource::Mic is active
-    //   - the always-visible mic level meter stays live on every scene
-    //   - whisper capture (when active) still gets fed
-    {
-        const float* micPtr = nullptr;
-        int           micLen = 0;
-        constexpr int kMaxBlock = 8192;
-        float         tmp[kMaxBlock];
-
-        if (getBusCount(/*isInput=*/true) >= 2
-                && getChannelCountOfBus(true, 1) > 0) {
-            auto micBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/1);
-            const int n = std::min(micBus.getNumSamples(), kMaxBlock);
-            if (micBus.getNumChannels() == 1) {
-                micPtr = micBus.getReadPointer(0);
-                micLen = n;
-            } else if (micBus.getNumChannels() >= 2) {
-                const float* L = micBus.getReadPointer(0);
-                const float* R = micBus.getReadPointer(1);
-                for (int i = 0; i < n; ++i) tmp[i] = 0.5f * (L[i] + R[i]);
-                micPtr = tmp;
-                micLen = n;
-            }
-        } else {
-            // Standalone fallback: bus 0 doubles as the mic input. The
-            // vocoder self-modulates on the guitar; not the talkbox effect,
-            // but documented in the spec as the standalone behavior.
-            auto mainBus = getBusBuffer(buffer, /*isInput=*/true, /*busIdx=*/0);
-            if (mainBus.getNumChannels() >= 1) {
-                micPtr = mainBus.getReadPointer(0);
-                micLen = mainBus.getNumSamples();
-            }
-        }
-
-        if (micPtr != nullptr && micLen > 0) {
-            graph_.setMicBlock(micPtr, static_cast<std::size_t>(micLen));
-            if (micCapture_.isCapturing())
-                micCapture_.appendFromAudioBlock(micPtr, micLen);
-        } else {
-            graph_.setMicBlock(nullptr, 0);  // clears the scratch + zeroes the meter
-        }
-    }
 }
 
 void PluginProcessor::snapshotRecentSamples(float* dest, int count) const noexcept {
