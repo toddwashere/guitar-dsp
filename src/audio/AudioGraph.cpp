@@ -13,6 +13,9 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     ttsClipPlayer_.prepare(sampleRate, blockSize);
     noteSteppedPlayer_.prepare(sampleRate, blockSize);
     clipBankPlayer_.prepare(sampleRate, blockSize);
+    micShaper_.prepare(sampleRate);
+    micScratchBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
+    micScratchValidSamples_ = 0;
     vocoder_.prepare(sampleRate, blockSize);
     vocoder_.setWetLevel(1.0f);
     vocoder_.setSibilance(0.3f);
@@ -49,6 +52,9 @@ void AudioGraph::reset() {
     ttsClipPlayer_.reset();
     noteSteppedPlayer_.reset();
     clipBankPlayer_.reset();
+    micShaper_.reset();
+    std::fill(micScratchBuffer_.begin(), micScratchBuffer_.end(), 0.0f);
+    micScratchValidSamples_ = 0;
     vocoder_.reset();
     pitchCarrier_.reset();
     std::fill(pitchCarrierBuffer_.begin(), pitchCarrierBuffer_.end(), 0.0f);
@@ -84,6 +90,12 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
             // Same shape as NoteStepped — onset source is the clean guitar.
             clipBankPlayer_.process(postInputBuffer_.data(),
                                     wetBuffer_.data(), numSamples);
+        } else if (modSrc == static_cast<int>(ModulatorSource::Mic)) {
+            // micScratchBuffer_ was populated by setMicBlock() earlier this
+            // block. Shape (gate + makeup gain) and write to wetBuffer_ as
+            // the vocoder modulator.
+            micShaper_.process(micScratchBuffer_.data(),
+                               wetBuffer_.data(), numSamples);
         } else {
             ttsClipPlayer_.process(wetBuffer_.data(), numSamples);
         }
@@ -170,6 +182,27 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
 
     // Mixer: dry = post-input guitar, wet = selected branch output.
     mixer_.process(postInputBuffer_.data(), wetBuffer_.data(), out, numSamples);
+}
+
+void AudioGraph::setMicBlock(const float* mono, std::size_t numSamples) noexcept {
+    const std::size_t n = std::min(numSamples, micScratchBuffer_.size());
+    if (mono != nullptr) {
+        std::copy(mono, mono + n, micScratchBuffer_.begin());
+        if (n < micScratchBuffer_.size())
+            std::fill(micScratchBuffer_.begin() + static_cast<std::ptrdiff_t>(n),
+                      micScratchBuffer_.end(), 0.0f);
+        micScratchValidSamples_ = n;
+
+        float peak = 0.0f;
+        for (std::size_t i = 0; i < n; ++i)
+            peak = std::max(peak, std::fabs(mono[i]));
+        micPeak_.store(peak, std::memory_order_relaxed);
+    } else {
+        std::fill(micScratchBuffer_.begin(), micScratchBuffer_.end(), 0.0f);
+        micScratchValidSamples_ = 0;
+
+        micPeak_.store(0.0f, std::memory_order_relaxed);
+    }
 }
 
 } // namespace guitar_dsp::audio

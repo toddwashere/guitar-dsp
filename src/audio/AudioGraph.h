@@ -9,6 +9,7 @@
 #include "Carousel.h"
 #include "ChannelVocoder.h"
 #include "InputStage.h"
+#include "MicShaper.h"
 #include "Mixer.h"
 #include "ClipBankPlayer.h"
 #include "NoteSteppedTTSPlayer.h"
@@ -51,11 +52,17 @@ public:
         wetSource_.store(static_cast<int>(s), std::memory_order_relaxed);
     }
 
-    enum class ModulatorSource { Linear, NoteStepped, ClipBank };
+    enum class ModulatorSource { Linear, NoteStepped, ClipBank, Mic };
     // Message-thread: choose which TTS player feeds the vocoder modulator.
     void setModulatorSource(ModulatorSource s) noexcept {
         modulatorSource_.store(static_cast<int>(s), std::memory_order_relaxed);
     }
+
+    // Audio thread (called once per block from PluginProcessor::processBlock
+    // BEFORE AudioGraph::process). Stores the mic samples for use by the Mic
+    // modulator branch in process(). Truncates if numSamples > prepared block.
+    // Pass nullptr to clear (and zero the level meter). RT-safe.
+    void setMicBlock(const float* mono, std::size_t numSamples) noexcept;
 
     // --- Diagnostic isolation toggles -----------------------------------
     // For troubleshooting vocoder intelligibility by ear. Message-thread
@@ -134,6 +141,11 @@ public:
     float detectedCents()    const noexcept { return detectedCents_.load(std::memory_order_relaxed); }
     float detectedHz()       const noexcept { return detectedHz_.load(std::memory_order_relaxed); }
 
+    // Latest mic input peak (linear 0..1) from the most recent setMicBlock()
+    // call. Updated whether or not ModulatorSource::Mic is active — drives
+    // the always-visible mic meter on VocoderPanel.
+    float micPeak() const noexcept { return micPeak_.load(std::memory_order_relaxed); }
+
 private:
     InputStage inputStage_;
     Mixer mixer_;
@@ -142,6 +154,7 @@ private:
     ClipBankPlayer clipBankPlayer_;
     ChannelVocoder vocoder_;
     Carousel carousel_;
+    MicShaper micShaper_;
 
     std::atomic<int> wetSource_ {static_cast<int>(WetSource::Vocoder)};
     std::atomic<int> modulatorSource_ {static_cast<int>(ModulatorSource::Linear)};
@@ -153,11 +166,14 @@ private:
 
     std::atomic<float> vocoderSibilance_ {0.3f};  // base sibilance (diag can override to 0)
     std::atomic<float> clarity_ {0.80f};           // "speak clearly" crossfade 0..1
+    std::atomic<float> micPeak_ {0.0f};
 
     std::vector<float> postInputBuffer_;
     std::vector<float> wetBuffer_;
     std::vector<float> carrierBuffer_;   // scratch for the noise-carrier diagnostic
     std::vector<float> drySpeechBuffer_; // raw modulator snapshot for clarity blend
+    std::vector<float> micScratchBuffer_;
+    std::size_t        micScratchValidSamples_ = 0;
 
     PitchTrackedCarrier pitchCarrier_;
     std::atomic<bool>   pitchSinging_      {false};

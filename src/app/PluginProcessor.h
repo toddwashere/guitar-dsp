@@ -184,6 +184,19 @@ public:
     bool activeSceneIsClipBank() const {
         return sceneEngine_.activeTtsConfig().source == "clipBank";
     }
+
+    // Phase B — Mic Talkbox (Scene 3). True when the active scene uses
+    // the mic modulator source.
+    bool activeSceneIsMic() const {
+        return sceneEngine_.activeTtsConfig().source == "mic";
+    }
+    // Peak mic level in [0, 1] for the always-visible level meter in VocoderPanel.
+    float micPeak() const noexcept { return graph_.micPeak(); }
+    // 0=none, 1=sidechain (AU), 2=standalone ch 2, 3=self-modulation (mono input).
+    // Used by VocoderPanel to label which physical input is being routed as the mic.
+    int   micRoutingSource() const noexcept {
+        return micRoutingSource_.load(std::memory_order_relaxed);
+    }
     int  clipBankCursor() const { return graph_.clipBankPlayer().currentClipIndex(); }
     int  clipBankSize()   const { return graph_.clipBankPlayer().bankSize(); }
     // Returns the current clip's key (e.g. "03_new") or empty when idle.
@@ -195,8 +208,9 @@ public:
     }
     // Issued by the Rewind pill on WordReadout. Picks the right player.
     void rewindActive() noexcept {
-        if (activeSceneIsClipBank()) graph_.rewindClipBank();
-        else                          graph_.rewindSpoken();
+        if (activeSceneIsMic())          /* no-op: no clip to rewind */ return;
+        if (activeSceneIsClipBank())     graph_.rewindClipBank();
+        else                              graph_.rewindSpoken();
     }
 
     // Apple-TTS "type and say" plumbing for the message-thread UI.
@@ -257,6 +271,7 @@ private:
     std::unique_ptr<audio::TTSPrewarmer>      piperPrewarmer_;
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
+    std::atomic<int> micRoutingSource_   {0};  // 0 none,1 sidechain,2 ch2,3 self-mod
     int                                        lastSeenSceneId_ = -1;  // audio thread
 
     // Host-MIDI scene control (plugin only). processBlock stores a pending

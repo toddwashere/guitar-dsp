@@ -370,6 +370,38 @@ TEST_CASE("AudioGraph: ClipBank modulator source routes clip bank to vocoder",
     REQUIRE(g.clipBankPlayer().currentClipIndex() == 0);
 }
 
+TEST_CASE("AudioGraph: Mic modulator source routes mic samples to vocoder",
+          "[audio][graph][mic]") {
+    using guitar_dsp::audio::AudioGraph;
+
+    AudioGraph g;
+    g.prepare(48000.0, 512);
+
+    // Build a sine-ish "mic" input (well above the gate threshold).
+    constexpr std::size_t N = 512;
+    std::vector<float> mic(N);
+    for (std::size_t i = 0; i < N; ++i)
+        mic[i] = 0.3f * std::sin(2.0f * 3.14159265f * 440.0f * i / 48000.0f);
+
+    g.setModulatorSource(AudioGraph::ModulatorSource::Mic);
+    g.setMicBlock(mic.data(), N);
+    g.mixer().setDryWet(1.0f);
+
+    // Build a guitar input — sustained sine to act as carrier.
+    std::vector<float> in(N), out(N);
+    for (std::size_t i = 0; i < N; ++i)
+        in[i] = 0.4f * std::sin(2.0f * 3.14159265f * 110.0f * i / 48000.0f);
+
+    g.process(in.data(), out.data(), N);
+
+    // The vocoder produces output only when both carrier and modulator are
+    // present. With mic silent the output is near-zero; with this mic feed,
+    // some output energy must reach the wet bus.
+    float peakOut = 0.0f;
+    for (float v : out) peakOut = std::max(peakOut, std::fabs(v));
+    REQUIRE(peakOut > 0.001f);
+}
+
 TEST_CASE("AudioGraph: pitchSinging on with TTS modulator -> wet path peak at guitar's F0",
           "[audio][graph][pitch_singing][vocoder]") {
     AudioGraph graph;

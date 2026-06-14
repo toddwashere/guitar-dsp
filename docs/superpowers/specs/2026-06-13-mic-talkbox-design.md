@@ -216,20 +216,17 @@ Replace `assets/scenes/03_carousel_piano.json` with:
   "tts": {
     "source": "mic",
     "clarity": 0.0
-  },
-  "carousel": {
-    "enabled": true,
-    "drive": 6.0,
-    "waveshaper": { "type": "tanh", "amount": 1.0 },
-    "harmonizer": { "intervals": [12], "detuneCents": [0], "mix": 0.25 },
-    "reverb": { "roomSize": 0.2, "wet": 0.10 },
-    "outputTrimDb": -3.0
   }
 }
 ```
 
-Carousel preset is a milder rock voicing than Scene 2 — talkbox tradition is
-"clean-ish with sustain," not "shredding." Tunable during implementation polish.
+No carousel block on Scene 3 v1. Phase A discovered the carousel chain and
+the vocoder branch are mutually exclusive on the wet bus — enabling carousel
+would silently bypass the vocoder and the mic-as-modulator routing. A
+"carousel-post-vocoder" routing path that supports drive + harmonizer +
+reverb on top of vocoder output is a separate follow-on, not in Phase B's
+scope. See `vocal_guitar_phase_a_status.md` in user memory for the
+constraint.
 
 ## Data flow (per audio block)
 
