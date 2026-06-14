@@ -45,6 +45,12 @@ void Carousel::prepare(double sampleRate, int blockSize) {
     formant_.prepare(sampleRate);
     formantMod_.prepare(sampleRate);
     formantPosBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
+    // Pre-reserve breakpoint capacity so a later `active_ = cfg` on the
+    // audio thread reuses storage instead of allocating. 16 is well above
+    // any realistic vowel-sequence length (the spec's "weedly" preset uses 2).
+    constexpr std::size_t kMaxFormantBreakpoints = 16;
+    pendingConfig_.formantBreakpoints.reserve(kMaxFormantBreakpoints);
+    active_.formantBreakpoints.reserve(kMaxFormantBreakpoints);
     env_.prepare(sampleRate);
     lfo_.prepare(sampleRate);
 

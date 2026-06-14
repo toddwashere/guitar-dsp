@@ -8,6 +8,10 @@ namespace guitar_dsp::audio {
 void FormantModulator::prepare(double sampleRate) {
     sampleRate_ = sampleRate;
     onset_.prepare(sampleRate);
+    // Recompute envRampPerSample_ for the current sample rate against the
+    // default envAttackMs_ — otherwise a caller that calls setMode(Envelope)
+    // without first calling setEnvelopeAttackMs gets a stuck position.
+    setEnvelopeAttackMs(envAttackMs_);
     reset();
 }
 
