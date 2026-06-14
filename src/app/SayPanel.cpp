@@ -19,6 +19,10 @@ SayPanel::SayPanel(PluginProcessor& processor) : processor_(processor) {
 
     sayButton_.onClick = [this] { say(); };
     addAndMakeVisible(sayButton_);
+
+    // Poll for scene-change events so the input field can show each
+    // scene's default text. 10 Hz is plenty for a UI affordance.
+    startTimer(100);
 }
 
 SayPanel::~SayPanel() {
@@ -51,8 +55,19 @@ void SayPanel::say() {
 }
 
 void SayPanel::timerCallback() {
+    // Per-scene default text: when the active scene changes, populate the
+    // input field with that scene's tts.text so the operator can edit or
+    // re-trigger it. Doesn't fire mid-edit because the user's edits leave
+    // the scene id unchanged — only an actual scene change resets the box.
+    const int curSceneId = processor_.activeSceneId();
+    if (curSceneId != lastSeenSceneId_) {
+        lastSeenSceneId_ = curSceneId;
+        const auto defaultText = processor_.activeSceneTtsText();
+        input_.setText(juce::String(defaultText), juce::dontSendNotification);
+    }
+
+    // Pending-synth poll path (runs on top of the always-on 100 ms poll).
     if (pendingText_.empty()) {
-        stopTimer();
         return;
     }
     const int result = processor_.tryInstallSayText(pendingText_);

@@ -6,7 +6,7 @@
   "tts": {
     "source": "prebaked",
     "clip": "01_developers",
-    "text": "DEVELOPERS!",
+    "text": "Developers",
     "trigger": "note",
     "wordSync": "latch",
     "clarity": 0.9

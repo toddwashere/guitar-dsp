@@ -38,6 +38,10 @@ private:
     // Currently-pending synthesis (empty when idle).
     std::string  pendingText_;
     juce::int64  pendingExpiryMs_ = 0;
+
+    // Track scene id so the input field auto-populates with each scene's
+    // default text on activation. -2 forces first poll.
+    int          lastSeenSceneId_ = -2;
 };
 
 } // namespace guitar_dsp

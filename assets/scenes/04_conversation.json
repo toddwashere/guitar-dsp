@@ -8,7 +8,7 @@
     "source": "apple",
     "voice": "com.apple.voice.compact.en-US.Samantha",
     "trigger": "note",
-    "wordSync": "advance",
+    "wordSync": "latch",
     "clarity": 0.7
   }
 }

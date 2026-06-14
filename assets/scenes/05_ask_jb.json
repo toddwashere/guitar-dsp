@@ -7,7 +7,8 @@
     "source": "apple",
     "text": "Can you make me sound like Jack Black?",
     "voice": "com.apple.voice.compact.en-US.Samantha",
-    "trigger": "auto",
+    "trigger": "note",
+    "wordSync": "latch",
     "clarity": 0.7
   }
 }

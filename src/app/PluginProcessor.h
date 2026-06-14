@@ -195,6 +195,12 @@ public:
     bool activeSceneShowsChat() const {
         return sceneEngine_.getActiveScene().showChat;
     }
+    // Default text for the SayPanel input box — typically the scene's
+    // tts.text, so e.g. Scene 1 ("Developers!") populates the input with
+    // "Developers" so the operator can edit/re-trigger it directly.
+    std::string activeSceneTtsText() const {
+        return sceneEngine_.activeTtsConfig().text;
+    }
     // Peak mic level in [0, 1] for the always-visible level meter in VocoderPanel.
     float micPeak() const noexcept { return graph_.micPeak(); }
     // 0=none, 1=sidechain (AU), 2=standalone ch 2, 3=self-modulation (mono input).
