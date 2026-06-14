@@ -193,9 +193,7 @@ distributed with the repo. Generate it locally:
 3. The script writes `assets/tts/01_developers/audio.wav`. This file is
    gitignored — re-run after fresh clone or asset edit.
 
-If your source's timing differs from the default chops, edit `SEGMENTS_S`
-at the top of `scripts/build_developers_clip.py` (14 `(start_s, end_s)`
-tuples; the last two are intentional peak duplicates).
+**The default timestamps in `SEGMENTS_S` are placeholders and will NOT produce a usable result against the real Ballmer source.** You must calibrate them once: open `ballmer_source.wav` in a waveform editor (Audacity, ocenaudio, etc.), note the `(start_s, end_s)` of each "DEVELOPERS!" burst, and update the 14 `(start_s, end_s)` tuples at the top of `scripts/build_developers_clip.py`. The last two tuples are intentional peak duplicates — duplicate the loudest two bursts so wrap-around stays loud.
 
 ## Project status
 

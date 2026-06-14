@@ -14,8 +14,13 @@ WordReadout::WordReadout(PluginProcessor& processor) : processor_(processor) {
 WordReadout::~WordReadout() { stopTimer(); }
 
 void WordReadout::timerCallback() {
-    const int idx = processor_.currentSpokenWordIndex();
-    if (idx != lastIndex_) { lastIndex_ = idx; repaint(); }
+    const int idx     = processor_.currentSpokenWordIndex();
+    const int sceneId = processor_.activeSceneId();
+    if (idx != lastIndex_ || sceneId != lastSceneId_) {
+        lastIndex_   = idx;
+        lastSceneId_ = sceneId;
+        repaint();
+    }
 }
 
 juce::Rectangle<int> WordReadout::rewindButtonBounds() const {

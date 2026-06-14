@@ -27,7 +27,7 @@ public:
     static constexpr float kPipAlphaUpcoming  = 0.15f;
     static constexpr float kPipAlphaCurrent   = 1.0f;
 
-    // Center-word ramp (used in Task 6 — declared here so tests can reference).
+    // Center-word ramp constants — declared here so tests can reference.
     static constexpr float kCenterBaseHeight = 34.0f;
     static constexpr float kCenterGrowFactor = 0.6f;
     static constexpr juce::uint8 kPeakColorR = 0xFF;
@@ -39,7 +39,8 @@ private:
     juce::Rectangle<int> rewindButtonBounds() const;
 
     PluginProcessor& processor_;
-    int lastIndex_ = -2;
+    int lastIndex_   = -2;
+    int lastSceneId_ = -2;   // -2 = "never read"; forces first repaint
 };
 
 } // namespace guitar_dsp

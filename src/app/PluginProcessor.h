@@ -121,6 +121,11 @@ public:
         const auto& s = sceneEngine_.getActiveScene();
         return (s.id >= 0) ? s.colorRgb : 0x9090A0u;
     }
+    // Active scene id (matches scene JSON "id" field). Returns -1 if no scene
+    // is active. Message-thread only.
+    int activeSceneId() const noexcept {
+        return sceneEngine_.getActiveSceneId();
+    }
 
     // --- Vocoder diagnostic toggles (message thread) --------------------
     // Forward to the AudioGraph. Used by the DiagToggleBar UI + V/N/S keys
