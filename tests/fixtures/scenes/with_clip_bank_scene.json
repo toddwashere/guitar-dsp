@@ -1,0 +1,13 @@
+{
+  "id": 50,
+  "name": "Test — vocal guitar",
+  "color": "#000000",
+  "mixer": { "masterGainDb": 0.0, "dryWet": 1.0, "transitionMs": 5 },
+  "tts": {
+    "source": "clipBank",
+    "bank": ["00_test", "01_test"],
+    "trigger": "note",
+    "clarity": 0.0
+  },
+  "carousel": { "enabled": false }
+}

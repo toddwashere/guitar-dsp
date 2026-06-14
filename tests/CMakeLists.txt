@@ -69,6 +69,7 @@ add_executable(guitar_dsp_tests
     integration/test_fallback_chain.cpp
     integration/test_carousel_scene.cpp
     integration/test_note_triggered_speech.cpp
+    integration/test_vocal_guitar_clip_bank_scene.cpp
     integration/test_whisper_transcriber.cpp
     integration/test_sidechain_routing.cpp
     integration/test_realtime_safety_ai.cpp
