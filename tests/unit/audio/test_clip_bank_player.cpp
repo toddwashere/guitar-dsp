@@ -73,3 +73,40 @@ TEST_CASE("ClipBankPlayer: subsequent onsets advance through bank then wrap",
 
     REQUIRE(p.currentClipIndex() == 0);  // wrapped
 }
+
+TEST_CASE("ClipBankPlayer: emits active clip's samples",
+          "[audio][clip_bank]") {
+    ClipBankPlayer p;
+    p.prepare(48000.0, 512);
+    p.setBank({ makeClip(0.10f, 200), makeClip(0.25f, 200) });
+
+    std::vector<float> onset(400, 0.0f);
+    plantOnset(onset, 50);
+    std::vector<float> mod(400, 0.0f);
+    p.process(onset.data(), mod.data(), mod.size());
+
+    // After the onset settles and the clip plays, mod should contain the
+    // first clip's value (0.10) at some sample inside the played region.
+    bool sawClipValue = false;
+    for (float v : mod)
+        if (std::fabs(v - 0.10f) < 1e-5f) { sawClipValue = true; break; }
+    REQUIRE(sawClipValue);
+}
+
+TEST_CASE("ClipBankPlayer: outputs zero after clip ends (no next onset)",
+          "[audio][clip_bank]") {
+    ClipBankPlayer p;
+    p.prepare(48000.0, 512);
+    // Short clip (300 samples). Process 600 samples; samples 300+ must be 0
+    // (after the onset triggers and the clip exhausts).
+    p.setBank({ makeClip(0.5f, 300) });
+
+    std::vector<float> onset(600, 0.0f);
+    plantOnset(onset, 0);
+    std::vector<float> mod(600, 0.0f);
+    p.process(onset.data(), mod.data(), mod.size());
+
+    // The tail half of the buffer should be silent.
+    for (std::size_t i = 400; i < 600; ++i)
+        REQUIRE(mod[i] == 0.0f);
+}
