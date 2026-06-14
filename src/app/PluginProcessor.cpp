@@ -42,11 +42,20 @@ private:
 
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
-        // Input is declared STEREO so the standalone wrapper exposes 2 channels
-        // when the user enables a stereo input device (e.g., Scarlett "Input
-        // 1+2"). In standalone, ch 0 = guitar, ch 1 = mic. isBusesLayoutSupported
-        // also accepts mono, so single-channel interfaces still work.
+        // Input bus default depends on the build target:
+        //   Standalone: stereo, so the JUCE standalone wrapper exposes 2
+        //     channels when the user enables a stereo input device (e.g.
+        //     Scarlett "Input 1+2"). In standalone, ch 0 = guitar, ch 1 = mic.
+        //   AU (Logic):  mono, because Logic's aumf negotiation gets confused
+        //     by a non-mono main input default and silently drops the playback
+        //     audio (live-monitoring works, recorded playback does not).
+        // isBusesLayoutSupported accepts both for either target, so each
+        // wrapper can still negotiate up to stereo if it wants.
+#if JucePlugin_Build_Standalone
         .withInput ("Input",  juce::AudioChannelSet::stereo(), true)
+#else
+        .withInput ("Input",  juce::AudioChannelSet::mono(),   true)
+#endif
         .withInput ("Mic",    juce::AudioChannelSet::mono(),   false)  // sidechain, disabled by default
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
     midiRouter_ = std::make_unique<midi::MidiRouter>(
