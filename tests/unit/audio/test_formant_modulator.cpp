@@ -80,3 +80,26 @@ TEST_CASE("FormantModulator Envelope: advances one breakpoint per onset",
     REQUIRE(std::fabs(pos[100 + 24000 + 12000]   - 0.5f)  < 0.05f);
     REQUIRE(std::fabs(pos[N - 100]               - 0.75f) < 0.05f);
 }
+
+TEST_CASE("FormantModulator: process is allocation-free",
+          "[audio][formant_modulator][rt]") {
+    FormantModulator m;
+    m.prepare(48000.0);
+    m.setMode(FormantModulator::Mode::Lfo);
+    m.setBreakpoints({ 0.0f, 0.5f, 1.0f });
+    m.setLfoRateHz(2.0f);
+
+    std::vector<float> onset(512), pos(512);
+    for (int i = 0; i < 512; ++i)
+        onset[static_cast<std::size_t>(i)] =
+            0.5f * std::sin(2.0f * 3.14159265f * 110.0f * i / 48000.0f);
+    // Warm-up call.
+    m.process(onset.data(), pos.data(), 512);
+
+    RealtimeSentinel sentinel;
+    sentinel.markCurrentThreadAsRealtime();
+    for (int blk = 0; blk < 50; ++blk)
+        m.process(onset.data(), pos.data(), 512);
+    sentinel.unmarkCurrentThreadAsRealtime();
+    REQUIRE(sentinel.violations() == 0);
+}
