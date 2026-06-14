@@ -19,7 +19,8 @@
 namespace guitar_dsp {
 
 class PluginEditor : public juce::AudioProcessorEditor,
-                     private juce::KeyListener {
+                     private juce::KeyListener,
+                     private juce::Timer {
 public:
     explicit PluginEditor(PluginProcessor&);
     ~PluginEditor() override = default;
@@ -32,6 +33,12 @@ private:
     // Component::keyPressed(KeyPress), triggering -Woverloaded-virtual.
     using juce::Component::keyPressed;
     bool keyPressed(const juce::KeyPress&, juce::Component*) override;
+
+    // Polls the active scene id so we can trigger resized() when the
+    // active scene's showChat flag flips — ConversationPanel needs to
+    // appear/disappear and the oscilloscope area needs to expand/contract.
+    void timerCallback() override;
+    int  lastObservedSceneId_ = -1;
 
     PluginProcessor& processor_;
 

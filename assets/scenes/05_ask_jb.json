@@ -1,0 +1,13 @@
+{
+  "id": 5,
+  "name": "What do you think?",
+  "color": "#f25e8e",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 0.9, "transitionMs": 30 },
+  "tts": {
+    "source": "apple",
+    "text": "Can you make me sound like Jack Black?",
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "trigger": "auto",
+    "clarity": 0.7
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": 9,
+  "name": "While my guitar...",
+  "color": "#d6453c",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 0.9, "transitionMs": 30 },
+  "tts": {
+    "source": "apple",
+    "text": "I look at the world and I no-tice it's turn-ing. While my gui-tar gent-ly weeps. With ev-ery mis-take we must sure-ly be learn-ing. Still my gui-tar gent-ly weeps.",
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "fallback": "prebaked",
+    "clip": "09_weeps",
+    "trigger": "note",
+    "wordSync": "syllable",
+    "clarity": 0.4
+  }
+}

@@ -1,8 +1,8 @@
 {
-  "id": 4,
-  "name": "Auto-Vocal — weedly",
+  "id": 8,
+  "name": "And sometimes Y",
   "color": "#ff7f24",
-  "mixer": { "masterGainDb": -5.0, "dryWet": 0.95, "transitionMs": 20 },
+  "mixer": { "masterGainDb": -7.0, "dryWet": 0.95, "transitionMs": 20 },
   "carousel": {
     "enabled": true,
     "drive": 12.0,

@@ -1,8 +1,8 @@
 {
-  "id": 2,
-  "name": "Vocal Guitar — clip bank",
+  "id": 6,
+  "name": "Moves like Jack Black",
   "color": "#e07b00",
-  "mixer": { "masterGainDb": -6.0, "dryWet": 0.9, "transitionMs": 30 },
+  "mixer": { "masterGainDb": -7.0, "dryWet": 0.92, "transitionMs": 30 },
   "tts": {
     "source": "clipBank",
     "bank": [

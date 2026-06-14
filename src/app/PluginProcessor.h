@@ -190,6 +190,11 @@ public:
     bool activeSceneIsMic() const {
         return sceneEngine_.activeTtsConfig().source == "mic";
     }
+    // When true, PluginEditor shows the ConversationPanel (chat UI) on this
+    // scene. Default false; only scenes with "showChat": true expose it.
+    bool activeSceneShowsChat() const {
+        return sceneEngine_.getActiveScene().showChat;
+    }
     // Peak mic level in [0, 1] for the always-visible level meter in VocoderPanel.
     float micPeak() const noexcept { return graph_.micPeak(); }
     // 0=none, 1=sidechain (AU), 2=standalone ch 2, 3=self-modulation (mono input).

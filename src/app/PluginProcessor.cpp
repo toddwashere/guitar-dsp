@@ -278,11 +278,44 @@ int PluginProcessor::tryInstallSayText(const std::string& text) {
     if (text.empty() || !applePrewarmer_) return -1;
     if (!applePrewarmer_->isCached(text)) return 0;
     auto clip = applePrewarmer_->takeIfReady(text);
+    if (!clip) return -1;
     // Bypass currentTtsClipKey_ tracking — this is an ad-hoc overlay, not a
     // scene-driven clip. The next scene change will replace it normally.
     currentTtsClipKey_.clear();
-    graph_.ttsClipPlayer().setClip(clip);
-    return clip ? 1 : -1;
+
+    // If the active scene is note-triggered (per-pluck word advance), run
+    // the same segmentation pipeline scene-activation uses so the typed
+    // text plays word-by-word. Otherwise fall back to whole-clip playback.
+    const auto cfg = sceneEngine_.activeTtsConfig();
+    if (cfg.trigger == "note" && !clip->samples.empty()) {
+        auto seg = std::make_shared<audio::TTSClip>(*clip);
+        std::vector<std::string> plainWords;
+        std::vector<std::string> hyphenatedWords;
+        {
+            std::istringstream iss(text);
+            std::string token;
+            while (iss >> token) {
+                hyphenatedWords.push_back(token);
+                std::string plain;
+                for (char c : token) if (c != '-') plain += c;
+                plainWords.push_back(plain);
+            }
+        }
+        if (!plainWords.empty())
+            seg->words = audio::WordAligner::align(seg->samples, plainWords,
+                                                   seg->sampleRate);
+        const bool anyHyphen = text.find('-') != std::string::npos;
+        if (anyHyphen && !plainWords.empty() && seg->syllables.empty())
+            seg->syllables = audio::WordAligner::alignSyllables(
+                seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
+        graph_.noteSteppedPlayer().setClip(seg);
+        graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
+        graph_.ttsClipPlayer().setClip(nullptr);
+    } else {
+        graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
+        graph_.ttsClipPlayer().setClip(clip);
+    }
+    return 1;
 }
 
 bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
