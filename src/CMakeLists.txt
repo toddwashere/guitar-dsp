@@ -13,6 +13,7 @@ add_library(guitar_dsp_audio STATIC
     audio/TTSSynthChain.cpp
     audio/Crusher.cpp
     audio/CarouselMod.cpp
+    audio/ClipBankPlayer.cpp
     audio/Carousel.cpp
     audio/PitchShifter.cpp
     audio/PitchTrackedCarrier.cpp
