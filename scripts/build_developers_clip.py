@@ -21,28 +21,30 @@ import struct
 import sys
 import wave
 
-# 14 hand-tuned (start_s, end_s) Ballmer segments. The last two entries are
-# the two loudest bursts intentionally repeated — see the spec §3.1.
+# 14 (start_s, end_s) "DEVELOPERS!" segments calibrated against the
+# ElevenLabs "Harry" voice conversion of the iconic Ballmer chant
+# (~10.9 s source). Entries 1-12 are unique bursts in chronological order;
+# entries 13-14 duplicate the two loudest bursts (originally bursts 11 and
+# 12 — both ~97-100% peak RMS) so wrap-around stays loud rather than
+# dropping to the quieter final bursts of the natural take.
 #
-# CALIBRATE THESE against the actual source clip before final commit. The
-# values below are evenly-spaced placeholders that produce a syntactically
-# valid output; the operator re-tunes them with audio inspection.
+# Re-calibrate against your own source if you swap the voice/clip.
 SEGMENTS_S: list[tuple[float, float]] = [
-    (1.00, 1.55),
-    (2.20, 2.75),
-    (3.40, 3.95),
-    (4.60, 5.15),
-    (5.80, 6.35),
-    (7.00, 7.55),
-    (8.20, 8.75),
-    (9.40, 9.95),
-    (10.60, 11.15),
-    (11.80, 12.35),
-    (13.00, 13.55),
-    (14.20, 14.75),
-    # Last two = peak dupes (intentionally repeat the loudest two bursts)
-    (13.00, 13.55),
-    (14.20, 14.75),
+    (0.020, 0.510),
+    (0.580, 1.290),
+    (1.360, 2.030),
+    (2.340, 2.760),
+    (2.830, 3.460),
+    (3.540, 4.170),
+    (4.760, 5.080),
+    (5.150, 5.800),
+    (5.870, 6.460),
+    (6.520, 7.180),
+    (7.540, 7.930),
+    (8.210, 8.640),
+    # Last two = peak dupes (loudest bursts, repeated)
+    (7.540, 7.930),
+    (8.210, 8.640),
 ]
 
 TAIL_SILENCE_S = 0.1
