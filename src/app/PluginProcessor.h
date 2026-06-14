@@ -283,6 +283,12 @@ private:
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
     std::atomic<int> micRoutingSource_   {0};  // 0 none,1 sidechain,2 ch2,3 self-mod
+
+    // When the user types into the Say textbox and the typed clip is
+    // installed via tryInstallSayText, the WordReadout should show the
+    // typed text — NOT the scene's default text. Stored on the message
+    // thread; read via activeSceneWords(). Cleared on scene change.
+    std::string      currentSayText_;
     int                                        lastSeenSceneId_ = -1;  // audio thread
 
     // Host-MIDI scene control (plugin only). processBlock stores a pending

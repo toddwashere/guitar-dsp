@@ -249,6 +249,12 @@ juce::String PluginProcessor::lastResolvedSource() const noexcept {
 
 std::vector<std::string> PluginProcessor::activeSceneWords() const {
     const auto cfg = sceneEngine_.activeTtsConfig();
+    // If the user installed custom text via the Say textbox, that text wins
+    // — otherwise the readout would still show the scene's default words
+    // while the audio plays the typed clip.
+    const std::string& sourceText = !currentSayText_.empty()
+        ? currentSayText_
+        : cfg.text;
     std::vector<std::string> tokens;
     // In Syllable mode, the player is stepping through TTSClip::syllables —
     // text "gui-tar" produced two segments ("gui", "tar"). The display needs
@@ -260,7 +266,7 @@ std::vector<std::string> PluginProcessor::activeSceneWords() const {
         (graph_.wordSyncMode() == audio::WordSyncMode::Syllable);
     if (syllableMode) {
         std::string cur;
-        for (char c : cfg.text) {
+        for (char c : sourceText) {
             if (c == ' ' || c == '\t' || c == '-' || c == '\n') {
                 if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
             } else {
@@ -269,7 +275,7 @@ std::vector<std::string> PluginProcessor::activeSceneWords() const {
         }
         if (!cur.empty()) tokens.push_back(cur);
     } else {
-        std::istringstream iss(cfg.text);
+        std::istringstream iss(sourceText);
         std::string w;
         while (iss >> w) tokens.push_back(w);
     }
@@ -291,6 +297,9 @@ int PluginProcessor::tryInstallSayText(const std::string& text) {
     // Bypass currentTtsClipKey_ tracking — this is an ad-hoc overlay, not a
     // scene-driven clip. The next scene change will replace it normally.
     currentTtsClipKey_.clear();
+    // Remember the typed text so the WordReadout shows it instead of the
+    // scene's default tts.text. Scene-change clears this.
+    currentSayText_ = text;
 
     // If the active scene is note-triggered (per-pluck word advance), run
     // the same segmentation pipeline scene-activation uses so the typed
@@ -380,6 +389,9 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     const int activeSceneId = sceneEngine_.getActiveSceneId();
     if (activeSceneId != lastSeenSceneId_) {
         lastSeenSceneId_ = activeSceneId;
+        // Any pending Say overlay is per-scene — clear it so the new scene's
+        // default text wins.
+        currentSayText_.clear();
         juce::MessageManager::callAsync([this, activeSceneId] {
             if (sceneEngine_.getActiveSceneId() != activeSceneId) return;
 
