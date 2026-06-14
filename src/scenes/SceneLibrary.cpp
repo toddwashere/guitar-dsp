@@ -179,6 +179,26 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
                 else if (v == "oh") cc.formantVowel = CarouselConfig::Vowel::Oh;
                 else if (v == "ee") cc.formantVowel = CarouselConfig::Vowel::Ee;
                 cc.formantAmount = getF(fo, "amount", cc.formantAmount);
+                if (fo->hasProperty("mode")) {
+                    const auto m = fo->getProperty("mode").toString();
+                    if (m == "lfo")
+                        cc.formantMode = CarouselConfig::FormantMode::Lfo;
+                    else if (m == "envelope")
+                        cc.formantMode = CarouselConfig::FormantMode::Envelope;
+                    else
+                        cc.formantMode = CarouselConfig::FormantMode::Static;
+                }
+                if (fo->hasProperty("breakpoints")) {
+                    if (auto* arr = fo->getProperty("breakpoints").getArray()) {
+                        cc.formantBreakpoints.clear();
+                        cc.formantBreakpoints.reserve(static_cast<std::size_t>(arr->size()));
+                        for (int i = 0; i < arr->size(); ++i)
+                            cc.formantBreakpoints.push_back(
+                                static_cast<float>((double)(*arr)[i]));
+                    }
+                }
+                cc.formantLfoHz       = getF(fo, "lfoHz",       cc.formantLfoHz);
+                cc.formantEnvAttackMs = getF(fo, "envAttackMs", cc.formantEnvAttackMs);
             }
         }
     }
