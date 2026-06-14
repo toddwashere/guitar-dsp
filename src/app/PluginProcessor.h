@@ -230,6 +230,7 @@ private:
     std::unique_ptr<AssetsPoller> assetsPoller_;
 
     std::unique_ptr<audio::PrebakedTTSSource> prebakedTtsSource_;
+    std::unique_ptr<audio::PrebakedTTSSource> vocalGuitarSource_;
     std::unique_ptr<audio::AppleTTSSource>    appleTtsSource_;
     std::unique_ptr<audio::TTSPrewarmer>      applePrewarmer_;
     std::unique_ptr<audio::PiperTTSSource>    piperTtsSource_;
