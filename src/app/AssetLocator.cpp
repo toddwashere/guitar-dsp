@@ -65,6 +65,12 @@ std::string AssetLocator::ttsDirectory() {
     return (fs::path(root) / "tts").string();
 }
 
+std::string AssetLocator::vocalGuitarClipsDirectory() {
+    const auto root = assetsRoot();
+    if (root.empty()) return {};
+    return (fs::path(root) / "clips" / "vocal-guitar").string();
+}
+
 std::string AssetLocator::piperBinaryPath() {
     const auto root = assetsRoot();
     if (root.empty()) return {};
