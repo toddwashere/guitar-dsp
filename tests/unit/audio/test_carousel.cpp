@@ -330,3 +330,51 @@ TEST_CASE("Carousel: process is allocation-free", "[audio][carousel][rt]") {
     sentinel.unmarkCurrentThreadAsRealtime();
     REQUIRE(sentinel.violations() == 0);
 }
+
+TEST_CASE("Carousel: LFO-mode formant produces time-varying vowel character",
+          "[audio][carousel][formant_lfo]") {
+    using guitar_dsp::audio::Carousel;
+    using guitar_dsp::scenes::CarouselConfig;
+
+    CarouselConfig cfg;
+    cfg.enabled        = true;
+    cfg.formantAmount  = 1.0f;
+    cfg.formantMode    = CarouselConfig::FormantMode::Lfo;
+    cfg.formantBreakpoints = { 0.0f, 0.5f };
+    cfg.formantLfoHz   = 2.0f;
+
+    Carousel c;
+    c.prepare(48000.0, 512);
+    c.setConfig(cfg);
+
+    constexpr std::size_t N = 48000;
+    std::vector<float> in(N), out(N);
+    unsigned s = 0xabcd1234u;
+    for (std::size_t i = 0; i < N; ++i) {
+        s = s * 1664525u + 1013904223u;
+        in[i] = (static_cast<float>(s >> 9) / 8388608.0f) - 1.0f;
+    }
+    for (std::size_t i = 0; i < N; i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, N - i);
+        c.process(in.data() + i, out.data() + i, n);
+    }
+
+    auto energy = [](const float* p, std::size_t n, double f, double sr) {
+        double re = 0.0, im = 0.0;
+        for (std::size_t i = 0; i < n; ++i) {
+            const double ph = 2.0 * 3.14159265 * f * i / sr;
+            re += p[i] * std::cos(ph);
+            im += p[i] * std::sin(ph);
+        }
+        return std::sqrt(re * re + im * im) / static_cast<double>(n);
+    };
+
+    const double eEa = energy(out.data() +    0, 12000, 270.0, 48000.0);
+    const double eEb = energy(out.data() + 12000, 12000, 270.0, 48000.0);
+    const double eAa = energy(out.data() +    0, 12000, 700.0, 48000.0);
+    const double eAb = energy(out.data() + 12000, 12000, 700.0, 48000.0);
+
+    const bool changedEE = std::fabs(eEa - eEb) / std::max(eEa, 1e-9) > 0.1;
+    const bool changedAH = std::fabs(eAa - eAb) / std::max(eAa, 1e-9) > 0.1;
+    REQUIRE((changedEE || changedAH));
+}

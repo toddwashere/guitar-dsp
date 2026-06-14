@@ -22,6 +22,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_harmonizer.cpp
     unit/audio/test_comb.cpp
     unit/audio/test_formant.cpp
+    unit/audio/test_formant_modulator.cpp
     unit/audio/test_onset_detector.cpp
     unit/audio/test_word_aligner.cpp
     unit/audio/test_note_stepped_player.cpp
@@ -37,6 +38,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_tts_trigger.cpp
     unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_library_carousel_pitch.cpp
+    unit/scenes/test_scene_library_carousel_formant.cpp
     unit/scenes/test_scene_library_developers.cpp
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
@@ -72,6 +74,7 @@ add_executable(guitar_dsp_tests
     integration/test_note_triggered_speech.cpp
     integration/test_vocal_guitar_clip_bank_scene.cpp
     integration/test_mic_talkbox_scene.cpp
+    integration/test_auto_vocal_formant_scene.cpp
     integration/test_whisper_transcriber.cpp
     integration/test_sidechain_routing.cpp
     integration/test_realtime_safety_ai.cpp

@@ -51,6 +51,14 @@ PluginEditor::PluginEditor(PluginProcessor& p)
         resized();
     };
 
+    // Close button + ESC key both route through this — keeps the
+    // toggle button state in sync with the overlay's visibility.
+    aiSettingsPanel_->onClose = [this] {
+        toggleAiSettingsBtn_.setToggleState(false, juce::dontSendNotification);
+        aiSettingsPanel_->setVisible(false);
+        resized();
+    };
+
     setWantsKeyboardFocus(true);
     addKeyListener(this);
 
@@ -70,7 +78,7 @@ void PluginEditor::resized() {
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
     wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
-    vocoderPanel_.setBounds(bounds.removeFromTop(132));
+    vocoderPanel_.setBounds(bounds.removeFromTop(200));
     ttsStatusBar_.setBounds(bounds.removeFromTop(24));
     if (midiDevicePicker_.isVisible())
         midiDevicePicker_.setBounds(bounds.removeFromTop(28));
@@ -93,6 +101,13 @@ void PluginEditor::resized() {
 
 bool PluginEditor::keyPressed(const juce::KeyPress& key, juce::Component*) {
     const auto kc = key.getKeyCode();
+
+    // ESC closes the AI Settings overlay when it's open.
+    if (kc == juce::KeyPress::escapeKey
+            && aiSettingsPanel_ && aiSettingsPanel_->isVisible()) {
+        if (aiSettingsPanel_->onClose) aiSettingsPanel_->onClose();
+        return true;
+    }
 
     // Digit = scene id: '1' -> scene 1 ... '9' -> scene 9, '0' -> scene 0.
     // Matches the on-screen slot labels and the FCB1010's identity

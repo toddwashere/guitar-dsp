@@ -1,0 +1,15 @@
+{
+  "id": 99,
+  "name": "Test — auto-vocal formant LFO",
+  "color": "#ff0000",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 0.9, "transitionMs": 20 },
+  "carousel": {
+    "enabled": true,
+    "formant": {
+      "amount": 0.85,
+      "mode": "lfo",
+      "breakpoints": [0.0, 0.18],
+      "lfoHz": 9.0
+    }
+  }
+}

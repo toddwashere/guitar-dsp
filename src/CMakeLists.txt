@@ -20,6 +20,7 @@ add_library(guitar_dsp_audio STATIC
     audio/Harmonizer.cpp
     audio/Comb.cpp
     audio/Formant.cpp
+    audio/FormantModulator.cpp
     audio/OnsetDetector.cpp
     audio/WordAligner.cpp
     audio/NoteSteppedTTSPlayer.cpp

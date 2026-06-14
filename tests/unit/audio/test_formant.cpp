@@ -64,3 +64,52 @@ TEST_CASE("Formant: output finite + bounded", "[audio][formant]") {
         REQUIRE(std::fabs(y) < 8.0f);
     }
 }
+
+TEST_CASE("Formant: setPosition(0.0) matches setVowel(Ee) at first formant",
+          "[audio][formant][position]") {
+    auto in = noise(48000);
+
+    Formant ee; ee.prepare(48000.0); ee.setVowel(CarouselConfig::Vowel::Ee);
+    ee.setAmount(1.0f);
+    Formant pos; pos.prepare(48000.0); pos.setPosition(0.0f); pos.setAmount(1.0f);
+
+    float energyEe  = 0.0f, energyPos = 0.0f;
+    for (float s : in) {
+        const float a = ee.processSample(s);
+        const float b = pos.processSample(s);
+        energyEe  += a * a;
+        energyPos += b * b;
+    }
+    REQUIRE(std::fabs(energyEe - energyPos) / energyEe < 0.01f);
+}
+
+TEST_CASE("Formant: setPosition midway between EE and EH interpolates F1",
+          "[audio][formant][position]") {
+    // At position 0.125, F1 interpolates halfway between EE(270 Hz) and
+    // EH(530 Hz) → ~400 Hz.  At position 0.0 (pure EE), F1 = 270 Hz.
+    // The midpoint filter should therefore emphasise 400 Hz MORE than
+    // the pure-EE filter does (because 400 Hz is closer to its resonance).
+    auto in = noise(48000);
+
+    Formant posEE; posEE.prepare(48000.0); posEE.setPosition(0.0f); posEE.setAmount(1.0f);
+    std::vector<float> outEE(in.size());
+    for (size_t i = 0; i < in.size(); ++i) outEE[i] = posEE.processSample(in[i]);
+
+    Formant posMid; posMid.prepare(48000.0); posMid.setPosition(0.125f); posMid.setAmount(1.0f);
+    std::vector<float> outMid(in.size());
+    for (size_t i = 0; i < in.size(); ++i) outMid[i] = posMid.processSample(in[i]);
+
+    // Midpoint (F1≈400) should have more relative energy at 400 Hz than pure EE (F1=270).
+    const float e400ee  = bandEnergy(outEE,  400.0f, 48000.0);
+    const float e400mid = bandEnergy(outMid, 400.0f, 48000.0);
+    REQUIRE(e400mid > e400ee * 1.1f);
+}
+
+TEST_CASE("Formant: setPosition then setVowel(None) restores bypass",
+          "[audio][formant][position]") {
+    Formant f; f.prepare(48000.0);
+    f.setPosition(0.5f);
+    f.setAmount(1.0f);
+    f.setVowel(CarouselConfig::Vowel::None);
+    REQUIRE(f.processSample(0.31f) == 0.31f);
+}

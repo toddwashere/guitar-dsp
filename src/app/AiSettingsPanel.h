@@ -13,6 +13,10 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
 
+    // Called when the user clicks the close button on the panel. Owner
+    // wires this to hide the overlay and untoggle the parent's button.
+    std::function<void()> onClose;
+
     // Test-facing helpers
     int         modelDropdownItemCount() const { return modelBox_.getNumItems(); }
     void        selectPersona(ai::PersonaId);
@@ -42,6 +46,7 @@ private:
     juce::Slider          maxSentencesSlider_, maxWordsSlider_;
     juce::ComboBox        sttModelBox_;
     juce::ComboBox        inputDeviceBox_;
+    juce::TextButton      closeBtn_       {"Close"};
 };
 
 } // namespace guitar_dsp
