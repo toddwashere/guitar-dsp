@@ -31,6 +31,7 @@ private:
     juce::Label  makeupLabel_, carrierNoiseLabel_, sibilanceLabel_, clarityLabel_,
                  gateThresholdLabel_;
     float lastSceneClarity_ = -1.0f;  // sentinel — forces first paint
+    float lastMicPeak_      = 0.0f;
     NoteReadout  noteReadout_;
     WordSyncSelector wordSyncSelector_;
     juce::String lastCarrierNoiseLabel_;

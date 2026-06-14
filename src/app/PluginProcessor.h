@@ -190,6 +190,8 @@ public:
     bool activeSceneIsMic() const {
         return sceneEngine_.activeTtsConfig().source == "mic";
     }
+    // Peak mic level in [0, 1] for the always-visible level meter in VocoderPanel.
+    float micPeak() const noexcept { return graph_.micPeak(); }
     int  clipBankCursor() const { return graph_.clipBankPlayer().currentClipIndex(); }
     int  clipBankSize()   const { return graph_.clipBankPlayer().bankSize(); }
     // Returns the current clip's key (e.g. "03_new") or empty when idle.

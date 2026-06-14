@@ -67,6 +67,12 @@ void VocoderPanel::timerCallback() {
         lastCarrierNoiseLabel_ = desiredCarrierLabel;
         carrierNoiseLabel_.setText(desiredCarrierLabel, juce::dontSendNotification);
     }
+
+    const float p = processor_.micPeak();
+    if (std::fabs(p - lastMicPeak_) > 0.005f) {
+        lastMicPeak_ = p;
+        repaint();
+    }
 }
 
 void VocoderPanel::configureSlider(juce::Slider& s, juce::Label& l,
@@ -87,6 +93,29 @@ void VocoderPanel::paint(juce::Graphics& g) {
     g.setFont(juce::Font{juce::FontOptions{}.withHeight(10.0f)});
     g.drawText("VOCODER", getLocalBounds().removeFromTop(12).reduced(6, 0),
                juce::Justification::topLeft);
+
+    // Mic level meter — always-visible thin strip at the bottom of the panel.
+    // Driven by AudioGraph::micPeak() via timerCallback.
+    const auto micStripBounds = getLocalBounds()
+                                    .removeFromBottom(8)
+                                    .reduced(4, 1);
+    g.setColour(juce::Colour::fromRGB(0x22, 0x22, 0x22));
+    g.fillRect(micStripBounds);
+
+    if (lastMicPeak_ > 0.0001f) {
+        const int w = static_cast<int>(micStripBounds.getWidth()
+                                        * std::min(1.0f, lastMicPeak_));
+        auto fill = micStripBounds.withWidth(w);
+        const juce::Colour colour = lastMicPeak_ > 0.7f
+            ? juce::Colour::fromRGB(0xE0, 0x60, 0x40)
+            : juce::Colour::fromRGB(0x40, 0xC0, 0x60);
+        g.setColour(colour);
+        g.fillRect(fill);
+    } else {
+        g.setColour(juce::Colour::fromRGB(0x55, 0x55, 0x55));
+        g.setFont(juce::Font{juce::FontOptions{}.withHeight(8.0f)});
+        g.drawText("no mic", micStripBounds, juce::Justification::centred);
+    }
 }
 
 void VocoderPanel::resized() {
