@@ -35,8 +35,39 @@ void FormantModulator::setEnvelopeAttackMs(float ms) noexcept {
 
 void FormantModulator::process(const float* /*onsetSrc*/, float* posOut,
                                 std::size_t numSamples) noexcept {
-    // Stub: fill with the static position so Static mode "works" already.
-    std::fill(posOut, posOut + numSamples, staticPos_);
+    switch (mode_) {
+        case Mode::Static: {
+            std::fill(posOut, posOut + numSamples, staticPos_);
+            break;
+        }
+        case Mode::Lfo: {
+            if (breakpoints_.empty()) {
+                std::fill(posOut, posOut + numSamples, 0.0f);
+                break;
+            }
+            const int n = static_cast<int>(breakpoints_.size());
+            for (std::size_t i = 0; i < numSamples; ++i) {
+                float phase = lfoPhase_;
+                const float halfFold = (phase < 0.5f) ? (phase * 2.0f)
+                                                       : ((1.0f - phase) * 2.0f);
+                const float scaled = halfFold * static_cast<float>(n - 1);
+                const int lo = std::min(static_cast<int>(scaled), n - 1);
+                const int hi = std::min(lo + 1, n - 1);
+                const float frac = scaled - static_cast<float>(lo);
+                posOut[i] = (1.0f - frac) * breakpoints_[static_cast<std::size_t>(lo)]
+                          + frac        * breakpoints_[static_cast<std::size_t>(hi)];
+
+                lfoPhase_ += lfoIncrPerSample_;
+                if (lfoPhase_ >= 1.0f) lfoPhase_ -= 1.0f;
+            }
+            break;
+        }
+        case Mode::Envelope: {
+            // Implemented in Task 7.
+            std::fill(posOut, posOut + numSamples, staticPos_);
+            break;
+        }
+    }
 }
 
 } // namespace guitar_dsp::audio
