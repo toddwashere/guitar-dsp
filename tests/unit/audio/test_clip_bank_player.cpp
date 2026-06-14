@@ -110,3 +110,79 @@ TEST_CASE("ClipBankPlayer: outputs zero after clip ends (no next onset)",
     for (std::size_t i = 400; i < 600; ++i)
         REQUIRE(mod[i] == 0.0f);
 }
+
+TEST_CASE("ClipBankPlayer: empty bank outputs silence and cursor stays -1",
+          "[audio][clip_bank]") {
+    ClipBankPlayer p;
+    p.prepare(48000.0, 512);
+    p.setBank({});  // empty
+
+    std::vector<float> onset(500, 0.0f);
+    plantOnset(onset, 50);   // would otherwise advance
+    std::vector<float> mod(500, 1.0f);  // sentinel; must be zeroed by process
+    p.process(onset.data(), mod.data(), mod.size());
+
+    for (float v : mod) REQUIRE(v == 0.0f);
+    REQUIRE(p.currentClipIndex() == -1);
+}
+
+TEST_CASE("ClipBankPlayer: rewind() resets cursor; next onset plays clip 0",
+          "[audio][clip_bank]") {
+    ClipBankPlayer p;
+    p.prepare(48000.0, 512);
+    constexpr std::size_t clipSamples = (48000 * 8) / 10;
+    p.setBank({ makeClip(0.1f, clipSamples),
+                makeClip(0.2f, clipSamples),
+                makeClip(0.3f, clipSamples) });
+
+    // Two onsets — cursor to 1.
+    constexpr std::size_t N = 48000 * 3;
+    std::vector<float> onset(N, 0.0f);
+    plantOnset(onset, 100);
+    plantOnset(onset, 52800);
+    std::vector<float> mod(N, 0.0f);
+    for (std::size_t i = 0; i < N; i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, N - i);
+        p.process(onset.data() + i, mod.data() + i, n);
+    }
+    REQUIRE(p.currentClipIndex() == 1);
+
+    // Rewind, then drain one block so the pending flag lands.
+    p.rewind();
+    std::vector<float> blank(512, 0.0f), bout(512, 0.0f);
+    p.process(blank.data(), bout.data(), 512);
+    REQUIRE(p.currentClipIndex() == -1);
+
+    // A subsequent fresh onset advances to clip 0 (not 2).
+    std::vector<float> trailing(N, 0.0f);
+    plantOnset(trailing, 1000);
+    for (std::size_t i = 0; i < N; i += 512) {
+        const std::size_t n = std::min<std::size_t>(512, N - i);
+        p.process(trailing.data() + i, bout.data(), n);
+        if (i > 2000) break;
+    }
+    REQUIRE(p.currentClipIndex() == 0);
+}
+
+TEST_CASE("ClipBankPlayer: process is allocation-free",
+          "[audio][clip_bank][rt]") {
+    ClipBankPlayer p;
+    p.prepare(48000.0, 512);
+    p.setBank({ makeClip(0.1f, 4800), makeClip(0.2f, 4800) });
+
+    // Drain the pending bank flag with one non-RT block.
+    std::vector<float> onset(512, 0.0f), mod(512, 0.0f);
+    p.process(onset.data(), mod.data(), 512);
+
+    // Now lock allocation and process 50 blocks.
+    for (int i = 0; i < 512; ++i)
+        onset[static_cast<std::size_t>(i)] =
+            0.5f * std::sin(2.0f * 3.14159265f * 110.0f * i / 48000.0f);
+
+    RealtimeSentinel sentinel;
+    sentinel.markCurrentThreadAsRealtime();
+    for (int blk = 0; blk < 50; ++blk)
+        p.process(onset.data(), mod.data(), mod.size());
+    sentinel.unmarkCurrentThreadAsRealtime();
+    REQUIRE(sentinel.violations() == 0);
+}
