@@ -43,6 +43,8 @@ void Carousel::prepare(double sampleRate, int blockSize) {
     harm_.prepare(sampleRate, maxGrain);
     comb_.prepare(sampleRate, maxGrain);
     formant_.prepare(sampleRate);
+    formantMod_.prepare(sampleRate);
+    formantPosBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     env_.prepare(sampleRate);
     lfo_.prepare(sampleRate);
 
@@ -63,6 +65,8 @@ void Carousel::reset() {
     harm_.reset();
     comb_.reset();
     formant_.reset();
+    formantMod_.reset();
+    std::fill(formantPosBuffer_.begin(), formantPosBuffer_.end(), 0.0f);
     env_.reset();
     lfo_.reset();
 }
@@ -86,6 +90,30 @@ void Carousel::applyConfig(const scenes::CarouselConfig& cfg) noexcept {
     comb_.setMix(juce::jlimit(0.0f, 1.0f, cfg.combMix));
     formant_.setVowel(cfg.formantVowel);
     formant_.setAmount(juce::jlimit(0.0f, 1.0f, cfg.formantAmount));
+
+    {
+        using FM = FormantModulator::Mode;
+        switch (cfg.formantMode) {
+            case scenes::CarouselConfig::FormantMode::Static:
+                formantMod_.setMode(FM::Static);
+                formantMod_.setStaticPosition(
+                    cfg.formantVowel == scenes::CarouselConfig::Vowel::Ah ? 0.5f :
+                    cfg.formantVowel == scenes::CarouselConfig::Vowel::Oh ? 0.75f :
+                    /* Ee or None */                                         0.0f);
+                break;
+            case scenes::CarouselConfig::FormantMode::Lfo:
+                formantMod_.setMode(FM::Lfo);
+                formantMod_.setBreakpoints(cfg.formantBreakpoints);
+                formantMod_.setLfoRateHz(cfg.formantLfoHz);
+                break;
+            case scenes::CarouselConfig::FormantMode::Envelope:
+                formantMod_.setMode(FM::Envelope);
+                formantMod_.setBreakpoints(cfg.formantBreakpoints);
+                formantMod_.setEnvelopeAttackMs(cfg.formantEnvAttackMs);
+                break;
+        }
+    }
+
     driveGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.drive));
     trimGain_.setTargetValue(juce::Decibels::decibelsToGain(cfg.outputTrimDb));
 
@@ -124,6 +152,16 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
     }
 
     const bool filterOn = active_.filterMode != scenes::CarouselConfig::FilterMode::Off;
+
+    const bool formantActive =
+        (active_.formantMode != scenes::CarouselConfig::FormantMode::Static)
+        || (active_.formantVowel != scenes::CarouselConfig::Vowel::None);
+
+    if (formantActive
+            && active_.formantMode != scenes::CarouselConfig::FormantMode::Static) {
+        formantMod_.process(in, formantPosBuffer_.data(), numSamples);
+    }
+
     using FMod = scenes::CarouselConfig::FilterMod;
     for (std::size_t i = 0; i < numSamples; ++i) {
         float v = in[i];
@@ -151,8 +189,11 @@ void Carousel::process(const float* in, float* out, std::size_t numSamples) noex
             x = filter_.processSample(0, x);
         }
 
-        if (active_.formantVowel != scenes::CarouselConfig::Vowel::None)
+        if (formantActive) {
+            if (active_.formantMode != scenes::CarouselConfig::FormantMode::Static)
+                formant_.setPosition(formantPosBuffer_[i]);
             x = formant_.processSample(x);
+        }
 
         x *= trimGain_.getNextValue();
         out[i] = x;

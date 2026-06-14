@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <vector>
 
 #include <juce_dsp/juce_dsp.h>
 
@@ -11,6 +12,7 @@
 #include "Harmonizer.h"
 #include "Comb.h"
 #include "Formant.h"
+#include "FormantModulator.h"
 #include "scenes/Scene.h"
 
 namespace guitar_dsp::audio {
@@ -57,6 +59,8 @@ private:
     Harmonizer   harm_;
     Comb         comb_;
     Formant      formant_;
+    FormantModulator    formantMod_;
+    std::vector<float>  formantPosBuffer_;
 
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> driveGain_;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> trimGain_;
