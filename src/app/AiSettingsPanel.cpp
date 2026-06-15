@@ -135,6 +135,12 @@ void AiSettingsPanel::onPersonaChanged() {
 }
 
 void AiSettingsPanel::selectModel(std::string id) {
+    // Propagate to the owner first so PluginProcessor switches to the right
+    // LLM client BEFORE the user can press Record. Without this, the panel
+    // updated only the local status label and the engine kept calling the
+    // default AnthropicClient.
+    if (onModelChanged) onModelChanged(id);
+
     if (id.rfind("ollama:", 0) == 0) {
         const auto tag = id.substr(7);
         if (! ai::OllamaClient::isRunning(http_, prefs_.ollamaEndpoint())) {

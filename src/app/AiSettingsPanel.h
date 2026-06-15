@@ -17,6 +17,14 @@ public:
     // wires this to hide the overlay and untoggle the parent's button.
     std::function<void()> onClose;
 
+    // Called when the user picks a model in the dropdown. Owner wires this
+    // to PluginProcessor::selectModelId so the active LLM client actually
+    // switches; otherwise the panel just renders a status label and the
+    // engine keeps calling the previously-selected (often default Anthropic)
+    // client — producing 'Anthropic: key missing' mid-conversation even
+    // when the user picked Ollama.
+    std::function<void(std::string)> onModelChanged;
+
     // Test-facing helpers
     int         modelDropdownItemCount() const { return modelBox_.getNumItems(); }
     void        selectPersona(ai::PersonaId);

@@ -58,6 +58,9 @@ PluginEditor::PluginEditor(PluginProcessor& p)
         aiSettingsPanel_->setVisible(false);
         resized();
     };
+    aiSettingsPanel_->onModelChanged = [this](std::string id) {
+        processor_.selectModelId(std::move(id));
+    };
 
     setWantsKeyboardFocus(true);
     addKeyListener(this);
