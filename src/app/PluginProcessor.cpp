@@ -668,9 +668,21 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         micRoutingSource_.store(micSourceTag, std::memory_order_relaxed);
 
         if (micPtr != nullptr && micLen > 0) {
-            graph_.setMicBlock(micPtr, static_cast<std::size_t>(micLen));
+            // Apply the user-tunable mic capture gain (default 4x = +12 dB)
+            // so quiet mic interfaces still drive whisper and the meter
+            // reliably. Clamp into [-1, 1] so we don't feed clipped samples
+            // into the vocoder modulator path. Same boosted buffer is then
+            // used for both the meter (via setMicBlock) and recording.
+            const float gain = micCaptureGain_.load(std::memory_order_relaxed);
+            float boostedBuf[kMaxBlock];
+            const int boostN = std::min(micLen, kMaxBlock);
+            for (int i = 0; i < boostN; ++i) {
+                const float s = micPtr[i] * gain;
+                boostedBuf[i] = std::clamp(s, -1.0f, 1.0f);
+            }
+            graph_.setMicBlock(boostedBuf, static_cast<std::size_t>(boostN));
             if (micCapture_.isCapturing())
-                micCapture_.appendFromAudioBlock(micPtr, micLen);
+                micCapture_.appendFromAudioBlock(boostedBuf, boostN);
         } else {
             graph_.setMicBlock(nullptr, 0);
         }
@@ -762,6 +774,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.carrierNoise = graph_.vocoderCarrierNoise();
     d.sibilance    = graph_.vocoderSibilance();
     d.gateThresholdDb = graph_.noiseGateThresholdDb();
+    d.micCaptureGain  = micCaptureGain();
     d.pitchSinging = graph_.pitchSinging();
     d.singing = graph_.singing();
     d.wordSyncMode = static_cast<int>(graph_.wordSyncMode());
@@ -793,6 +806,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     graph_.setVocoderCarrierNoise(d.carrierNoise);
     graph_.setVocoderSibilance(d.sibilance);
     graph_.setNoiseGateThresholdDb(d.gateThresholdDb);
+    setMicCaptureGain(d.micCaptureGain);
     graph_.setPitchSinging(d.pitchSinging);
     graph_.setSinging(d.singing);
     graph_.setWordSyncMode(static_cast<audio::WordSyncMode>(d.wordSyncMode));

@@ -21,6 +21,7 @@ juce::String PluginState::toJson(const PluginStateData& d) {
     o->setProperty("carrierNoise", d.carrierNoise);
     o->setProperty("sibilance",    d.sibilance);
     o->setProperty("gateThresholdDb", d.gateThresholdDb);
+    o->setProperty("micCaptureGain",  d.micCaptureGain);
     o->setProperty("pitchSinging", d.pitchSinging);
     o->setProperty("singing", d.singing);
     o->setProperty("wordSyncMode", d.wordSyncMode);
@@ -55,6 +56,8 @@ PluginStateData PluginState::fromJson(const juce::String& json) {
         if (o->hasProperty("sibilance"))    d.sibilance    = (float) (double) o->getProperty("sibilance");
         if (o->hasProperty("gateThresholdDb"))
             d.gateThresholdDb = (float) (double) o->getProperty("gateThresholdDb");
+        if (o->hasProperty("micCaptureGain"))
+            d.micCaptureGain = (float) (double) o->getProperty("micCaptureGain");
         if (o->hasProperty("pitchSinging"))
             d.pitchSinging = (bool) o->getProperty("pitchSinging");
         if (o->hasProperty("singing"))

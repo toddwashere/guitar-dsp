@@ -208,6 +208,16 @@ public:
     int   micRoutingSource() const noexcept {
         return micRoutingSource_.load(std::memory_order_relaxed);
     }
+    // Linear gain applied to the mic input before BOTH the meter (via
+    // setMicBlock) and MicCapture (for whisper). Tunable on VocoderPanel.
+    // 1.0 = unity, 4.0 = +12 dB, 16.0 = +24 dB. Persisted in PluginState.
+    void setMicCaptureGain(float linear) noexcept {
+        micCaptureGain_.store(juce::jlimit(0.25f, 32.0f, linear),
+                              std::memory_order_relaxed);
+    }
+    float micCaptureGain() const noexcept {
+        return micCaptureGain_.load(std::memory_order_relaxed);
+    }
     int  clipBankCursor() const { return graph_.clipBankPlayer().currentClipIndex(); }
     int  clipBankSize()   const { return graph_.clipBankPlayer().bankSize(); }
     // Returns the current clip's key (e.g. "03_new") or empty when idle.
@@ -283,6 +293,7 @@ private:
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
     std::atomic<int> micRoutingSource_   {0};  // 0 none,1 sidechain,2 ch2,3 self-mod
+    std::atomic<float> micCaptureGain_   {4.0f};  // +12 dB default (helps quiet mics)
 
     // When the user types into the Say textbox and the typed clip is
     // installed via tryInstallSayText, the WordReadout should show the

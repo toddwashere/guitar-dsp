@@ -15,6 +15,13 @@ struct PluginStateData {
     float carrierNoise = 0.30f;
     float sibilance    = 0.3f;
     float gateThresholdDb = -60.0f;  // noise gate (lower = more permissive)
+    float micCaptureGain  = 4.0f;    // linear; +12 dB default. Boosts the
+                                      // mic input fed to MicCapture (whisper)
+                                      // and the VocoderPanel meter. Tunable
+                                      // via the Mic gain slider for quiet
+                                      // mic interfaces (e.g. low-gain Scarlett
+                                      // settings) where -30 dB peaks are too
+                                      // faint for reliable transcription.
     bool pitchSinging = false;
     bool singing = false;
     int wordSyncMode = 0;  // 0=Latch, 1=Advance, 2=Syllable
