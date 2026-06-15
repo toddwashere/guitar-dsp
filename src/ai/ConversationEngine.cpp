@@ -71,9 +71,12 @@ void ConversationEngine::workerLoop() {
                     cancel_.reset();
                     mic_->beginCapture();
                     state_.store(State::Capturing);
+                    std::fprintf(stderr, "[ConversationEngine] beginCapture()\n");
                 }
                 break;
             case Job::EndTurn:
+                std::fprintf(stderr, "[ConversationEngine] EndTurn (state=%d)\n",
+                             (int) state_.load());
                 if (state_.load() == State::Capturing) runEndTurn();
                 break;
             case Job::Cancel:
@@ -96,19 +99,27 @@ void ConversationEngine::workerLoop() {
 void ConversationEngine::runEndTurn() {
     using clock = std::chrono::steady_clock;
     auto samples = mic_->endCapture();
+    std::fprintf(stderr,
+        "[ConversationEngine] endCapture: %zu samples (~%.2f s @16k), tooShort=%d\n",
+        samples.size(), samples.size() / 16000.0,
+        (int) mic_->lastResultWasTooShort());
     if (mic_->lastResultWasTooShort()) {
         { std::lock_guard lk(errorMutex_); lastError_ = "didn't hear anything"; }
-        state_.store(State::Idle); return;
+        state_.store(State::Error); return;
     }
 
     state_.store(State::Transcribing);
     auto t0 = clock::now();
+    std::fprintf(stderr, "[ConversationEngine] transcribe(%zu samples)...\n", samples.size());
     auto stt = stt_->transcribe(samples, &cancel_);
     auto t1 = clock::now();
+    std::fprintf(stderr,
+        "[ConversationEngine] transcribe result: text=\"%s\" error=\"%s\"\n",
+        stt.text.c_str(), stt.error.c_str());
     if (cancel_.isCancelled()) { state_.store(State::Idle); return; }
     if (!stt.error.empty() || stt.text.empty()) {
         { std::lock_guard lk(errorMutex_); lastError_ = stt.error.empty() ? "couldn't transcribe" : stt.error; }
-        state_.store(State::Idle); return;
+        state_.store(State::Error); return;
     }
     buf_->append(Message::Role::User, stt.text);
 
