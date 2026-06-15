@@ -327,6 +327,10 @@ int PluginProcessor::tryInstallSayText(const std::string& text) {
             seg->syllables = audio::WordAligner::alignSyllables(
                 seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
         graph_.noteSteppedPlayer().setClip(seg);
+        // Say/LLM text is one-shot — disable loop so plucks past the last
+        // word are ignored. Scene-activation paths set their own clips and
+        // re-enable loop via the existing default (or scene-config later).
+        graph_.noteSteppedPlayer().setLoop(false);
         graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
         graph_.ttsClipPlayer().setClip(nullptr);
     } else {
@@ -610,6 +614,10 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                     seg->syllables = audio::WordAligner::alignSyllables(
                         seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
                 graph_.noteSteppedPlayer().setClip(seg);
+                // Scene-activation installs default to loop=true so chant
+                // scenes (e.g. Developers!) repeat. tryInstallSayText flips
+                // this to false for one-shot Say / LLM replies.
+                graph_.noteSteppedPlayer().setLoop(true);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
                 graph_.ttsClipPlayer().setClip(nullptr);
             } else {

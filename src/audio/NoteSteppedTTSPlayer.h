@@ -28,6 +28,13 @@ public:
     void setMode(WordSyncMode m) noexcept;
     WordSyncMode mode() const noexcept;
 
+    // Message thread. When false, the player stays on the last segment
+    // after it plays — further onsets are ignored until rewind() or
+    // setClip() resets the cursor. Default true (wrap after last). Set
+    // false for one-shot content like LLM replies that shouldn't repeat.
+    void setLoop(bool on) noexcept { loop_.store(on, std::memory_order_relaxed); }
+    bool loop() const noexcept { return loop_.load(std::memory_order_relaxed); }
+
     // Message thread. Reset playback to the start of the sequence — next
     // onset plays segment 0 again. Useful when a phrase desyncs from the
     // performer (bad WordAligner output, lost a pluck, etc.). The actual
@@ -58,6 +65,7 @@ private:
     std::atomic<int>  currentWordIndex_ {-1};
     std::atomic<int>  mode_ {static_cast<int>(WordSyncMode::Latch)};
     std::atomic<bool> pendingRewind_ {false};
+    std::atomic<bool> loop_ {true};
 };
 
 } // namespace guitar_dsp::audio

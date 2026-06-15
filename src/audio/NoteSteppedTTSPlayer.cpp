@@ -70,6 +70,7 @@ void NoteSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
         segments = wantSyllables ? &activeClip_->syllables : &activeClip_->words;
     const bool haveSegments  = (segments != nullptr) && !segments->empty();
 
+    const bool loopNow = loop_.load(std::memory_order_relaxed);
     for (std::size_t i = 0; i < numSamples; ++i) {
         if (onset_.processSample(onsetSrc[i]) && haveClip) {
             const bool latchHolds = (modeNow == WordSyncMode::Latch
@@ -78,16 +79,28 @@ void NoteSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
             if (!latchHolds) {
                 if (haveSegments) {
                     const int n = static_cast<int>(segments->size());
-                    wordIndex_ = (wordIndex_ + 1) % n;
-                    playPos_ = (*segments)[static_cast<std::size_t>(wordIndex_)].startSample;
-                    segEnd_  = (*segments)[static_cast<std::size_t>(wordIndex_)].endSample;
+                    int nextIndex = wordIndex_ + 1;
+                    if (nextIndex >= n) {
+                        if (loopNow) nextIndex = 0;
+                        else         nextIndex = -1;   // sentinel: stop, don't advance
+                    }
+                    if (nextIndex >= 0) {
+                        wordIndex_ = nextIndex;
+                        playPos_ = (*segments)[static_cast<std::size_t>(wordIndex_)].startSample;
+                        segEnd_  = (*segments)[static_cast<std::size_t>(wordIndex_)].endSample;
+                        playing_ = true;
+                        currentWordIndex_.store(wordIndex_, std::memory_order_relaxed);
+                    }
+                    // else: end-of-clip in non-loop mode; ignore the onset
+                    // and leave wordIndex_ at the last segment. Rewind() or
+                    // setClip() resets.
                 } else {
                     wordIndex_ = 0;
                     playPos_ = 0;
                     segEnd_ = activeClip_->samples.size();
+                    playing_ = true;
+                    currentWordIndex_.store(wordIndex_, std::memory_order_relaxed);
                 }
-                playing_ = true;
-                currentWordIndex_.store(wordIndex_, std::memory_order_relaxed);
             }
         }
 
