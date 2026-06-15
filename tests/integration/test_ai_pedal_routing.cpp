@@ -36,7 +36,7 @@ void handleMidiForAi(const FCB1010Mapping& mapping,
 
 TEST_CASE("AI pedal routing: PTT PC starts a turn",
           "[midi][ai][integration]") {
-    FakeTranscriber stt; FakeLlmClient llm; FakeMicCapture mic;
+    FakeTranscriber stt; auto llm = std::make_shared<FakeLlmClient>(); FakeMicCapture mic;
     ConversationBuffer buf; PersonaRegistry personas;
     std::vector<std::string> spoken;
     ConversationEngine engine(stt, llm, mic, buf, personas,
@@ -64,7 +64,7 @@ TEST_CASE("AI pedal routing: PTT PC starts a turn",
 
 TEST_CASE("AI pedal routing: Clear PC empties the conversation buffer",
           "[midi][ai][integration]") {
-    FakeTranscriber stt; FakeLlmClient llm; FakeMicCapture mic;
+    FakeTranscriber stt; auto llm = std::make_shared<FakeLlmClient>(); FakeMicCapture mic;
     ConversationBuffer buf; PersonaRegistry personas;
     ConversationEngine engine(stt, llm, mic, buf, personas, [](std::string){});
 
@@ -84,7 +84,7 @@ TEST_CASE("AI pedal routing: Clear PC empties the conversation buffer",
 
 TEST_CASE("AI pedal routing: unmapped PC does nothing",
           "[midi][ai][integration]") {
-    FakeTranscriber stt; FakeLlmClient llm; FakeMicCapture mic;
+    FakeTranscriber stt; auto llm = std::make_shared<FakeLlmClient>(); FakeMicCapture mic;
     ConversationBuffer buf; PersonaRegistry personas;
     ConversationEngine engine(stt, llm, mic, buf, personas, [](std::string){});
 

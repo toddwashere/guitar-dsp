@@ -66,7 +66,7 @@ TEST_CASE("Headless safety: ConversationEngine with broken STT errors back to Id
     WhisperTranscriber w{bogus};
 
     JuceHttpTransport http;
-    AnthropicClient   client{http, "", "claude-haiku-4-5"};
+    auto client = std::make_shared<AnthropicClient>(http, "", "claude-haiku-4-5");
 
     FakeMicCapture mic;
     ConversationBuffer buf;

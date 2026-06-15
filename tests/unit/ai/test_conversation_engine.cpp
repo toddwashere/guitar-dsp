@@ -16,7 +16,7 @@ using namespace guitar_dsp::ai::test;
 namespace {
 struct Harness {
     FakeTranscriber  stt;
-    FakeLlmClient    llm;
+    std::shared_ptr<FakeLlmClient> llm = std::make_shared<FakeLlmClient>();
     FakeMicCapture   mic;
     ConversationBuffer buf;
     PersonaRegistry  personas;
@@ -85,22 +85,24 @@ TEST_CASE("Engine: clearConversation empties buffer",
 TEST_CASE("Engine: setLlmClient ignored when not Idle",
           "[ai][engine]") {
     Harness h;
-    FakeLlmClient other;
-    h.llm.delay = std::chrono::milliseconds{300};
+    auto other = std::make_shared<FakeLlmClient>();
+    h.llm->delay = std::chrono::milliseconds{300};
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
     h.engine.endTurn();
     h.waitForState(ConversationEngine::State::Thinking);
-    h.engine.setLlmClient(other);     // ignored
+    h.engine.setLlmClient(other);     // swap is now allowed mid-turn
     h.waitForState(ConversationEngine::State::Speaking);
-    REQUIRE(h.llm.callCount.load() == 1);
-    REQUIRE(other.callCount.load() == 0);
+    // The in-flight generate completes on h.llm (snapshot taken before
+    // swap). other isn't used for THIS turn.
+    REQUIRE(h.llm->callCount.load() == 1);
+    REQUIRE(other->callCount.load() == 0);
 }
 
 TEST_CASE("Engine: cancel during Thinking returns to Idle, no assistant message",
           "[ai][engine][cancel]") {
     Harness h;
-    h.llm.delay = std::chrono::milliseconds{1000};
+    h.llm->delay = std::chrono::milliseconds{1000};
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
     h.engine.endTurn();
@@ -116,7 +118,7 @@ TEST_CASE("Engine: cancel during Thinking returns to Idle, no assistant message"
 TEST_CASE("Engine: LLM error transitions to Error state with reason",
           "[ai][engine][error]") {
     Harness h;
-    h.llm.scriptedError = "API key invalid";
+    h.llm->scriptedError = "API key invalid";
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
     h.engine.endTurn();
@@ -124,14 +126,14 @@ TEST_CASE("Engine: LLM error transitions to Error state with reason",
     REQUIRE(h.engine.lastError() == "API key invalid");
 }
 
-TEST_CASE("Engine: STT empty-text error returns Idle with 'couldn't transcribe'",
+TEST_CASE("Engine: STT empty-text error transitions to Error with 'couldn't transcribe'",
           "[ai][engine][error]") {
     Harness h;
     h.stt.scriptedText = "";
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
     h.engine.endTurn();
-    h.waitForState(ConversationEngine::State::Idle);
+    h.waitForState(ConversationEngine::State::Error);
     REQUIRE(h.engine.lastError().find("transcribe") != std::string::npos);
 }
 
@@ -142,7 +144,7 @@ TEST_CASE("Engine: STT scripted error surfaces verbatim",
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
     h.engine.endTurn();
-    h.waitForState(ConversationEngine::State::Idle);
+    h.waitForState(ConversationEngine::State::Error);
     REQUIRE(h.engine.lastError() == "model not loaded");
 }
 
@@ -153,21 +155,21 @@ TEST_CASE("Engine: too-short mic capture surfaces friendly error",
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
     h.engine.endTurn();
-    h.waitForState(ConversationEngine::State::Idle);
+    h.waitForState(ConversationEngine::State::Error);
     REQUIRE(h.engine.lastError().find("didn't hear") != std::string::npos);
 }
 
 TEST_CASE("Engine: destructor mid-turn joins cleanly without deadlock",
           "[ai][engine][cancel]") {
     auto stt = std::make_unique<FakeTranscriber>();
-    auto llm = std::make_unique<FakeLlmClient>();
+    auto llm = std::make_shared<FakeLlmClient>();
     llm->delay = std::chrono::seconds{5};
     auto mic = std::make_unique<FakeMicCapture>();
     ConversationBuffer buf;
     PersonaRegistry    personas;
     std::vector<std::string> spoken;
     {
-        ConversationEngine engine(*stt, *llm, *mic, buf, personas,
+        ConversationEngine engine(*stt, llm, *mic, buf, personas,
             [&](std::string s){ spoken.push_back(std::move(s)); });
         engine.startTurn();
         std::this_thread::sleep_for(std::chrono::milliseconds{50});
@@ -181,7 +183,7 @@ TEST_CASE("Engine: destructor mid-turn joins cleanly without deadlock",
 TEST_CASE("Engine: clear during Thinking cancels in-flight and empties buffer",
           "[ai][engine][cancel]") {
     Harness h;
-    h.llm.delay = std::chrono::milliseconds{500};
+    h.llm->delay = std::chrono::milliseconds{500};
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
     h.engine.endTurn();
@@ -196,7 +198,7 @@ TEST_CASE("Engine: clear during Thinking cancels in-flight and empties buffer",
 TEST_CASE("Engine: canned fallback fires on LLM error -> still speaks",
           "[ai][engine][fallback]") {
     Harness h;
-    h.llm.scriptedError = "rate limited";
+    h.llm->scriptedError = "rate limited";
     h.engine.setCannedFallbackEnabled(true);
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
@@ -213,7 +215,7 @@ TEST_CASE("Engine: canned fallback fires on LLM error -> still speaks",
 TEST_CASE("Engine: canned fallback disabled (default) -> Error state with reason",
           "[ai][engine][fallback]") {
     Harness h;
-    h.llm.scriptedError = "rate limited";
+    h.llm->scriptedError = "rate limited";
     // Note: not enabling fallback
     h.engine.startTurn();
     h.waitForState(ConversationEngine::State::Capturing);
