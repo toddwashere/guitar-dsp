@@ -250,6 +250,17 @@ public:
     void enqueueSayText(const std::string& text, const std::string& voiceId = {});
     int  tryInstallSayText(const std::string& text);
 
+    // Called by the ConversationEngine worker when the LLM produces an
+    // Assistant reply. Forwards to enqueueSayText AND stores the text for
+    // the SayPanel timer to pick up — the panel will populate the input
+    // field and trigger the Say flow so the user can pluck through the
+    // reply word-by-word.
+    void onLlmResponse(const std::string& text);
+
+    // Message-thread: SayPanel pulls the pending LLM text (if any) and
+    // clears the slot. Empty string when nothing is pending.
+    std::string takePendingAutoSay();
+
     // Pass-through to MidiRouter::setPreferredDeviceName. Empty = auto-pick.
     void setMidiPreferredDeviceName(const juce::String& name);
 
@@ -294,6 +305,14 @@ private:
     std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
     std::atomic<int> micRoutingSource_   {0};  // 0 none,1 sidechain,2 ch2,3 self-mod
     std::atomic<float> micCaptureGain_   {4.0f};  // +12 dB default (helps quiet mics)
+
+    // When the ConversationEngine produces an LLM reply, the worker thread
+    // pushes the text here and the SayPanel timer picks it up on the message
+    // thread — populates the textbox AND fires the Say flow so the response
+    // is synthesized + installed into the note-stepped player. Result: the
+    // user plucks notes to speak the LLM reply word-by-word.
+    mutable std::mutex pendingAutoSayMutex_;
+    std::string        pendingAutoSay_;
 
     // When the user types into the Say textbox and the typed clip is
     // installed via tryInstallSayText, the WordReadout should show the

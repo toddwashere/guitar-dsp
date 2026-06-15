@@ -122,7 +122,7 @@ PluginProcessor::PluginProcessor()
 
     engine_ = std::make_unique<ai::ConversationEngine>(
         *whisper_, llm_, micCapture_, convBuf_, personas_,
-        [this](std::string text){ enqueueSayText(text); });
+        [this](std::string text){ onLlmResponse(text); });
     engine_->setCannedFallbackEnabled(prefs_->cannedFallbackOnLlmError());
 }
 
@@ -360,6 +360,26 @@ bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 bool PluginProcessor::micBusIsActive() const noexcept {
     if (getBusCount(/*isInput=*/true) < 2) return false;
     return getChannelCountOfBus(/*isInput=*/true, /*busIndex=*/1) > 0;
+}
+
+void PluginProcessor::onLlmResponse(const std::string& text) {
+    if (text.empty()) return;
+    // Synthesize via Apple TTS in the background.
+    enqueueSayText(text);
+    // Hand off to SayPanel's timer to populate the input field and
+    // auto-trigger the Say flow — that installs the clip via
+    // tryInstallSayText, which (because Scene 4 has trigger=note) routes
+    // through WordAligner + noteSteppedPlayer so the user can pluck
+    // through the reply word-by-word.
+    std::lock_guard lk(pendingAutoSayMutex_);
+    pendingAutoSay_ = text;
+}
+
+std::string PluginProcessor::takePendingAutoSay() {
+    std::lock_guard lk(pendingAutoSayMutex_);
+    auto r = std::move(pendingAutoSay_);
+    pendingAutoSay_.clear();
+    return r;
 }
 
 void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {

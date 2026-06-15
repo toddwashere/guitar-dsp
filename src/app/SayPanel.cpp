@@ -66,6 +66,19 @@ void SayPanel::timerCallback() {
         input_.setText(juce::String(defaultText), juce::dontSendNotification);
     }
 
+    // Auto-say from the ConversationEngine — when the LLM produces a reply,
+    // PluginProcessor::onLlmResponse stashes the text here. We pull it,
+    // populate the input field, and fire say() so the reply gets installed
+    // into the note-stepped player. The user then plucks notes to advance
+    // through the reply word-by-word, with WordReadout showing each word.
+    if (pendingText_.empty()) {
+        const auto autoSay = processor_.takePendingAutoSay();
+        if (!autoSay.empty()) {
+            input_.setText(juce::String(autoSay), juce::dontSendNotification);
+            say();
+        }
+    }
+
     // Pending-synth poll path (runs on top of the always-on 100 ms poll).
     if (pendingText_.empty()) {
         return;
