@@ -51,7 +51,9 @@ void SayPanel::say() {
     input_.setEnabled(false);
 
     processor_.enqueueSayText(text);
-    startTimer(kPollIntervalMs);
+    // Don't change the timer — it's already running at 100 ms from the
+    // constructor for scene-change / auto-say polling. Faster polling
+    // isn't required here; synthesis takes >100 ms anyway.
 }
 
 void SayPanel::timerCallback() {
@@ -95,7 +97,9 @@ void SayPanel::timerCallback() {
 
 void SayPanel::finishPending(bool /*succeeded*/) {
     pendingText_.clear();
-    stopTimer();
+    // Keep the timer running — it's the always-on 100 ms poll for scene
+    // changes and LLM auto-say. We don't need a separate per-synth timer
+    // anymore; pendingText_.empty() is the signal that no synth is active.
     sayButton_.setEnabled(true);
     sayButton_.setButtonText("Say");
     input_.setEnabled(true);
