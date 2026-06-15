@@ -10,6 +10,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -28,7 +29,7 @@ public:
     enum class State { Idle, Capturing, Transcribing, Thinking, Speaking, Error };
 
     ConversationEngine(ITranscriber&,
-                       ILlmClient&,
+                       std::shared_ptr<ILlmClient>,
                        audio::IMicCapture&,
                        ConversationBuffer&,
                        PersonaRegistry&,
@@ -49,8 +50,10 @@ public:
     std::string  lastError()   const;
     StageTimings lastTimings() const;
 
-    // Idle-only; ignored when busy.
-    void setLlmClient(ILlmClient&);
+    // Swap the active LLM client. shared_ptr ownership ensures the old
+    // client stays alive until any in-flight worker call returns. Safe
+    // to call from any thread, in any engine state.
+    void setLlmClient(std::shared_ptr<ILlmClient>);
     void setPersona(PersonaId, std::string customPrompt);
 
     void setCannedFallbackEnabled(bool enabled) noexcept {
@@ -64,7 +67,12 @@ private:
     void runEndTurn();
 
     ITranscriber*       stt_;
-    ILlmClient*         llm_;
+    // Shared ownership: rebuildLlmClient on the message thread can swap
+    // this while the worker thread is in runEndTurn. Reads/writes go
+    // through a mutex; runEndTurn copies to a local shared_ptr before
+    // calling generate() so the old object isn't yanked mid-call.
+    std::shared_ptr<ILlmClient> llm_;
+    mutable std::mutex          llmMutex_;
     audio::IMicCapture* mic_;
     ConversationBuffer* buf_;
     PersonaRegistry*    personas_;

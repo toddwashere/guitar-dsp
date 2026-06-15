@@ -13,11 +13,13 @@ std::string ConversationEngine::pickCannedReply(int n) noexcept {
     return pool[n % kPoolSize];
 }
 
-ConversationEngine::ConversationEngine(ITranscriber& t, ILlmClient& l,
+ConversationEngine::ConversationEngine(ITranscriber& t,
+                                       std::shared_ptr<ILlmClient> l,
                                        audio::IMicCapture& m,
                                        ConversationBuffer& b, PersonaRegistry& p,
                                        std::function<void(std::string)> say)
-    : stt_(&t), llm_(&l), mic_(&m), buf_(&b), personas_(&p), say_(std::move(say)) {
+    : stt_(&t), llm_(std::move(l)), mic_(&m), buf_(&b), personas_(&p),
+      say_(std::move(say)) {
     worker_ = std::thread(&ConversationEngine::workerLoop, this);
 }
 
@@ -47,9 +49,9 @@ void ConversationEngine::onTtsPlaybackFinished() { enqueue(Job::TtsFinished); }
 std::string  ConversationEngine::lastError()   const { std::lock_guard lk(errorMutex_); return lastError_; }
 StageTimings ConversationEngine::lastTimings() const { std::lock_guard lk(errorMutex_); return lastTimings_; }
 
-void ConversationEngine::setLlmClient(ILlmClient& c) {
-    if (state_.load() != State::Idle) return;
-    llm_ = &c;
+void ConversationEngine::setLlmClient(std::shared_ptr<ILlmClient> c) {
+    std::lock_guard lk(llmMutex_);
+    llm_ = std::move(c);
 }
 void ConversationEngine::setPersona(PersonaId id, std::string custom) {
     personaId_ = id;
@@ -126,7 +128,15 @@ void ConversationEngine::runEndTurn() {
     state_.store(State::Thinking);
     LlmRequest req;
     req.messages = personas_->buildMessages(*buf_, personaId_);
-    auto reply = llm_->generate(req, &cancel_);
+    // Snapshot llm_ under mutex so a concurrent setLlmClient call can swap
+    // the active client without yanking it out from under us mid-generate.
+    std::shared_ptr<ILlmClient> activeLlm;
+    { std::lock_guard lk(llmMutex_); activeLlm = llm_; }
+    if (!activeLlm) {
+        { std::lock_guard lk(errorMutex_); lastError_ = "no LLM client"; }
+        state_.store(State::Error); return;
+    }
+    auto reply = activeLlm->generate(req, &cancel_);
     auto t2 = clock::now();
     if (cancel_.isCancelled()) { state_.store(State::Idle); return; }
     if (!reply.error.empty()) {

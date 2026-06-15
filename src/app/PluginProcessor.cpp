@@ -121,7 +121,7 @@ PluginProcessor::PluginProcessor()
     rebuildLlmClient();
 
     engine_ = std::make_unique<ai::ConversationEngine>(
-        *whisper_, *llm_, micCapture_, convBuf_, personas_,
+        *whisper_, llm_, micCapture_, convBuf_, personas_,
         [this](std::string text){ enqueueSayText(text); });
     engine_->setCannedFallbackEnabled(prefs_->cannedFallbackOnLlmError());
 }
@@ -205,13 +205,13 @@ void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
 void PluginProcessor::rebuildLlmClient() {
     if (selectedModelId_.rfind("ollama:", 0) == 0) {
         const auto tag = selectedModelId_.substr(7);
-        llm_ = std::make_unique<ai::OllamaClient>(
+        llm_ = std::make_shared<ai::OllamaClient>(
             http_, prefs_->ollamaEndpoint(), tag);
     } else {
-        llm_ = std::make_unique<ai::AnthropicClient>(
+        llm_ = std::make_shared<ai::AnthropicClient>(
             http_, prefs_->anthropicApiKey(), selectedModelId_);
     }
-    if (engine_) engine_->setLlmClient(*llm_);
+    if (engine_) engine_->setLlmClient(llm_);
 }
 
 void PluginProcessor::selectModelId(std::string id) {

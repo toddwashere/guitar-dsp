@@ -317,7 +317,11 @@ private:
     ai::ConversationBuffer                  convBuf_;
     ai::JuceHttpTransport                   http_;
     std::unique_ptr<ai::WhisperTranscriber> whisper_;
-    std::unique_ptr<ai::ILlmClient>         llm_;
+    // shared_ptr (not unique_ptr) so rebuildLlmClient() can swap to a new
+    // client while the ConversationEngine worker thread may still be inside
+    // llm_->generate(). The engine takes its own shared_ptr; the old client
+    // stays alive until that worker call returns.
+    std::shared_ptr<ai::ILlmClient>         llm_;
     std::string                             selectedModelId_ {"claude-haiku-4-5"};
     ai::PersonaId                           currentPersonaId_ {ai::PersonaId::Interviewer};
     std::unique_ptr<ai::ConversationEngine> engine_;
