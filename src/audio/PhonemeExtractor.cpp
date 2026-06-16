@@ -16,7 +16,15 @@ namespace guitar_dsp::audio {
 
 namespace {
 
-// Runs espeak-ng with `-q --pho` to get one phoneme per line w/ duration.
+// Uniform duration assigned to each phoneme, in milliseconds.
+// espeak-ng's `-x --sep=" "` output gives only labels, no timing.
+// Callers (PhonemeAlignedClipBuilder) rescale these to match actual
+// Piper audio length anyway, so the absolute value here just needs to be
+// non-zero and consistent.
+static constexpr double kDefaultPhonemeMs = 80.0;
+
+// Runs `espeak-ng -q -x --sep=" "` to get space-separated phoneme labels.
+// Returns one pair per phoneme: (label, kDefaultPhonemeMs).
 std::vector<std::pair<std::string,double>> runEspeak(
         const std::string& bin, const std::string& voice,
         const std::string& text) {
@@ -31,8 +39,16 @@ std::vector<std::pair<std::string,double>> runEspeak(
         const int devnull = ::open("/dev/null", O_WRONLY);
         if (devnull >= 0) { ::dup2(devnull, STDERR_FILENO); ::close(devnull); }
         ::close(stdoutPipe[0]); ::close(stdoutPipe[1]);
+        // Derive espeak-ng-data dir from the binary path (it lives in the
+        // same directory as the binary, e.g. assets/piper/espeak-ng-data).
+        const std::string dataDir =
+            std::filesystem::path(bin).parent_path().string();
+        const std::string pathArg = "--path=" + dataDir;
+        // Use `-x --sep=" "` which writes space-separated phoneme mnemonics
+        // to stdout and works with all standard espeak voices (no MBROLA needed).
         ::execl(bin.c_str(), bin.c_str(),
-                "-q", "--pho",
+                pathArg.c_str(),
+                "-q", "-x", "--sep= ",
                 "-v", voice.c_str(),
                 text.c_str(),
                 static_cast<char*>(nullptr));
@@ -53,23 +69,23 @@ std::vector<std::pair<std::string,double>> runEspeak(
     int status = 0;
     ::waitpid(pid, &status, 0);
 
-    // Parse `--pho` format: one line per phoneme:
-    //   "<label> <duration_ms>"
+    // Parse `-x --sep=" "` output: space-separated phoneme mnemonics on one
+    // line, e.g. "h @ l 'oU  w '3: l d".
+    // Strip leading stress markers (') and emit one entry per token.
     std::vector<std::pair<std::string,double>> out;
     std::istringstream iss(acc);
-    std::string line;
-    while (std::getline(iss, line)) {
-        std::istringstream ls(line);
-        std::string label;
-        double durMs = 0.0;
-        if (ls >> label >> durMs && durMs > 0.0) {
-            out.emplace_back(label, durMs);
-        }
+    std::string token;
+    while (iss >> token) {
+        // Remove leading stress marker if present.
+        if (!token.empty() && token.front() == '\'')
+            token.erase(token.begin());
+        if (!token.empty())
+            out.emplace_back(token, kDefaultPhonemeMs);
     }
     return out;
 }
 
-} // namespace
+} // anonymous namespace
 
 PhonemeExtractor::PhonemeExtractor(std::string binaryPath, std::string voice)
     : binaryPath_(std::move(binaryPath)), voice_(std::move(voice)) {}

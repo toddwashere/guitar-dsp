@@ -7,13 +7,13 @@
 
 namespace guitar_dsp::audio {
 
-// Shells out to `espeak-ng -q --pho -v en-us "<text>"` and parses the
-// phoneme stream + predicted per-phoneme durations.
+// Shells out to `espeak-ng -q -x --sep=" " -v en-us "<text>"` and parses the
+// space-separated phoneme mnemonic labels.
 //
-// Phoneme times in the result are RAW espeak predictions, in milliseconds,
-// converted to sample positions at `targetSampleRate`. Callers
-// (PhonemeAlignedClipBuilder) typically rescale them to match actual
-// Piper audio length.
+// Phoneme times in the result are UNIFORM estimates (kDefaultPhonemeMs each),
+// in milliseconds, converted to sample positions at `targetSampleRate`.
+// Callers (PhonemeAlignedClipBuilder) rescale these to match actual
+// Piper audio length; the absolute values here are placeholder proportions.
 //
 // Call from a worker thread. The subprocess takes ~30-80 ms per short
 // phrase on M-series. Returns empty vector on failure.
