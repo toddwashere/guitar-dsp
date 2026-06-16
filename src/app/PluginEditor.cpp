@@ -126,12 +126,22 @@ void PluginEditor::resized() {
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
     if (showWordReadout) wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
-    if (showVocoder) vocoderPanel_.setBounds(bounds.removeFromTop(170));
+    if (showVocoder) vocoderPanel_.setBounds(bounds.removeFromTop(220));
     if (showDiag) ttsStatusBar_.setBounds(bounds.removeFromTop(24));
-    if (midiDevicePicker_.isVisible())
-        midiDevicePicker_.setBounds(bounds.removeFromTop(28));
+
+    // Share one row between MIDI picker (standalone only) + "Settings"
+    // button. Saves a row and groups the two "configure" widgets together.
+    // If standalone hidden, Settings gets its own slim row.
+    if (midiDevicePicker_.isVisible()) {
+        auto controlsRow = bounds.removeFromTop(28);
+        toggleAiSettingsBtn_.setBounds(controlsRow.removeFromRight(100));
+        controlsRow.removeFromRight(6);  // gap
+        midiDevicePicker_.setBounds(controlsRow);
+    } else {
+        toggleAiSettingsBtn_.setBounds(bounds.removeFromTop(24));
+    }
+
     if (showSay) sayPanel_.setBounds(bounds.removeFromTop(40));
-    toggleAiSettingsBtn_.setBounds(bounds.removeFromTop(24));
 
     // --- Middle area: conversation (Scene 4) > scope > empty -------------
     if (showChat) {

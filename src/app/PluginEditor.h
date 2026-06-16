@@ -55,7 +55,7 @@ private:
 
     std::unique_ptr<ConversationPanel> conversationPanel_;
     std::unique_ptr<AiSettingsPanel>   aiSettingsPanel_;
-    juce::TextButton                   toggleAiSettingsBtn_ {"AI Settings"};
+    juce::TextButton                   toggleAiSettingsBtn_ {"Settings"};
 };
 
 } // namespace guitar_dsp
