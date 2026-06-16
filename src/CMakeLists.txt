@@ -27,6 +27,7 @@ add_library(guitar_dsp_audio STATIC
     audio/MicCapture.cpp
     audio/MicShaper.cpp
     audio/Phoneme.cpp
+    audio/PhonemeExtractor.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
