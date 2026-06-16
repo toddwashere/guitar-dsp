@@ -38,7 +38,7 @@ VocoderPanel::VocoderPanel(PluginProcessor& p)
         processor_.setVocoderClarity(static_cast<float>(clarity_.getValue()));
     };
 
-    configureSlider(gateThreshold_, gateThresholdLabel_, "Gate threshold");
+    configureSlider(gateThreshold_, gateThresholdLabel_, "Noise Gate");
     gateThreshold_.setRange(-90.0, -20.0, 0.5);
     gateThreshold_.setTextValueSuffix(" dB");
     gateThreshold_.setValue(processor_.noiseGateThresholdDb(), juce::dontSendNotification);
@@ -67,13 +67,10 @@ VocoderPanel::VocoderPanel(PluginProcessor& p)
 VocoderPanel::~VocoderPanel() { stopTimer(); }
 
 void VocoderPanel::timerCallback() {
-    const float sceneClarity = processor_.activeSceneClarity();
-    if (sceneClarity != lastSceneClarity_) {
-        lastSceneClarity_ = sceneClarity;
-        clarityLabel_.setText("Clarity  (scene "
-                                  + juce::String(sceneClarity, 2) + ")",
-                              juce::dontSendNotification);
-    }
+    // Clarity label is intentionally just "Clarity" — the per-scene authored
+    // default was previously appended (" (scene 0.50)") but it bloated the
+    // column width in the knob grid and the operator can see the live slider
+    // value in the knob's own readout.
 
     const juce::String desiredCarrierLabel = processor_.pitchSinging()
         ? juce::String("Pitched floor")
@@ -186,24 +183,25 @@ void VocoderPanel::resized() {
     constexpr int readoutH = 28;
     noteReadout_.setBounds(area.removeFromBottom(readoutH));
 
-    // 2x3 knob grid. Each cell holds: label (12px) + rotary knob (rest).
-    const int colW   = area.getWidth() / 3;
-    const int cellH  = area.getHeight() / 2;
-    auto cell = [&](int col, int row, juce::Slider& s, juce::Label& l) {
+    // Single row of 6 rotary knobs. Each cell: label (12px) + rotary knob.
+    // Width per cell ~= panel width / 6 — labels are short enough to fit at
+    // 10.5 px and the rotary inscribes in the smaller dimension (cell height
+    // minus label) so a single-row layout actually gives the knob MORE room
+    // than a 2x3 grid would in the same panel height.
+    const int colW = area.getWidth() / 6;
+    auto cell = [&](int col, juce::Slider& s, juce::Label& l) {
         auto c = juce::Rectangle<int>(area.getX() + col * colW,
-                                      area.getY() + row * cellH,
-                                      colW, cellH);
+                                      area.getY(),
+                                      colW, area.getHeight());
         l.setBounds(c.removeFromTop(12));
         s.setBounds(c.reduced(2));
     };
-    // Row 0: Makeup | Carrier-noise | Sibilance
-    cell(0, 0, makeup_,        makeupLabel_);
-    cell(1, 0, carrierNoise_,  carrierNoiseLabel_);
-    cell(2, 0, sibilance_,     sibilanceLabel_);
-    // Row 1: Clarity | Gate threshold | Mic gain
-    cell(0, 1, clarity_,       clarityLabel_);
-    cell(1, 1, gateThreshold_, gateThresholdLabel_);
-    cell(2, 1, micGain_,       micGainLabel_);
+    cell(0, makeup_,        makeupLabel_);
+    cell(1, carrierNoise_,  carrierNoiseLabel_);
+    cell(2, sibilance_,     sibilanceLabel_);
+    cell(3, clarity_,       clarityLabel_);
+    cell(4, gateThreshold_, gateThresholdLabel_);
+    cell(5, micGain_,       micGainLabel_);
 }
 
 } // namespace guitar_dsp

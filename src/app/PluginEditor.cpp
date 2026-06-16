@@ -126,7 +126,7 @@ void PluginEditor::resized() {
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
     if (showWordReadout) wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
-    if (showVocoder) vocoderPanel_.setBounds(bounds.removeFromTop(220));
+    if (showVocoder) vocoderPanel_.setBounds(bounds.removeFromTop(170));
     if (showDiag) ttsStatusBar_.setBounds(bounds.removeFromTop(24));
 
     // Share one row between MIDI picker (standalone only) + "Settings"

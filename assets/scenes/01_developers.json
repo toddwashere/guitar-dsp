@@ -1,6 +1,6 @@
 {
   "id": 1,
-  "name": "Developers!",
+  "name": "multi syllable words",
   "color": "#0078D4",
   "mixer": { "masterGainDb": -10.0, "dryWet": 0.9, "transitionMs": 30 },
   "tts": {
