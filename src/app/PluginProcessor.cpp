@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -58,6 +59,12 @@ PluginProcessor::PluginProcessor()
 #endif
         .withInput ("Mic",    juce::AudioChannelSet::mono(),   false)  // sidechain, disabled by default
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
+    // When stderr is redirected to a file (e.g. `open --stderr foo.log`),
+    // it's fully buffered, so the conversational-AI diagnostics never
+    // appear until process exit. Force unbuffered so live tailing works.
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+    std::fprintf(stderr, "[PluginProcessor] ctor wrapperType=%d\n", (int)wrapperType);
+
     midiRouter_ = std::make_unique<midi::MidiRouter>(
         [this, weakAlive = std::weak_ptr<std::atomic<bool>>(alive_)]
         (const juce::MidiMessage& msg) {

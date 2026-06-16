@@ -10,8 +10,16 @@ juce_add_plugin(guitar_dsp_app
     PLUGIN_CODE GtSp
     FORMATS Standalone AU
     IS_SYNTH FALSE
-    NEEDS_MIDI_INPUT TRUE
+    # NEEDS_MIDI_INPUT FALSE so JUCE sets AU_MAIN_TYPE to 'aufx' (Effect),
+    # which is the type Logic exposes a Side Chain dropdown for. With
+    # NEEDS_MIDI_INPUT TRUE we got 'aumf' (Music Effect) — no sidechain UI
+    # in Logic, breaking the Scene 4 mic capture path. The FCB1010 still
+    # works in both Standalone and AU via the direct CoreMIDI route in
+    # MidiRouter (host MIDI delivery via AU was an extra path, not the
+    # only path), so dropping the AU MIDI bus costs us nothing operationally.
+    NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
+    AU_MAIN_TYPE "kAudioUnitType_Effect"
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD TRUE
     # macOS TCC privacy declarations. Required since macOS 14+ even though
@@ -80,19 +88,20 @@ target_link_libraries(guitar_dsp_app
 # target itself makes the copy run whenever the target rebuilds, regardless of
 # how the build was invoked.
 #
-# We intentionally do NOT `rm -rf` the destination first — `copy_directory` is
-# incremental (touches only changed files), so incremental builds stay fast.
-# Trade-off: if you remove an asset from source, you must wipe the bundle by
-# hand or do a clean rebuild.
+# We wipe destination before copy so an asset removed/renamed at source
+# also disappears from the bundle. `copy_directory` alone is additive and
+# left stale carousel/old-scene JSON in the bundle for the live demo,
+# causing SceneLibrary to load both sets and corrupt the presentation
+# scene layout. Cost: copies all assets every build (<1 MB, negligible).
 set(GUITAR_DSP_ASSETS_SRC  "${CMAKE_SOURCE_DIR}/assets")
 set(GUITAR_DSP_WHISPER_SRC "${CMAKE_SOURCE_DIR}/Resources/whisper")
 
 function(guitar_dsp_post_build_copy format_target src_dir dest_subdir)
+    set(dest "$<TARGET_FILE_DIR:${format_target}>/../Resources/${dest_subdir}")
     add_custom_command(TARGET ${format_target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${src_dir}"
-            "$<TARGET_FILE_DIR:${format_target}>/../Resources/${dest_subdir}"
-        COMMENT "Copying ${dest_subdir}/ into ${format_target} bundle"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${dest}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${src_dir}" "${dest}"
+        COMMENT "Copying ${dest_subdir}/ into ${format_target} bundle (clean)"
         VERBATIM)
 endfunction()
 
@@ -110,10 +119,12 @@ if(TARGET guitar_dsp_app_AU)
     set(GUITAR_DSP_AU_INSTALLED_ROOT
         "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${GUITAR_DSP_PRODUCT_NAME}.component/Contents/Resources")
     add_custom_command(TARGET guitar_dsp_app_AU POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_AU_INSTALLED_ROOT}/assets"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${GUITAR_DSP_AU_INSTALLED_ROOT}/whisper"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${GUITAR_DSP_ASSETS_SRC}" "${GUITAR_DSP_AU_INSTALLED_ROOT}/assets"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${GUITAR_DSP_WHISPER_SRC}" "${GUITAR_DSP_AU_INSTALLED_ROOT}/whisper"
-        COMMENT "Copying assets/ + whisper/ into the installed AU .component"
+        COMMENT "Copying assets/ + whisper/ into the installed AU .component (clean)"
         VERBATIM)
 endif()

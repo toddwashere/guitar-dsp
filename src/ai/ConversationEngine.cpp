@@ -106,7 +106,10 @@ void ConversationEngine::runEndTurn() {
         samples.size(), samples.size() / 16000.0,
         (int) mic_->lastResultWasTooShort());
     if (mic_->lastResultWasTooShort()) {
-        { std::lock_guard lk(errorMutex_); lastError_ = "didn't hear anything"; }
+        // Most common cause in Logic: sidechain mic not routed → silent buffer.
+        // In standalone: input device is mono, or mic level is too low.
+        { std::lock_guard lk(errorMutex_);
+          lastError_ = "didn't hear anything — check mic input (Logic: enable Side Chain in plugin window)"; }
         state_.store(State::Error); return;
     }
 

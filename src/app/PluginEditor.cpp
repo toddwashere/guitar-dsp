@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include <cstdio>
 
 namespace guitar_dsp {
 
@@ -15,6 +16,7 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
+    std::fprintf(stderr, "[PluginEditor] ctor begin\n"); std::fflush(stderr);
     setSize(720, 880);
     setResizable(true, true);
     setResizeLimits(520, 556, 1800, 1200);
@@ -103,6 +105,9 @@ void PluginEditor::resized() {
     toggleAiSettingsBtn_.setBounds(bounds.removeFromTop(24));
     const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
     const bool showChat = processor_.activeSceneShowsChat();
+    std::fprintf(stderr, "[PluginEditor::resized] activeSceneId=%d showChat=%d\n",
+                 processor_.sceneEngine().getActiveSceneId(), (int)showChat);
+    std::fflush(stderr);
     if (conversationPanel_) conversationPanel_->setVisible(showChat);
     if (showChat) {
         const int convHeight = compact ? 80 : 220;

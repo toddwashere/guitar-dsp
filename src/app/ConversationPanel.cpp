@@ -1,4 +1,5 @@
 #include "app/ConversationPanel.h"
+#include <cstdio>
 
 namespace guitar_dsp {
 
@@ -44,6 +45,8 @@ void ConversationPanel::paint(juce::Graphics& g) {
 void ConversationPanel::onRecord() {
     using S = ai::ConversationEngine::State;
     auto s = engine_.state();
+    std::fprintf(stderr, "[ConversationPanel] onRecord() clicked, state=%d\n", (int)s);
+    std::fflush(stderr);
     if      (s == S::Idle)      engine_.startTurn();
     else if (s == S::Capturing) engine_.endTurn();
     else                        engine_.cancelTurn();
