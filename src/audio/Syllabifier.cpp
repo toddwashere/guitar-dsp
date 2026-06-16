@@ -37,15 +37,28 @@ std::vector<SyllableSpan> Syllabifier::group(
             }
         } else {
             // Boundary chosen by max-onset principle: as many consonants as
-            // possible go to the *next* nucleus's onset (i.e., to THIS
-            // syllable's onset). Simple impl: split the inter-nuclear
-            // consonant span at floor(span/2). All-but-first go to onset.
+            // possible go to this nucleus's onset; prev syllable keeps as
+            // few coda consonants as possible. Silences are boundaries —
+            // skip past any silence block; onset starts after it.
             const int prevNuc = nuclei[n-1];
-            const int gap = nucIdx - prevNuc - 1;  // # consonants between
-            // gap >= 0; first ceil(gap/2) consonants become prev coda,
-            // remaining floor(gap/2) become this onset.
-            const int prevCodaCount = (gap + 1) / 2;
-            onsetStart = prevNuc + 1 + prevCodaCount;
+            // Find end of any silence run between prevNuc and nucIdx.
+            int afterSilence = prevNuc + 1;
+            while (afterSilence < nucIdx
+                   && ph[afterSilence].type == Phoneme::Type::Silence) {
+                ++afterSilence;
+            }
+            // If there WAS a silence, onset starts right after it.
+            // If none, split the consonant span: floor(gap/2) go to this onset.
+            bool hadSilence = (afterSilence > prevNuc + 1);
+            if (hadSilence) {
+                onsetStart = afterSilence;
+            } else {
+                // Walk from prevNuc+1 forward to find end of consonant span
+                // (stop at silence, though silence would have been caught above).
+                const int gap = nucIdx - prevNuc - 1;
+                const int prevCodaCount = gap / 2;  // floor → give more to onset
+                onsetStart = prevNuc + 1 + prevCodaCount;
+            }
         }
 
         // Coda: from nucIdx+1 forward.
@@ -58,10 +71,18 @@ std::vector<SyllableSpan> Syllabifier::group(
                 ++codaEnd;
             }
         } else {
-            // See above: prevCodaCount of THIS syllable goes here.
+            // Max-onset: prefer giving consonants to the next onset.
+            // Count only non-silence consonants before the next nucleus.
             const int nextNuc = nuclei[n+1];
-            const int gap = nextNuc - nucIdx - 1;
-            const int codaCount = (gap + 1) / 2;  // first half of gap
+            // Walk from nucIdx+1 forward; stop at first silence.
+            int gapEnd = nucIdx + 1;
+            while (gapEnd < nextNuc
+                   && ph[gapEnd].type != Phoneme::Type::Silence) {
+                ++gapEnd;
+            }
+            const int gap = gapEnd - (nucIdx + 1);  // # consonants (no silences)
+            // floor(gap/2): give the larger share to the next onset.
+            const int codaCount = gap / 2;
             codaEnd = nucIdx + 1 + codaCount;
         }
 
