@@ -23,8 +23,10 @@ mkdir -p "$PIPER_DIR"
 
 # 1) Clone + checkout pinned commit.
 echo "==> cloning piper @ ${PIPER_COMMIT}"
-git clone --depth 1 --branch "${PIPER_COMMIT}" "$PIPER_REPO" "$WORK/piper" \
-  || git clone "$PIPER_REPO" "$WORK/piper"
+if ! git clone --depth 1 --branch "${PIPER_COMMIT}" "$PIPER_REPO" "$WORK/piper" 2>/dev/null; then
+    echo "==> shallow clone of branch/tag '${PIPER_COMMIT}' failed (likely a bare SHA); falling back to full clone"
+    git clone "$PIPER_REPO" "$WORK/piper"
+fi
 ( cd "$WORK/piper" && git checkout "$PIPER_COMMIT" )
 
 # 2) Fetch ONNX Runtime release binary (contains libonnxruntime dylib).
@@ -46,10 +48,16 @@ cmake --build "$WORK/build" -j
 echo "==> installing into $PIPER_DIR"
 cp "$WORK/build/piper"                          "$PIPER_DIR/piper"
 cp "$ORT_DIR/lib/libonnxruntime.${ORT_VERSION}.dylib" \
-   "$PIPER_DIR/libonnxruntime.1.14.1.dylib"
+   "$PIPER_DIR/libonnxruntime.${ORT_VERSION}.dylib"
 # Piper's CMake places these in the build tree:
-find "$WORK/build" -name "libespeak-ng.1.dylib"        -exec cp {} "$PIPER_DIR/" \;
-find "$WORK/build" -name "libpiper_phonemize.1.dylib"  -exec cp {} "$PIPER_DIR/" \;
+for lib in libespeak-ng.1.dylib libpiper_phonemize.1.dylib; do
+    found=$(find "$WORK/build" -name "$lib" -print -quit)
+    if [[ -z "$found" ]]; then
+        echo "ERROR: $lib not found anywhere under $WORK/build — Piper's build tree layout may have changed" >&2
+        exit 1
+    fi
+    cp "$found" "$PIPER_DIR/"
+done
 
 # 5) Fix rpaths so the binary finds its dylibs relative to itself at runtime.
 #    The CMake build bakes temp-dir rpaths into the binary; replace them with
@@ -57,15 +65,17 @@ find "$WORK/build" -name "libpiper_phonemize.1.dylib"  -exec cp {} "$PIPER_DIR/"
 echo "==> fixing rpaths"
 # Remove all existing temp-dir rpaths from the binary.
 while IFS= read -r rp; do
+    # `|| true` so re-runs are idempotent: if a previous run already deleted
+    # this rpath, install_name_tool errors out — that's expected, not a fault.
     install_name_tool -delete_rpath "$rp" "$PIPER_DIR/piper" 2>/dev/null || true
 done < <(otool -l "$PIPER_DIR/piper" | awk '/LC_RPATH/{found=1} found && /path /{print $2; found=0}')
 # Add a single @loader_path rpath so dylibs sitting next to the binary are found.
 install_name_tool -add_rpath "@loader_path" "$PIPER_DIR/piper"
 
 # 6) Verify.
-for lib in libespeak-ng.1.dylib libpiper_phonemize.1.dylib libonnxruntime.1.14.1.dylib; do
+for lib in libespeak-ng.1.dylib libpiper_phonemize.1.dylib "libonnxruntime.${ORT_VERSION}.dylib"; do
     if [[ ! -f "$PIPER_DIR/$lib" ]]; then
-        echo "ERROR: $lib missing after build — check build logs in $WORK/build" >&2
+        echo "ERROR: $lib missing after build — cmake/build output above should show the failure" >&2
         exit 1
     fi
 done
