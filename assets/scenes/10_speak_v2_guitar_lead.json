@@ -11,7 +11,7 @@
   },
   "speech": {
     "player": "phonemeStepped",
-    "maxSustainMs": 1500,
+    "maxSustainMs": 0,
     "attackInterruptPolicy": "finish"
   }
 }

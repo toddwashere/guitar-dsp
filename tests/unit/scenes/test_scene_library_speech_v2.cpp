@@ -25,7 +25,7 @@ TEST_CASE("SceneLibrary: parses speech.player=phonemeStepped",
     for (const auto& sc : scenes) if (sc.id == 10) { s = &sc; break; }
     REQUIRE(s);
     REQUIRE(s->speech.player == Scene::Speech::Player::PhonemeStepped);
-    REQUIRE(s->speech.maxSustainMs == 1500.0);
+    REQUIRE(s->speech.maxSustainMs == 0.0);   // stutter-fix: grain-loop instantly falls through to Coda
     REQUIRE(s->speech.attackInterrupt == Scene::Speech::AttackInterrupt::Finish);
 }
 
