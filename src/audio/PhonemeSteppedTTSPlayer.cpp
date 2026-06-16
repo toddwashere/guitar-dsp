@@ -59,6 +59,7 @@ void PhonemeSteppedTTSPlayer::enterSustain_() {
     sustainSamplesPlayed_ = 0;
     currentState_.store(static_cast<int>(state_), std::memory_order_relaxed);
     grain_.beginLoop(activeClip_->samples.data(),
+                     activeClip_->samples.size(),
                      activeClip_->sylsV2[sylIdx_].vowelNucleusSample);
 }
 

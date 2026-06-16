@@ -15,12 +15,24 @@ void VowelGrainLoop::reset() {
     cursor_ = 0;
 }
 
-void VowelGrainLoop::beginLoop(const float* samples,
+void VowelGrainLoop::beginLoop(const float* samples, std::size_t numSamples,
                                std::size_t anchorSample) noexcept {
     samples_ = samples;
+    // If the clip is shorter than a single grain, fall back to no looping
+    // (next() will return zero — see the null-buffer guard).
+    if (numSamples < loopLen_) {
+        samples_ = nullptr;
+        loopStart_ = 0;
+        cursor_ = 0;
+        return;
+    }
     // Center the loop on the anchor.
     if (anchorSample >= loopLen_ / 2) loopStart_ = anchorSample - loopLen_ / 2;
     else                              loopStart_ = 0;
+    // Clamp so loop fully fits inside the buffer.
+    if (loopStart_ + loopLen_ > numSamples) {
+        loopStart_ = numSamples - loopLen_;
+    }
     cursor_ = 0;
 }
 

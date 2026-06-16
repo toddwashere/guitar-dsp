@@ -17,7 +17,10 @@ public:
     void reset();
 
     // Start (or restart) a loop centered at `anchorSample` in `samples`.
-    void beginLoop(const float* samples, std::size_t anchorSample) noexcept;
+    // `numSamples` is the total length of the clip buffer; the loop window
+    // is clamped to stay within [0, numSamples).
+    void beginLoop(const float* samples, std::size_t numSamples,
+                   std::size_t anchorSample) noexcept;
 
     // Returns the next sample of the looped grain. Returns 0.0f if not
     // looping or if samples is null.

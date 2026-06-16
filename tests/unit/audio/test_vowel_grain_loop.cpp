@@ -19,7 +19,7 @@ TEST_CASE("VowelGrainLoop: produces non-zero output after beginLoop on a sine",
         samples[i] = 0.5f * std::sin(2 * 3.14159265f * 440.0f * i / 48000.0f);
     VowelGrainLoop g;
     g.prepare(48000.0);
-    g.beginLoop(samples.data(), 24000);  // anchor mid-buffer
+    g.beginLoop(samples.data(), samples.size(), 24000);  // anchor mid-buffer
 
     float maxAbs = 0.0f;
     for (int i = 0; i < 2400; ++i) {  // 50 ms of output
@@ -34,9 +34,37 @@ TEST_CASE("VowelGrainLoop: wraps without reading past clip end",
     std::vector<float> samples(2000, 0.123f);
     VowelGrainLoop g;
     g.prepare(48000.0);
-    g.beginLoop(samples.data(), 1000);
+    g.beginLoop(samples.data(), samples.size(), 1000);
     for (int i = 0; i < 100'000; ++i) {
         const float v = g.next();
         REQUIRE(std::isfinite(v));  // no NaN/inf from OOB read
+    }
+}
+
+TEST_CASE("VowelGrainLoop: short clip (smaller than grain) returns zero",
+          "[audio][grain]") {
+    std::vector<float> samples(100, 0.5f);  // 100 samples << 960 grain
+    VowelGrainLoop g;
+    g.prepare(48000.0);
+    g.beginLoop(samples.data(), samples.size(), 50);
+    for (int i = 0; i < 10000; ++i) {
+        const float v = g.next();
+        REQUIRE(v == 0.0f);  // falls back to no looping
+    }
+}
+
+TEST_CASE("VowelGrainLoop: anchor near clip end is clamped",
+          "[audio][grain]") {
+    std::vector<float> samples(2000, 0.0f);
+    for (std::size_t i = 0; i < samples.size(); ++i)
+        samples[i] = 0.5f * std::sin(2 * 3.14159265f * 440.0f * i / 48000.0f);
+    VowelGrainLoop g;
+    g.prepare(48000.0);
+    // Anchor at sample 1900 — with 960-sample loop, naive loopStart=1420
+    // would mean reading samples[1420..2380] but only 2000 exist.
+    g.beginLoop(samples.data(), samples.size(), 1900);
+    for (int i = 0; i < 100'000; ++i) {
+        const float v = g.next();
+        REQUIRE(std::isfinite(v));   // no NaN/inf from OOB
     }
 }
