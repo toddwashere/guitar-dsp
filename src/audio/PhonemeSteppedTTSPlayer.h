@@ -34,6 +34,12 @@ public:
     int currentSyllableIndex() const noexcept {
         return currentSylIdx_.load(std::memory_order_relaxed);
     }
+    // Number of syllables in the currently active clip (0 if no clip or empty).
+    // Safe from the message thread — the shared_ptr count is stable once set.
+    std::size_t syllableCount() const noexcept {
+        if (!activeClip_) return 0;
+        return activeClip_->sylsV2.size();
+    }
     State currentState() const noexcept {
         return static_cast<State>(currentState_.load(std::memory_order_relaxed));
     }

@@ -115,6 +115,19 @@ public:
     int currentSpokenWordIndex() const noexcept {
         return graph_.noteSteppedPlayer().currentWordIndex();
     }
+    // Current syllable index for the v2 phoneme-stepped player (-1 idle).
+    int currentSyllableIndex() const noexcept {
+        return graph_.phonemeSteppedPlayer().currentSyllableIndex();
+    }
+    // Number of syllables in the active v2 clip (0 if no clip loaded).
+    int currentSyllableCount() const noexcept {
+        return static_cast<int>(graph_.phonemeSteppedPlayer().syllableCount());
+    }
+    // True when the active scene uses the v2 phoneme-stepped player.
+    bool activeSceneIsPhoneme() const noexcept {
+        return graph_.activeSpeechPlayer() ==
+               audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped;
+    }
     // The active scene's words (split on whitespace). Message thread.
     std::vector<std::string> activeSceneWords() const;
     // Active scene color (0xRRGGBB). Returns a neutral mid-gray (0x9090A0) if

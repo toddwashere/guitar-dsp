@@ -31,6 +31,14 @@ void WordReadout::timerCallback() {
             repaint();
         }
     }
+    // v2: poll the phoneme-stepped player's syllable index.
+    if (processor_.activeSceneIsPhoneme()) {
+        const int sylIdx = processor_.currentSyllableIndex();
+        if (sylIdx != lastSylIdx_) {
+            lastSylIdx_ = sylIdx;
+            repaint();
+        }
+    }
 }
 
 juce::Rectangle<int> WordReadout::rewindButtonBounds() const {
@@ -104,6 +112,48 @@ void WordReadout::paint(juce::Graphics& g) {
         return;
     }
 
+    // ---- v2: phoneme-stepped player (Scene 10) ----------------------------
+    if (processor_.activeSceneIsPhoneme()) {
+        const int sylIdx   = processor_.currentSyllableIndex();
+        const int sylCount = processor_.currentSyllableCount();
+
+        auto bounds = getLocalBounds().reduced(8);
+        const float h = static_cast<float>(
+            std::min(bounds.getHeight(),
+                     static_cast<int>(WordReadout::kCenterBaseHeight) * 2));
+
+        if (sylIdx < 0 || sylCount == 0) {
+            g.setColour(juce::Colour::fromRGB(90, 95, 110));
+            g.setFont(juce::Font{juce::FontOptions{}.withHeight(h * 0.5f)});
+            g.drawText("(pluck to speak v2)", bounds, juce::Justification::centred);
+        } else {
+            // Highlight: show "Syl N / M" large and bright.
+            // Phoneme labels (espeak IPA symbols) are not user-readable graphemes,
+            // so we show the index instead. Task 8.x can polish to graphemes.
+            const juce::String label =
+                "Syl " + juce::String(sylIdx + 1) + " / " + juce::String(sylCount);
+            // Colour ramps from dim orange at syl 1 toward bright red at the end.
+            const float progress = sylCount > 1
+                ? std::clamp(static_cast<float>(sylIdx) /
+                             static_cast<float>(sylCount - 1), 0.0f, 1.0f)
+                : 1.0f;
+            const auto dimColor  = juce::Colour::fromRGB(0xC0, 0x60, 0x10);
+            const auto peakColor = juce::Colour::fromRGB(kPeakColorR, kPeakColorG, kPeakColorB);
+            g.setColour(dimColor.interpolatedWith(peakColor, progress));
+            g.setFont(juce::Font{juce::FontOptions{}.withHeight(h).withStyle("Bold")});
+            g.drawFittedText(label, bounds, juce::Justification::centred, 1, 0.5f);
+        }
+
+        const auto rb = rewindButtonBounds();
+        drawRewindButton(g, rb);
+        const juce::String num = sylCount > 0
+            ? (juce::String(sylIdx + 1) + " / " + juce::String(sylCount))
+            : juce::String("--");
+        drawProgressNumber(g, rb, num);
+        return;
+    }
+
+    // ---- v1: note-stepped player ------------------------------------------
     const auto words = processor_.activeSceneWords();
     const int  idx   = processor_.currentSpokenWordIndex();
     const auto sceneRgb = processor_.activeSceneColorRgb();
