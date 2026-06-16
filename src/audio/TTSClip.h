@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "Syllabifier.h"
+#include "Phoneme.h"
 
 namespace guitar_dsp::audio {
 
@@ -23,6 +25,12 @@ struct TTSClip {
     std::vector<float> samples;    // mono float32, at sampleRate
     std::vector<WordSegment> words;   // empty = not segmented
     std::vector<WordSegment> syllables;  // optional; empty = no syllable map
+
+    // v2: phoneme-aligned syllable map. Populated by
+    // PhonemeAlignedClipBuilder; empty for v1 clips. v1's `syllables`
+    // array above stays for the v1 player.
+    std::vector<Phoneme>       phonemes;
+    std::vector<SyllableSpan>  sylsV2;
 
     bool empty() const noexcept { return samples.empty(); }
     std::size_t lengthSamples() const noexcept { return samples.size(); }
