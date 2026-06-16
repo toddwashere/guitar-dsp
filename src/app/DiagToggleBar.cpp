@@ -47,7 +47,7 @@ void DiagToggleBar::paint(juce::Graphics& g) {
         { "P  Pitch sing",     processor_.pitchSinging(),      juce::Colour::fromRGB(220, 120, 220) },
         { "M  Sing",           processor_.singing(),           juce::Colour::fromRGB(120, 220, 200) },
         // View-only pills (no audio impact).
-        { "D  Diag",           processor_.showDiagHeader(),    juce::Colour::fromRGB(140, 145, 160) },
+        { "K  Knobs",          processor_.showKnobs(),         juce::Colour::fromRGB(140, 145, 160) },
         { "O  Scope",          processor_.showScope(),         juce::Colour::fromRGB(140, 145, 160) },
     };
 
@@ -72,7 +72,7 @@ void DiagToggleBar::mouseDown(const juce::MouseEvent& e) {
         else if (i == 2) processor_.toggleDiagSibilanceOff();
         else if (i == 3) processor_.togglePitchSinging();
         else if (i == 4) processor_.toggleSinging();
-        else if (i == 5) processor_.toggleShowDiagHeader();
+        else if (i == 5) processor_.toggleShowKnobs();
         else             processor_.toggleShowScope();
         if (auto* parent = getParentComponent()) parent->resized();
         repaint();

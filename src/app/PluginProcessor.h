@@ -138,13 +138,21 @@ public:
     bool diagSibilanceOff()  const noexcept { return graph_.diagSibilanceOff(); }
 
     // --- Editor view toggles (message thread; no audio impact) ----------
-    // Drive whether the diagnostic header + scope/spectrum analyzers are
-    // visible. Off by default for a performance-clean UI; flip on for
-    // dev/diag. Not persisted in PluginState — they reset per session.
-    bool showDiagHeader() const noexcept { return showDiagHeader_; }
-    bool showScope()      const noexcept { return showScope_; }
-    void toggleShowDiagHeader() noexcept { showDiagHeader_ = !showDiagHeader_; }
-    void toggleShowScope()      noexcept { showScope_      = !showScope_; }
+    // The diagnostic-header line is always visible (was previously gated
+    // behind a "D Diag" toggle, removed because the audio config info
+    // turned out to be useful enough to keep on-screen always).
+    //
+    // Knobs (vocoder panel): global toggle, overrides per-scene defaults.
+    // Default ON since the 1-row knob layout is compact enough to live on
+    // every scene. Operator can hide for an even cleaner stage view.
+    //
+    // Scope (oscilloscope + spectrum): default OFF.
+    //
+    // Toggles aren't persisted across sessions.
+    bool showKnobs() const noexcept { return showKnobs_; }
+    bool showScope() const noexcept { return showScope_; }
+    void toggleShowKnobs() noexcept { showKnobs_ = !showKnobs_; }
+    void toggleShowScope() noexcept { showScope_ = !showScope_; }
 
     // --- Live vocoder controls (message thread) -------------------------
     // Drive the VocoderPanel sliders. Forward to the AudioGraph.
@@ -292,8 +300,8 @@ private:
     std::atomic<float> gateGain_    {1.0f};
 
     // View-only toggles for the editor (message thread). Don't persist.
-    bool showDiagHeader_ {false};
-    bool showScope_      {false};
+    bool showKnobs_ {true};
+    bool showScope_ {false};
     std::atomic<int>   lastInputChannels_  {0};
     std::atomic<int>   lastOutputChannels_ {0};
 
