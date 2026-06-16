@@ -3,9 +3,10 @@
 #include "audio/TTSClip.h"
 #include "audio/WordSyncMode.h"
 
-#include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -15,8 +16,20 @@ using guitar_dsp::audio::WordSegment;
 using guitar_dsp::audio::WordSyncMode;
 
 namespace {
+std::string goldenPath(const std::string& rel) {
+    auto p = std::filesystem::current_path();
+    for (int i = 0; i < 6; ++i) {
+        auto c = p / "tests" / "golden" / rel;
+        if (std::filesystem::exists(c.parent_path())) return c.string();
+        p = p.parent_path();
+    }
+    throw std::runtime_error(
+        "golden not found from " + std::filesystem::current_path().string());
+}
+
 std::vector<float> readF32(const std::string& path) {
     std::ifstream f(path, std::ios::binary);
+    INFO("opening: " << path);
     REQUIRE(f);
     f.seekg(0, std::ios::end);
     const auto n = static_cast<std::size_t>(f.tellg()) / sizeof(float);
@@ -36,7 +49,7 @@ std::shared_ptr<const TTSClip> deterministicClip() {
     c->words = { {"a",0,3000}, {"b",3000,6000}, {"c",6000,9000} };
     return c;
 }
-}
+} // namespace
 
 TEST_CASE("v1 NoteSteppedTTSPlayer output is byte-equal to reference",
           "[audio][v1golden]") {
@@ -52,7 +65,7 @@ TEST_CASE("v1 NoteSteppedTTSPlayer output is byte-equal to reference",
     std::vector<float> modOut(36000, 0.0f);
     p.process(onsetTrack.data(), modOut.data(), modOut.size());
 
-    auto ref = readF32("tests/golden/v1_speech/reference_output.f32");
+    auto ref = readF32(goldenPath("v1_speech/reference_output.f32"));
     REQUIRE(modOut.size() == ref.size());
     for (std::size_t i = 0; i < ref.size(); ++i) {
         REQUIRE(modOut[i] == ref[i]);
