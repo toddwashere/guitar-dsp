@@ -99,6 +99,12 @@ struct Scene {
     TtsConfig      tts{};
     CarouselConfig carousel{};
 
+    // When true, PluginEditor shows the ConversationPanel (chat UI) on
+    // this scene. Off by default: only the dedicated conversation scene
+    // should expose chat. Other scenes use the same vertical space for
+    // the oscilloscope + spectrum.
+    bool showChat = false;
+
     static Scene defaults(int id);
 };
 

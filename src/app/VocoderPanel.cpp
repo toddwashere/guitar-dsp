@@ -46,6 +46,21 @@ VocoderPanel::VocoderPanel(PluginProcessor& p)
         processor_.setNoiseGateThresholdDb(static_cast<float>(gateThreshold_.getValue()));
     };
 
+    // Mic capture gain — boost applied to the mic input before BOTH the
+    // VocoderPanel meter and MicCapture (whisper). Tunable for quiet mic
+    // interfaces where -30 dBFS peaks are too faint for transcription.
+    // Slider shows the linear multiplier in dB.
+    configureSlider(micGain_, micGainLabel_, "Mic gain");
+    micGain_.setRange(0.0, 24.0, 0.5);    // dB
+    micGain_.setTextValueSuffix(" dB");
+    micGain_.setValue(20.0 * std::log10(juce::jmax(0.001f, processor_.micCaptureGain())),
+                      juce::dontSendNotification);
+    micGain_.onValueChange = [this] {
+        const float linear = std::pow(10.0f,
+            static_cast<float>(micGain_.getValue()) / 20.0f);
+        processor_.setMicCaptureGain(linear);
+    };
+
     startTimerHz(4);  // poll the active scene's clarity for the label readout
 }
 
@@ -154,7 +169,7 @@ void VocoderPanel::resized() {
     constexpr int readoutH = 36;
     noteReadout_.setBounds(area.removeFromBottom(readoutH));
 
-    const int rowH = area.getHeight() / 5;
+    const int rowH = area.getHeight() / 6;
     auto row = [&](juce::Slider& s, juce::Label& l, int labelW) {
         auto r = area.removeFromTop(rowH);
         l.setBounds(r.removeFromLeft(labelW));
@@ -165,6 +180,7 @@ void VocoderPanel::resized() {
     row(sibilance_,      sibilanceLabel_,      86);
     row(clarity_,        clarityLabel_,       140);  // wider — also shows "(scene 0.50)"
     row(gateThreshold_,  gateThresholdLabel_,  86);
+    row(micGain_,        micGainLabel_,        86);
 }
 
 } // namespace guitar_dsp

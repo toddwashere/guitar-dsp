@@ -19,6 +19,10 @@ SayPanel::SayPanel(PluginProcessor& processor) : processor_(processor) {
 
     sayButton_.onClick = [this] { say(); };
     addAndMakeVisible(sayButton_);
+
+    // Poll for scene-change events so the input field can show each
+    // scene's default text. 10 Hz is plenty for a UI affordance.
+    startTimer(100);
 }
 
 SayPanel::~SayPanel() {
@@ -47,12 +51,38 @@ void SayPanel::say() {
     input_.setEnabled(false);
 
     processor_.enqueueSayText(text);
-    startTimer(kPollIntervalMs);
+    // Don't change the timer — it's already running at 100 ms from the
+    // constructor for scene-change / auto-say polling. Faster polling
+    // isn't required here; synthesis takes >100 ms anyway.
 }
 
 void SayPanel::timerCallback() {
+    // Per-scene default text: when the active scene changes, populate the
+    // input field with that scene's tts.text so the operator can edit or
+    // re-trigger it. Doesn't fire mid-edit because the user's edits leave
+    // the scene id unchanged — only an actual scene change resets the box.
+    const int curSceneId = processor_.activeSceneId();
+    if (curSceneId != lastSeenSceneId_) {
+        lastSeenSceneId_ = curSceneId;
+        const auto defaultText = processor_.activeSceneTtsText();
+        input_.setText(juce::String(defaultText), juce::dontSendNotification);
+    }
+
+    // Auto-say from the ConversationEngine — when the LLM produces a reply,
+    // PluginProcessor::onLlmResponse stashes the text here. We pull it,
+    // populate the input field, and fire say() so the reply gets installed
+    // into the note-stepped player. The user then plucks notes to advance
+    // through the reply word-by-word, with WordReadout showing each word.
     if (pendingText_.empty()) {
-        stopTimer();
+        const auto autoSay = processor_.takePendingAutoSay();
+        if (!autoSay.empty()) {
+            input_.setText(juce::String(autoSay), juce::dontSendNotification);
+            say();
+        }
+    }
+
+    // Pending-synth poll path (runs on top of the always-on 100 ms poll).
+    if (pendingText_.empty()) {
         return;
     }
     const int result = processor_.tryInstallSayText(pendingText_);
@@ -67,7 +97,9 @@ void SayPanel::timerCallback() {
 
 void SayPanel::finishPending(bool /*succeeded*/) {
     pendingText_.clear();
-    stopTimer();
+    // Keep the timer running — it's the always-on 100 ms poll for scene
+    // changes and LLM auto-say. We don't need a separate per-synth timer
+    // anymore; pendingText_.empty() is the signal that no synth is active.
     sayButton_.setEnabled(true);
     sayButton_.setButtonText("Say");
     input_.setEnabled(true);

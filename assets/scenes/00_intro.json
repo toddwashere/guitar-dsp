@@ -1,0 +1,16 @@
+{
+  "id": 0,
+  "name": "Intro",
+  "color": "#7eb8de",
+  "mixer": { "masterGainDb": -4.0, "dryWet": 0.95, "transitionMs": 30 },
+  "tts": {
+    "source": "apple",
+    "text": "thank you for let-ting me be here. It feels so good to get out of my gui-tar case once in a while. No thanks to you, Todd.",
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "fallback": "prebaked",
+    "clip": "00_intro",
+    "trigger": "note",
+    "wordSync": "syllable",
+    "clarity": 1.0
+  }
+}

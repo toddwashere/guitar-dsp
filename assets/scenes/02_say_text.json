@@ -1,0 +1,14 @@
+{
+  "id": 2,
+  "name": "Text to Speech",
+  "color": "#a64dff",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 0.85, "transitionMs": 30 },
+  "tts": {
+    "source": "apple",
+    "text": "Look at me, I can speak",
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "trigger": "note",
+    "wordSync": "latch",
+    "clarity": 0.6
+  }
+}

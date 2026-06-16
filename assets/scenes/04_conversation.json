@@ -1,0 +1,14 @@
+{
+  "id": 4,
+  "name": "Conversation",
+  "color": "#9bd14a",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 0.85, "transitionMs": 30 },
+  "showChat": true,
+  "tts": {
+    "source": "apple",
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "trigger": "note",
+    "wordSync": "latch",
+    "clarity": 0.7
+  }
+}

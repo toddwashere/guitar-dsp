@@ -88,7 +88,11 @@ std::string AssetLocator::defaultPiperVoicePath() {
 std::string AssetLocator::whisperModelPath() {
     const auto root = assetsRoot();
     if (root.empty()) return {};
-    return (fs::path(root) / "whisper" / "ggml-base.en.bin").string();
+    // The whisper/ directory is a SIBLING of assets/ in the bundle, not a
+    // child — the build's POST_BUILD copy step puts each into its own slot
+    // under Contents/Resources/. Walk up one level from assetsRoot to find it.
+    const auto resources = fs::path(root).parent_path();
+    return (resources / "whisper" / "ggml-base.en.bin").string();
 }
 
 } // namespace guitar_dsp

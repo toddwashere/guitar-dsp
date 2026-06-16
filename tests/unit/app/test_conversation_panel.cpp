@@ -15,7 +15,7 @@ namespace {
 struct PanelHarness {
     juce::ScopedJuceInitialiser_GUI juceInit;
     FakeTranscriber  stt;
-    FakeLlmClient    llm;
+    std::shared_ptr<FakeLlmClient> llm = std::make_shared<FakeLlmClient>();
     FakeMicCapture   mic;
     ConversationBuffer buf;
     PersonaRegistry  personas;

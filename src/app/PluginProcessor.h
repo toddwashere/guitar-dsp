@@ -190,12 +190,33 @@ public:
     bool activeSceneIsMic() const {
         return sceneEngine_.activeTtsConfig().source == "mic";
     }
+    // When true, PluginEditor shows the ConversationPanel (chat UI) on this
+    // scene. Default false; only scenes with "showChat": true expose it.
+    bool activeSceneShowsChat() const {
+        return sceneEngine_.getActiveScene().showChat;
+    }
+    // Default text for the SayPanel input box — typically the scene's
+    // tts.text, so e.g. Scene 1 ("Developers!") populates the input with
+    // "Developers" so the operator can edit/re-trigger it directly.
+    std::string activeSceneTtsText() const {
+        return sceneEngine_.activeTtsConfig().text;
+    }
     // Peak mic level in [0, 1] for the always-visible level meter in VocoderPanel.
     float micPeak() const noexcept { return graph_.micPeak(); }
     // 0=none, 1=sidechain (AU), 2=standalone ch 2, 3=self-modulation (mono input).
     // Used by VocoderPanel to label which physical input is being routed as the mic.
     int   micRoutingSource() const noexcept {
         return micRoutingSource_.load(std::memory_order_relaxed);
+    }
+    // Linear gain applied to the mic input before BOTH the meter (via
+    // setMicBlock) and MicCapture (for whisper). Tunable on VocoderPanel.
+    // 1.0 = unity, 4.0 = +12 dB, 16.0 = +24 dB. Persisted in PluginState.
+    void setMicCaptureGain(float linear) noexcept {
+        micCaptureGain_.store(juce::jlimit(0.25f, 32.0f, linear),
+                              std::memory_order_relaxed);
+    }
+    float micCaptureGain() const noexcept {
+        return micCaptureGain_.load(std::memory_order_relaxed);
     }
     int  clipBankCursor() const { return graph_.clipBankPlayer().currentClipIndex(); }
     int  clipBankSize()   const { return graph_.clipBankPlayer().bankSize(); }
@@ -228,6 +249,17 @@ public:
     // synthesis finished but failed (stop polling, show error).
     void enqueueSayText(const std::string& text, const std::string& voiceId = {});
     int  tryInstallSayText(const std::string& text);
+
+    // Called by the ConversationEngine worker when the LLM produces an
+    // Assistant reply. Forwards to enqueueSayText AND stores the text for
+    // the SayPanel timer to pick up — the panel will populate the input
+    // field and trigger the Say flow so the user can pluck through the
+    // reply word-by-word.
+    void onLlmResponse(const std::string& text);
+
+    // Message-thread: SayPanel pulls the pending LLM text (if any) and
+    // clears the slot. Empty string when nothing is pending.
+    std::string takePendingAutoSay();
 
     // Pass-through to MidiRouter::setPreferredDeviceName. Empty = auto-pick.
     void setMidiPreferredDeviceName(const juce::String& name);
@@ -272,6 +304,21 @@ private:
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
     std::atomic<int> micRoutingSource_   {0};  // 0 none,1 sidechain,2 ch2,3 self-mod
+    std::atomic<float> micCaptureGain_   {4.0f};  // +12 dB default (helps quiet mics)
+
+    // When the ConversationEngine produces an LLM reply, the worker thread
+    // pushes the text here and the SayPanel timer picks it up on the message
+    // thread — populates the textbox AND fires the Say flow so the response
+    // is synthesized + installed into the note-stepped player. Result: the
+    // user plucks notes to speak the LLM reply word-by-word.
+    mutable std::mutex pendingAutoSayMutex_;
+    std::string        pendingAutoSay_;
+
+    // When the user types into the Say textbox and the typed clip is
+    // installed via tryInstallSayText, the WordReadout should show the
+    // typed text — NOT the scene's default text. Stored on the message
+    // thread; read via activeSceneWords(). Cleared on scene change.
+    std::string      currentSayText_;
     int                                        lastSeenSceneId_ = -1;  // audio thread
 
     // Host-MIDI scene control (plugin only). processBlock stores a pending
@@ -289,7 +336,11 @@ private:
     ai::ConversationBuffer                  convBuf_;
     ai::JuceHttpTransport                   http_;
     std::unique_ptr<ai::WhisperTranscriber> whisper_;
-    std::unique_ptr<ai::ILlmClient>         llm_;
+    // shared_ptr (not unique_ptr) so rebuildLlmClient() can swap to a new
+    // client while the ConversationEngine worker thread may still be inside
+    // llm_->generate(). The engine takes its own shared_ptr; the old client
+    // stays alive until that worker call returns.
+    std::shared_ptr<ai::ILlmClient>         llm_;
     std::string                             selectedModelId_ {"claude-haiku-4-5"};
     ai::PersonaId                           currentPersonaId_ {ai::PersonaId::Interviewer};
     std::unique_ptr<ai::ConversationEngine> engine_;

@@ -74,12 +74,15 @@ float Formant::processSample(float x) noexcept {
     float sum = 0.0f;
     for (auto& p : peaks_) sum += p.processSample(0, x);
     // Additive: dry signal PLUS resonant formant peaks scaled by amount.
-    // The narrow bandpass output is much quieter than broadband input, so
-    // the prior `(1-amount)*x + amount*sum` formula made loud vowels
-    // inaudible — the formant just attenuated everything. Vocal character
-    // in real instruments is additive (the resonant cavity amplifies
-    // certain frequencies of the source spectrum), so we model that here.
-    return x + amount_ * sum;
+    // We multiply the bandpass sum by a fixed kPeakBoost because JUCE's
+    // TPT bandpass output is much quieter than the broadband input — the
+    // peak gain at the resonance frequency is roughly 1.0 but only over a
+    // narrow band, so summed energy is small. Without the boost, even
+    // amount=1.0 gives a barely-audible auto-wah; with the boost, the
+    // vowel character is distinct and shifts audibly when the LFO sweeps
+    // position (Phase C's "weedly" character).
+    constexpr float kPeakBoost = 3.0f;
+    return x + amount_ * kPeakBoost * sum;
 }
 
 } // namespace guitar_dsp::audio

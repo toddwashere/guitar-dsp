@@ -13,11 +13,13 @@ std::string ConversationEngine::pickCannedReply(int n) noexcept {
     return pool[n % kPoolSize];
 }
 
-ConversationEngine::ConversationEngine(ITranscriber& t, ILlmClient& l,
+ConversationEngine::ConversationEngine(ITranscriber& t,
+                                       std::shared_ptr<ILlmClient> l,
                                        audio::IMicCapture& m,
                                        ConversationBuffer& b, PersonaRegistry& p,
                                        std::function<void(std::string)> say)
-    : stt_(&t), llm_(&l), mic_(&m), buf_(&b), personas_(&p), say_(std::move(say)) {
+    : stt_(&t), llm_(std::move(l)), mic_(&m), buf_(&b), personas_(&p),
+      say_(std::move(say)) {
     worker_ = std::thread(&ConversationEngine::workerLoop, this);
 }
 
@@ -47,9 +49,9 @@ void ConversationEngine::onTtsPlaybackFinished() { enqueue(Job::TtsFinished); }
 std::string  ConversationEngine::lastError()   const { std::lock_guard lk(errorMutex_); return lastError_; }
 StageTimings ConversationEngine::lastTimings() const { std::lock_guard lk(errorMutex_); return lastTimings_; }
 
-void ConversationEngine::setLlmClient(ILlmClient& c) {
-    if (state_.load() != State::Idle) return;
-    llm_ = &c;
+void ConversationEngine::setLlmClient(std::shared_ptr<ILlmClient> c) {
+    std::lock_guard lk(llmMutex_);
+    llm_ = std::move(c);
 }
 void ConversationEngine::setPersona(PersonaId id, std::string custom) {
     personaId_ = id;
@@ -71,9 +73,12 @@ void ConversationEngine::workerLoop() {
                     cancel_.reset();
                     mic_->beginCapture();
                     state_.store(State::Capturing);
+                    std::fprintf(stderr, "[ConversationEngine] beginCapture()\n");
                 }
                 break;
             case Job::EndTurn:
+                std::fprintf(stderr, "[ConversationEngine] EndTurn (state=%d)\n",
+                             (int) state_.load());
                 if (state_.load() == State::Capturing) runEndTurn();
                 break;
             case Job::Cancel:
@@ -96,26 +101,42 @@ void ConversationEngine::workerLoop() {
 void ConversationEngine::runEndTurn() {
     using clock = std::chrono::steady_clock;
     auto samples = mic_->endCapture();
+    std::fprintf(stderr,
+        "[ConversationEngine] endCapture: %zu samples (~%.2f s @16k), tooShort=%d\n",
+        samples.size(), samples.size() / 16000.0,
+        (int) mic_->lastResultWasTooShort());
     if (mic_->lastResultWasTooShort()) {
         { std::lock_guard lk(errorMutex_); lastError_ = "didn't hear anything"; }
-        state_.store(State::Idle); return;
+        state_.store(State::Error); return;
     }
 
     state_.store(State::Transcribing);
     auto t0 = clock::now();
+    std::fprintf(stderr, "[ConversationEngine] transcribe(%zu samples)...\n", samples.size());
     auto stt = stt_->transcribe(samples, &cancel_);
     auto t1 = clock::now();
+    std::fprintf(stderr,
+        "[ConversationEngine] transcribe result: text=\"%s\" error=\"%s\"\n",
+        stt.text.c_str(), stt.error.c_str());
     if (cancel_.isCancelled()) { state_.store(State::Idle); return; }
     if (!stt.error.empty() || stt.text.empty()) {
         { std::lock_guard lk(errorMutex_); lastError_ = stt.error.empty() ? "couldn't transcribe" : stt.error; }
-        state_.store(State::Idle); return;
+        state_.store(State::Error); return;
     }
     buf_->append(Message::Role::User, stt.text);
 
     state_.store(State::Thinking);
     LlmRequest req;
     req.messages = personas_->buildMessages(*buf_, personaId_);
-    auto reply = llm_->generate(req, &cancel_);
+    // Snapshot llm_ under mutex so a concurrent setLlmClient call can swap
+    // the active client without yanking it out from under us mid-generate.
+    std::shared_ptr<ILlmClient> activeLlm;
+    { std::lock_guard lk(llmMutex_); activeLlm = llm_; }
+    if (!activeLlm) {
+        { std::lock_guard lk(errorMutex_); lastError_ = "no LLM client"; }
+        state_.store(State::Error); return;
+    }
+    auto reply = activeLlm->generate(req, &cancel_);
     auto t2 = clock::now();
     if (cancel_.isCancelled()) { state_.store(State::Idle); return; }
     if (!reply.error.empty()) {

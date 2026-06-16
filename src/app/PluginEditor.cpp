@@ -58,6 +58,9 @@ PluginEditor::PluginEditor(PluginProcessor& p)
         aiSettingsPanel_->setVisible(false);
         resized();
     };
+    aiSettingsPanel_->onModelChanged = [this](std::string id) {
+        processor_.selectModelId(std::move(id));
+    };
 
     setWantsKeyboardFocus(true);
     addKeyListener(this);
@@ -66,6 +69,18 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     // aiSettingsPanel_ are constructed, so they never get bounds. Run resized()
     // once more now that all children exist.
     resized();
+
+    // Poll active scene id; trigger resized() when it flips so the
+    // ConversationPanel visibility toggles correctly per scene.
+    startTimer(100);
+}
+
+void PluginEditor::timerCallback() {
+    const int id = processor_.sceneEngine().getActiveSceneId();
+    if (id != lastObservedSceneId_) {
+        lastObservedSceneId_ = id;
+        resized();
+    }
 }
 
 void PluginEditor::paint(juce::Graphics& g) {
@@ -78,7 +93,7 @@ void PluginEditor::resized() {
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
     wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
-    vocoderPanel_.setBounds(bounds.removeFromTop(200));
+    vocoderPanel_.setBounds(bounds.removeFromTop(230));
     ttsStatusBar_.setBounds(bounds.removeFromTop(24));
     if (midiDevicePicker_.isVisible())
         midiDevicePicker_.setBounds(bounds.removeFromTop(28));
@@ -87,9 +102,13 @@ void PluginEditor::resized() {
     // Reserve AI Settings toggle and ConversationPanel at the bottom.
     toggleAiSettingsBtn_.setBounds(bounds.removeFromTop(24));
     const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
-    const int convHeight = compact ? 80 : 220;
-    auto convArea = bounds.removeFromBottom(convHeight);
-    if (conversationPanel_) conversationPanel_->setBounds(convArea);
+    const bool showChat = processor_.activeSceneShowsChat();
+    if (conversationPanel_) conversationPanel_->setVisible(showChat);
+    if (showChat) {
+        const int convHeight = compact ? 80 : 220;
+        auto convArea = bounds.removeFromBottom(convHeight);
+        if (conversationPanel_) conversationPanel_->setBounds(convArea);
+    }
 
     const int remaining = bounds.getHeight();
     oscilloscope_.setBounds(bounds.removeFromTop(remaining / 2));

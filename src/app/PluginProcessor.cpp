@@ -42,11 +42,20 @@ private:
 
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
-        // Input is declared STEREO so the standalone wrapper exposes 2 channels
-        // when the user enables a stereo input device (e.g., Scarlett "Input
-        // 1+2"). In standalone, ch 0 = guitar, ch 1 = mic. isBusesLayoutSupported
-        // also accepts mono, so single-channel interfaces still work.
+        // Input bus default depends on the build target:
+        //   Standalone: stereo, so the JUCE standalone wrapper exposes 2
+        //     channels when the user enables a stereo input device (e.g.
+        //     Scarlett "Input 1+2"). In standalone, ch 0 = guitar, ch 1 = mic.
+        //   AU (Logic):  mono, because Logic's aumf negotiation gets confused
+        //     by a non-mono main input default and silently drops the playback
+        //     audio (live-monitoring works, recorded playback does not).
+        // isBusesLayoutSupported accepts both for either target, so each
+        // wrapper can still negotiate up to stereo if it wants.
+#if JucePlugin_Build_Standalone
         .withInput ("Input",  juce::AudioChannelSet::stereo(), true)
+#else
+        .withInput ("Input",  juce::AudioChannelSet::mono(),   true)
+#endif
         .withInput ("Mic",    juce::AudioChannelSet::mono(),   false)  // sidechain, disabled by default
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
     midiRouter_ = std::make_unique<midi::MidiRouter>(
@@ -112,8 +121,8 @@ PluginProcessor::PluginProcessor()
     rebuildLlmClient();
 
     engine_ = std::make_unique<ai::ConversationEngine>(
-        *whisper_, *llm_, micCapture_, convBuf_, personas_,
-        [this](std::string text){ enqueueSayText(text); });
+        *whisper_, llm_, micCapture_, convBuf_, personas_,
+        [this](std::string text){ onLlmResponse(text); });
     engine_->setCannedFallbackEnabled(prefs_->cannedFallbackOnLlmError());
 }
 
@@ -196,13 +205,13 @@ void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
 void PluginProcessor::rebuildLlmClient() {
     if (selectedModelId_.rfind("ollama:", 0) == 0) {
         const auto tag = selectedModelId_.substr(7);
-        llm_ = std::make_unique<ai::OllamaClient>(
+        llm_ = std::make_shared<ai::OllamaClient>(
             http_, prefs_->ollamaEndpoint(), tag);
     } else {
-        llm_ = std::make_unique<ai::AnthropicClient>(
+        llm_ = std::make_shared<ai::AnthropicClient>(
             http_, prefs_->anthropicApiKey(), selectedModelId_);
     }
-    if (engine_) engine_->setLlmClient(*llm_);
+    if (engine_) engine_->setLlmClient(llm_);
 }
 
 void PluginProcessor::selectModelId(std::string id) {
@@ -240,6 +249,12 @@ juce::String PluginProcessor::lastResolvedSource() const noexcept {
 
 std::vector<std::string> PluginProcessor::activeSceneWords() const {
     const auto cfg = sceneEngine_.activeTtsConfig();
+    // If the user installed custom text via the Say textbox, that text wins
+    // — otherwise the readout would still show the scene's default words
+    // while the audio plays the typed clip.
+    const std::string& sourceText = !currentSayText_.empty()
+        ? currentSayText_
+        : cfg.text;
     std::vector<std::string> tokens;
     // In Syllable mode, the player is stepping through TTSClip::syllables —
     // text "gui-tar" produced two segments ("gui", "tar"). The display needs
@@ -251,7 +266,7 @@ std::vector<std::string> PluginProcessor::activeSceneWords() const {
         (graph_.wordSyncMode() == audio::WordSyncMode::Syllable);
     if (syllableMode) {
         std::string cur;
-        for (char c : cfg.text) {
+        for (char c : sourceText) {
             if (c == ' ' || c == '\t' || c == '-' || c == '\n') {
                 if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
             } else {
@@ -260,7 +275,7 @@ std::vector<std::string> PluginProcessor::activeSceneWords() const {
         }
         if (!cur.empty()) tokens.push_back(cur);
     } else {
-        std::istringstream iss(cfg.text);
+        std::istringstream iss(sourceText);
         std::string w;
         while (iss >> w) tokens.push_back(w);
     }
@@ -278,11 +293,51 @@ int PluginProcessor::tryInstallSayText(const std::string& text) {
     if (text.empty() || !applePrewarmer_) return -1;
     if (!applePrewarmer_->isCached(text)) return 0;
     auto clip = applePrewarmer_->takeIfReady(text);
+    if (!clip) return -1;
     // Bypass currentTtsClipKey_ tracking — this is an ad-hoc overlay, not a
     // scene-driven clip. The next scene change will replace it normally.
     currentTtsClipKey_.clear();
-    graph_.ttsClipPlayer().setClip(clip);
-    return clip ? 1 : -1;
+    // Remember the typed text so the WordReadout shows it instead of the
+    // scene's default tts.text. Scene-change clears this.
+    currentSayText_ = text;
+
+    // If the active scene is note-triggered (per-pluck word advance), run
+    // the same segmentation pipeline scene-activation uses so the typed
+    // text plays word-by-word. Otherwise fall back to whole-clip playback.
+    const auto cfg = sceneEngine_.activeTtsConfig();
+    if (cfg.trigger == "note" && !clip->samples.empty()) {
+        auto seg = std::make_shared<audio::TTSClip>(*clip);
+        std::vector<std::string> plainWords;
+        std::vector<std::string> hyphenatedWords;
+        {
+            std::istringstream iss(text);
+            std::string token;
+            while (iss >> token) {
+                hyphenatedWords.push_back(token);
+                std::string plain;
+                for (char c : token) if (c != '-') plain += c;
+                plainWords.push_back(plain);
+            }
+        }
+        if (!plainWords.empty())
+            seg->words = audio::WordAligner::align(seg->samples, plainWords,
+                                                   seg->sampleRate);
+        const bool anyHyphen = text.find('-') != std::string::npos;
+        if (anyHyphen && !plainWords.empty() && seg->syllables.empty())
+            seg->syllables = audio::WordAligner::alignSyllables(
+                seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
+        graph_.noteSteppedPlayer().setClip(seg);
+        // Say/LLM text is one-shot — disable loop so plucks past the last
+        // word are ignored. Scene-activation paths set their own clips and
+        // re-enable loop via the existing default (or scene-config later).
+        graph_.noteSteppedPlayer().setLoop(false);
+        graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
+        graph_.ttsClipPlayer().setClip(nullptr);
+    } else {
+        graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
+        graph_.ttsClipPlayer().setClip(clip);
+    }
+    return 1;
 }
 
 bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -309,6 +364,26 @@ bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 bool PluginProcessor::micBusIsActive() const noexcept {
     if (getBusCount(/*isInput=*/true) < 2) return false;
     return getChannelCountOfBus(/*isInput=*/true, /*busIndex=*/1) > 0;
+}
+
+void PluginProcessor::onLlmResponse(const std::string& text) {
+    if (text.empty()) return;
+    // Synthesize via Apple TTS in the background.
+    enqueueSayText(text);
+    // Hand off to SayPanel's timer to populate the input field and
+    // auto-trigger the Say flow — that installs the clip via
+    // tryInstallSayText, which (because Scene 4 has trigger=note) routes
+    // through WordAligner + noteSteppedPlayer so the user can pluck
+    // through the reply word-by-word.
+    std::lock_guard lk(pendingAutoSayMutex_);
+    pendingAutoSay_ = text;
+}
+
+std::string PluginProcessor::takePendingAutoSay() {
+    std::lock_guard lk(pendingAutoSayMutex_);
+    auto r = std::move(pendingAutoSay_);
+    pendingAutoSay_.clear();
+    return r;
 }
 
 void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) {
@@ -338,6 +413,9 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     const int activeSceneId = sceneEngine_.getActiveSceneId();
     if (activeSceneId != lastSeenSceneId_) {
         lastSeenSceneId_ = activeSceneId;
+        // Any pending Say overlay is per-scene — clear it so the new scene's
+        // default text wins.
+        currentSayText_.clear();
         juce::MessageManager::callAsync([this, activeSceneId] {
             if (sceneEngine_.getActiveSceneId() != activeSceneId) return;
 
@@ -536,6 +614,10 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                     seg->syllables = audio::WordAligner::alignSyllables(
                         seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
                 graph_.noteSteppedPlayer().setClip(seg);
+                // Scene-activation installs default to loop=true so chant
+                // scenes (e.g. Developers!) repeat. tryInstallSayText flips
+                // this to false for one-shot Say / LLM replies.
+                graph_.noteSteppedPlayer().setLoop(true);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
                 graph_.ttsClipPlayer().setClip(nullptr);
             } else {
@@ -614,9 +696,21 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         micRoutingSource_.store(micSourceTag, std::memory_order_relaxed);
 
         if (micPtr != nullptr && micLen > 0) {
-            graph_.setMicBlock(micPtr, static_cast<std::size_t>(micLen));
+            // Apply the user-tunable mic capture gain (default 4x = +12 dB)
+            // so quiet mic interfaces still drive whisper and the meter
+            // reliably. Clamp into [-1, 1] so we don't feed clipped samples
+            // into the vocoder modulator path. Same boosted buffer is then
+            // used for both the meter (via setMicBlock) and recording.
+            const float gain = micCaptureGain_.load(std::memory_order_relaxed);
+            float boostedBuf[kMaxBlock];
+            const int boostN = std::min(micLen, kMaxBlock);
+            for (int i = 0; i < boostN; ++i) {
+                const float s = micPtr[i] * gain;
+                boostedBuf[i] = std::clamp(s, -1.0f, 1.0f);
+            }
+            graph_.setMicBlock(boostedBuf, static_cast<std::size_t>(boostN));
             if (micCapture_.isCapturing())
-                micCapture_.appendFromAudioBlock(micPtr, micLen);
+                micCapture_.appendFromAudioBlock(boostedBuf, boostN);
         } else {
             graph_.setMicBlock(nullptr, 0);
         }
@@ -708,6 +802,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.carrierNoise = graph_.vocoderCarrierNoise();
     d.sibilance    = graph_.vocoderSibilance();
     d.gateThresholdDb = graph_.noiseGateThresholdDb();
+    d.micCaptureGain  = micCaptureGain();
     d.pitchSinging = graph_.pitchSinging();
     d.singing = graph_.singing();
     d.wordSyncMode = static_cast<int>(graph_.wordSyncMode());
@@ -739,6 +834,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     graph_.setVocoderCarrierNoise(d.carrierNoise);
     graph_.setVocoderSibilance(d.sibilance);
     graph_.setNoiseGateThresholdDb(d.gateThresholdDb);
+    setMicCaptureGain(d.micCaptureGain);
     graph_.setPitchSinging(d.pitchSinging);
     graph_.setSinging(d.singing);
     graph_.setWordSyncMode(static_cast<audio::WordSyncMode>(d.wordSyncMode));

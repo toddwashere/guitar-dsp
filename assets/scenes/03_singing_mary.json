@@ -1,0 +1,14 @@
+{
+  "id": 3,
+  "name": "Pitch Detection",
+  "color": "#22a2c0",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 0.9, "transitionMs": 30 },
+  "tts": {
+    "source": "apple",
+    "text": "Mar-y had a lit-tle lamb, lit-tle lamb, lit-tle lamb. Mar-y had a lit-tle lamb its fleece was white as snow.",
+    "voice": "com.apple.voice.compact.en-US.Samantha",
+    "trigger": "note",
+    "wordSync": "syllable",
+    "clarity": 0.4
+  }
+}

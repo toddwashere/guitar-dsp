@@ -49,6 +49,9 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
         s.colorRgb = *colorOpt;
     }
 
+    if (obj->hasProperty("showChat"))
+        s.showChat = static_cast<bool>(obj->getProperty("showChat"));
+
     if (obj->hasProperty("mixer")) {
         if (auto* m = obj->getProperty("mixer").getDynamicObject()) {
             if (m->hasProperty("masterGainDb"))
