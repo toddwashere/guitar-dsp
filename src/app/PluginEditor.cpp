@@ -127,6 +127,17 @@ void PluginEditor::resized() {
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     if (showKnobs) vocoderPanel_.setBounds(bounds.removeFromTop(170));
 
+    // Scope (oscilloscope + spectrum) sits in the top stack, right under
+    // knobs and ABOVE the MIDI/say/chat row. This way toggling K or O
+    // doesn't shift the lower controls around — they only move when a
+    // new top section appears, not when the middle changes per scene.
+    // Fixed 200 px split evenly between scope (top) and spectrum (bottom).
+    if (showScope) {
+        auto scopeArea = bounds.removeFromTop(200);
+        oscilloscope_.setBounds(scopeArea.removeFromTop(100));
+        spectrumAnalyzer_.setBounds(scopeArea);
+    }
+
     // Share one row between MIDI picker (standalone only) + "Settings"
     // button. Saves a row and groups the two "configure" widgets together.
     // If standalone hidden, Settings gets its own slim row.
@@ -142,18 +153,13 @@ void PluginEditor::resized() {
     if (showSay) sayPanel_.setBounds(bounds.removeFromTop(40));
 
     // --- Middle area ----------------------------------------------------
-    // Conversation panel is capped at ~5 lines of transcript height
-    // (~140 px) instead of stretching to fill — leaves room for scope
-    // if the operator toggled it on, and avoids a huge blank panel when
-    // the LLM hasn't replied yet.
+    // Conversation panel gets up to 280 px (~10 lines of transcript +
+    // chrome). Doubled from 140 to make the chat readable when the LLM
+    // gives a longer reply. Still capped so it doesn't stretch past
+    // what the window can offer.
     if (showChat) {
-        const int convHeight = std::min(bounds.getHeight(), 140);
+        const int convHeight = std::min(bounds.getHeight(), 280);
         if (conversationPanel_) conversationPanel_->setBounds(bounds.removeFromTop(convHeight));
-    }
-    if (showScope && bounds.getHeight() > 0) {
-        const int h = bounds.getHeight();
-        oscilloscope_.setBounds(bounds.removeFromTop(h / 2));
-        spectrumAnalyzer_.setBounds(bounds);
     }
     // else: middle stays empty (painted by editor background).
 
