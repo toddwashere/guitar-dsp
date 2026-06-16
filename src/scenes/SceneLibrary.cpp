@@ -94,6 +94,26 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
         }
     }
 
+    if (obj->hasProperty("speech")) {
+        if (auto* sp = obj->getProperty("speech").getDynamicObject()) {
+            if (sp->hasProperty("player")) {
+                const auto v = sp->getProperty("player").toString().toStdString();
+                s.speech.player = (v == "phonemeStepped")
+                    ? Scene::Speech::Player::PhonemeStepped
+                    : Scene::Speech::Player::NoteStepped;
+            }
+            if (sp->hasProperty("maxSustainMs"))
+                s.speech.maxSustainMs = static_cast<double>(
+                    sp->getProperty("maxSustainMs"));
+            if (sp->hasProperty("attackInterruptPolicy")) {
+                const auto v = sp->getProperty("attackInterruptPolicy").toString().toStdString();
+                s.speech.attackInterrupt = (v == "interrupt")
+                    ? Scene::Speech::AttackInterrupt::Interrupt
+                    : Scene::Speech::AttackInterrupt::Finish;
+            }
+        }
+    }
+
     if (obj->hasProperty("carousel")) {
         if (auto* c = obj->getProperty("carousel").getDynamicObject()) {
             auto& cc = s.carousel;

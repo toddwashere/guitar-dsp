@@ -92,12 +92,23 @@ struct CarouselConfig {
 };
 
 struct Scene {
+    // --- v2 speech playback config -------------------------------------------
+    struct Speech {
+        enum class Player { NoteStepped, PhonemeStepped };
+        enum class AttackInterrupt { Finish, Interrupt };
+
+        Player          player          = Player::NoteStepped;
+        double          maxSustainMs    = 1500.0;
+        AttackInterrupt attackInterrupt = AttackInterrupt::Finish;
+    };
+
     int          id        = 0;
     std::string  name      = "(unnamed)";
     std::uint32_t colorRgb = 0xCCCCCCu;   // 0xRRGGBB
     MixerParams    mixer{};
     TtsConfig      tts{};
     CarouselConfig carousel{};
+    Speech         speech{};
 
     // When true, PluginEditor shows the ConversationPanel (chat UI) on
     // this scene. Off by default: only the dedicated conversation scene
