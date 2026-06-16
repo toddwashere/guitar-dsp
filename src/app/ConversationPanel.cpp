@@ -14,7 +14,6 @@ ConversationPanel::ConversationPanel(ai::ConversationEngine& e,
     addAndMakeVisible(transcript_);
     addAndMakeVisible(recordBtn_);
     addAndMakeVisible(clearBtn_);
-    addAndMakeVisible(settingsBtn_);
     addAndMakeVisible(timingsLabel_);
     recordBtn_.onClick = [this]{ onRecord(); };
     clearBtn_.onClick  = [this]{ onClear(); };
@@ -30,8 +29,6 @@ void ConversationPanel::resized() {
     recordBtn_  .setBounds(btnRow.removeFromLeft(compact_ ?  70 : 100));
     btnRow.removeFromLeft(4);
     clearBtn_   .setBounds(btnRow.removeFromLeft(compact_ ?  50 :  70));
-    btnRow.removeFromLeft(4);
-    settingsBtn_.setBounds(btnRow.removeFromLeft(compact_ ?  30 :  40));
     if (! compact_) {
         timingsLabel_.setBounds(r.removeFromBottom(18));
     }

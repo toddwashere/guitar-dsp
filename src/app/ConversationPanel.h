@@ -30,7 +30,6 @@ private:
     juce::TextEditor         transcript_;
     juce::TextButton         recordBtn_   {"(*) Record"};
     juce::TextButton         clearBtn_    {"Clear"};
-    juce::TextButton         settingsBtn_ {"AI"};
     juce::Label              timingsLabel_;
     size_t                   lastSeenSize_ {0};
 };
