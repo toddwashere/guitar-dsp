@@ -1,0 +1,17 @@
+{
+  "id": 10,
+  "name": "Speak v2 — Guitar-Lead",
+  "color": "#3eafff",
+  "mixer": { "masterGainDb": -5.0, "dryWet": 0.92, "transitionMs": 30 },
+  "vocoder": { "enabled": true, "bypass": false },
+  "tts": {
+    "source": "piper",
+    "fallback": "prebaked",
+    "text": "while my guitar gently weeps"
+  },
+  "speech": {
+    "player": "phonemeStepped",
+    "maxSustainMs": 1500,
+    "attackInterruptPolicy": "finish"
+  }
+}

@@ -22,10 +22,11 @@ juce::Rectangle<int> SceneIndicator::stripArea() const {
 void SceneIndicator::mouseDown(const juce::MouseEvent& e) {
     const auto strip = stripArea();
     if (!strip.contains(e.getPosition())) return;
-    const int slotWidth = strip.getWidth() / 10;
+    const int n = juce::jlimit(1, 16, processor_.sceneEngine().getSceneCount());
+    const int slotWidth = strip.getWidth() / n;
     if (slotWidth <= 0) return;
     int slot = (e.x - strip.getX()) / slotWidth;
-    slot = juce::jlimit(0, 9, slot);
+    slot = juce::jlimit(0, n - 1, slot);
     processor_.sceneEngine().activateScene(slot);  // no-op if scene id absent
     repaint();
 }
@@ -51,11 +52,12 @@ void SceneIndicator::paint(juce::Graphics& g) {
                leftHalf.withTrimmedTop(12),
                juce::Justification::topLeft);
 
-    // 10-slot strip on the right half (geometry shared with mouseDown).
+    // N-slot strip on the right half (geometry shared with mouseDown).
     auto strip = stripArea();
-    const int slotWidth = strip.getWidth() / 10;
+    const int n = juce::jlimit(1, 16, engine.getSceneCount());
+    const int slotWidth = strip.getWidth() / n;
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < n; ++i) {
         auto slot = juce::Rectangle<int>(strip.getX() + i * slotWidth,
                                           strip.getY(),
                                           slotWidth - 2,

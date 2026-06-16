@@ -12,6 +12,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     mixer_.prepare(sampleRate, blockSize);
     ttsClipPlayer_.prepare(sampleRate, blockSize);
     noteSteppedPlayer_.prepare(sampleRate, blockSize);
+    phonemeSteppedPlayer_.prepare(sampleRate, blockSize);
     clipBankPlayer_.prepare(sampleRate, blockSize);
     micShaper_.prepare(sampleRate);
     micScratchBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
@@ -51,6 +52,7 @@ void AudioGraph::reset() {
     mixer_.reset();
     ttsClipPlayer_.reset();
     noteSteppedPlayer_.reset();
+    phonemeSteppedPlayer_.reset();
     clipBankPlayer_.reset();
     micShaper_.reset();
     std::fill(micScratchBuffer_.begin(), micScratchBuffer_.end(), 0.0f);
@@ -84,8 +86,15 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
         const int modSrc = modulatorSource_.load(std::memory_order_relaxed);
         if (modSrc == static_cast<int>(ModulatorSource::NoteStepped)) {
             // Onset source = clean guitar (postInputBuffer_); writes modulator.
-            noteSteppedPlayer_.process(postInputBuffer_.data(),
-                                       wetBuffer_.data(), numSamples);
+            // Dispatch to v1 or v2 player based on the active-speech-player selector.
+            if (activeSpeechPlayer_.load(std::memory_order_relaxed)
+                    == static_cast<int>(ActiveSpeechPlayer::PhonemeStepped)) {
+                phonemeSteppedPlayer_.process(postInputBuffer_.data(),
+                                              wetBuffer_.data(), numSamples);
+            } else {
+                noteSteppedPlayer_.process(postInputBuffer_.data(),
+                                           wetBuffer_.data(), numSamples);
+            }
         } else if (modSrc == static_cast<int>(ModulatorSource::ClipBank)) {
             // Same shape as NoteStepped — onset source is the clean guitar.
             clipBankPlayer_.process(postInputBuffer_.data(),

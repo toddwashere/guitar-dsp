@@ -1,0 +1,10 @@
+{
+  "sampleRate": 48000,
+  "lengthSamples": 9000,
+  "words": [
+    {"word": "a", "start": 0,    "end": 3000},
+    {"word": "b", "start": 3000, "end": 6000},
+    {"word": "c", "start": 6000, "end": 9000}
+  ],
+  "amplitudes": [0.10, 0.20, 0.30]
+}

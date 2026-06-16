@@ -12,6 +12,8 @@
 #include "audio/AudioGraph.h"
 #include "audio/AppleTTSSource.h"
 #include "audio/MicCapture.h"
+#include "audio/PhonemeAlignedClipBuilder.h"
+#include "audio/PhonemeExtractor.h"
 #include "audio/PiperTTSSource.h"
 #include "audio/PrebakedTTSSource.h"
 #include "audio/TTSPrewarmer.h"
@@ -112,6 +114,19 @@ public:
     // Current spoken word index for the active note-triggered scene (-1 idle).
     int currentSpokenWordIndex() const noexcept {
         return graph_.noteSteppedPlayer().currentWordIndex();
+    }
+    // Current syllable index for the v2 phoneme-stepped player (-1 idle).
+    int currentSyllableIndex() const noexcept {
+        return graph_.phonemeSteppedPlayer().currentSyllableIndex();
+    }
+    // Number of syllables in the active v2 clip (0 if no clip loaded).
+    int currentSyllableCount() const noexcept {
+        return static_cast<int>(graph_.phonemeSteppedPlayer().syllableCount());
+    }
+    // True when the active scene uses the v2 phoneme-stepped player.
+    bool activeSceneIsPhoneme() const noexcept {
+        return graph_.activeSpeechPlayer() ==
+               audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped;
     }
     // The active scene's words (split on whitespace). Message thread.
     std::vector<std::string> activeSceneWords() const;
@@ -331,6 +346,7 @@ private:
     std::unique_ptr<audio::TTSPrewarmer>      applePrewarmer_;
     std::unique_ptr<audio::PiperTTSSource>    piperTtsSource_;
     std::unique_ptr<audio::TTSPrewarmer>      piperPrewarmer_;
+    std::unique_ptr<audio::PhonemeExtractor>  phonemeExtractor_;
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
     std::atomic<int> micRoutingSource_   {0};  // 0 none,1 sidechain,2 ch2,3 self-mod

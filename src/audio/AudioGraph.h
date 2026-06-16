@@ -13,6 +13,7 @@
 #include "Mixer.h"
 #include "ClipBankPlayer.h"
 #include "NoteSteppedTTSPlayer.h"
+#include "PhonemeSteppedTTSPlayer.h"
 #include "PitchTrackedCarrier.h"
 #include "TTSClipPlayer.h"
 
@@ -41,6 +42,8 @@ public:
     TTSClipPlayer& ttsClipPlayer() { return ttsClipPlayer_; }
     NoteSteppedTTSPlayer& noteSteppedPlayer() { return noteSteppedPlayer_; }
     const NoteSteppedTTSPlayer& noteSteppedPlayer() const { return noteSteppedPlayer_; }
+    PhonemeSteppedTTSPlayer& phonemeSteppedPlayer() { return phonemeSteppedPlayer_; }
+    const PhonemeSteppedTTSPlayer& phonemeSteppedPlayer() const { return phonemeSteppedPlayer_; }
     ClipBankPlayer& clipBankPlayer() { return clipBankPlayer_; }
     const ClipBankPlayer& clipBankPlayer() const { return clipBankPlayer_; }
     ChannelVocoder& vocoder() { return vocoder_; }
@@ -56,6 +59,17 @@ public:
     // Message-thread: choose which TTS player feeds the vocoder modulator.
     void setModulatorSource(ModulatorSource s) noexcept {
         modulatorSource_.store(static_cast<int>(s), std::memory_order_relaxed);
+    }
+
+    // Which speech player is active when ModulatorSource is NoteStepped.
+    // Default = NoteStepped (v1 back-compat). PhonemeStepped activates v2.
+    enum class ActiveSpeechPlayer { NoteStepped, PhonemeStepped };
+    void setActiveSpeechPlayer(ActiveSpeechPlayer p) noexcept {
+        activeSpeechPlayer_.store(static_cast<int>(p), std::memory_order_relaxed);
+    }
+    ActiveSpeechPlayer activeSpeechPlayer() const noexcept {
+        return static_cast<ActiveSpeechPlayer>(
+            activeSpeechPlayer_.load(std::memory_order_relaxed));
     }
 
     // Audio thread (called once per block from PluginProcessor::processBlock
@@ -151,6 +165,7 @@ private:
     Mixer mixer_;
     TTSClipPlayer ttsClipPlayer_;
     NoteSteppedTTSPlayer noteSteppedPlayer_;
+    PhonemeSteppedTTSPlayer phonemeSteppedPlayer_;
     ClipBankPlayer clipBankPlayer_;
     ChannelVocoder vocoder_;
     Carousel carousel_;
@@ -158,6 +173,7 @@ private:
 
     std::atomic<int> wetSource_ {static_cast<int>(WetSource::Vocoder)};
     std::atomic<int> modulatorSource_ {static_cast<int>(ModulatorSource::Linear)};
+    std::atomic<int> activeSpeechPlayer_ {static_cast<int>(ActiveSpeechPlayer::NoteStepped)};
 
     std::atomic<bool> diagBypassVocoder_ {false};
     std::atomic<bool> diagNoiseCarrier_  {false};

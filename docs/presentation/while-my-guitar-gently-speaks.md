@@ -751,6 +751,29 @@ this. Streaming-during-synthesis — start playing chunk 1 while chunk 2 is
 still rendering — is a v2 of v2; sub-100 ms LLM-to-mouth response is not a
 v1-of-v2 goal.
 
+### Status: B1 shipped (2026-06-16)
+
+Scene 10 *"Speak v2 — Guitar-Lead"* ships. The pipeline: text → Piper
+(audio) → `espeak-ng` (phoneme labels) → `Syllabifier` (sonority-peak
+grouping) → `PhonemeSteppedTTSPlayer` (Attack/Sustain/Coda state
+machine with vowel grain-loop sustain). UI: `Ph` pill lights when
+v2 is active; `WordReadout` shows `Syl N / M`; `SceneIndicator` strip
+grew from 10 to dynamic-count slots to expose ids 10+.
+
+Two honest deviations from §10's original direction:
+
+1. *Phoneme durations are uniform, not real.* espeak-ng's `--pho` flag
+   only emits durations for MBROLA voices; for standard voices we use
+   `-x --sep=" "` (labels only) and rescale uniformly. Sonority-based
+   syllable boundaries are still real; per-phoneme timing is not. B2/B3
+   has room to revisit.
+
+2. *v1 is bit-for-bit unchanged.* The `[v1golden]` drift detector
+   ran ~36 000 byte-equal assertions on every commit through Phases 5–7;
+   nothing in v1 moved.
+
+B2 (phase-vocoder vowel stretch) and B3 (concatenative phoneme synth)
+remain future work.
 ---
 
 ## 11. The talk arc, condensed (if you want one slide)

@@ -8,12 +8,14 @@ class PluginProcessor;
 
 // A thin row of toggle pills used to isolate vocoder behavior and select
 // pitch-singing/sing modes:
-//   V — Bypass vocoder (hear the raw TTS modulator)
-//   N — Noise carrier  (swap the guitar carrier for white noise)
-//   S — Sibilance off  (mute the vocoder's noise/sibilance path)
-//   P — Pitch sing     (use a pitch-tracked sawtooth as the carrier floor)
-//   M — Modulate sing  (vibrato + chromatic semitone quantize on the saw)
+//   V  — Bypass vocoder (hear the raw TTS modulator)
+//   N  — Noise carrier  (swap the guitar carrier for white noise)
+//   S  — Sibilance off  (mute the vocoder's noise/sibilance path)
+//   P  — Pitch sing     (use a pitch-tracked sawtooth as the carrier floor)
+//   M  — Sing           (vibrato + chromatic semitone quantize on the saw)
+//   Ph — Phoneme player (read-only: lights when PhonemeStepped player is active)
 // Click a pill or press V / N / S / P / M to toggle. Active toggles are highlighted.
+// Ph is informational only — clicking it does nothing.
 class DiagToggleBar : public juce::Component,
                       private juce::Timer {
 public:

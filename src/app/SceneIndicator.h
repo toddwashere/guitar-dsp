@@ -18,8 +18,8 @@ public:
 private:
     void timerCallback() override;
 
-    // The 10-slot selector strip in local coordinates. Shared by paint()
-    // and mouseDown() so the clickable regions always match what's drawn.
+    // The N-slot selector strip in local coordinates (N = sceneCount, capped at 16).
+    // Shared by paint() and mouseDown() so the clickable regions always match what's drawn.
     juce::Rectangle<int> stripArea() const;
 
     PluginProcessor& processor_;

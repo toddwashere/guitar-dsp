@@ -1,0 +1,5 @@
+# Canned onset sequence used by test_v1_golden.cpp.
+# Sample positions of onset pulses (0.8 for 480 samples each).
+0
+12000
+24000

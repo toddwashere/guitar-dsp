@@ -69,3 +69,25 @@ else
 fi
 
 echo "Done. The next build will copy these into the .app bundle."
+
+REQUIRED_DYLIBS=(libespeak-ng.1.dylib libpiper_phonemize.1.dylib libonnxruntime.1.14.1.dylib)
+MISSING=0
+for lib in "${REQUIRED_DYLIBS[@]}"; do
+    if [[ ! -f "$PIPER_DIR/$lib" ]]; then
+        echo "Missing: $PIPER_DIR/$lib"
+        MISSING=1
+    fi
+done
+
+if [[ $MISSING -eq 1 ]]; then
+    cat >&2 <<EOM
+Piper runtime dylibs are missing — the upstream macOS tarball ships
+without them. Run:
+
+    ./scripts/build_piper.sh
+
+This builds Piper from source and copies the dylibs into $PIPER_DIR.
+EOM
+    exit 1
+fi
+echo "All required Piper dylibs present."

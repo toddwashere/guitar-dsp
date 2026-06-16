@@ -92,12 +92,23 @@ struct CarouselConfig {
 };
 
 struct Scene {
+    // --- v2 speech playback config -------------------------------------------
+    struct Speech {
+        enum class Player { NoteStepped, PhonemeStepped };
+        enum class AttackInterrupt { Finish, Interrupt };
+
+        Player          player          = Player::NoteStepped;
+        double          maxSustainMs    = 1500.0;
+        AttackInterrupt attackInterrupt = AttackInterrupt::Finish;
+    };
+
     int          id        = 0;
     std::string  name      = "(unnamed)";
     std::uint32_t colorRgb = 0xCCCCCCu;   // 0xRRGGBB
     MixerParams    mixer{};
     TtsConfig      tts{};
     CarouselConfig carousel{};
+    Speech         speech{};
 
     // Per-scene editor panel visibility. Designed so the live performance
     // UI only shows what each scene actually uses. Defaults preserve old

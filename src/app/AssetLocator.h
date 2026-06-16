@@ -24,6 +24,10 @@ public:
     // Path: <assetsRoot>/piper/piper
     static std::string piperBinaryPath();
 
+    // Returns the path to the bundled espeak-ng binary, or empty if not bundled.
+    // Path: <assetsRoot>/piper/espeak-ng (lives next to the Piper binary).
+    static std::string espeakBinaryPath();
+
     // Returns the path to the default Piper voice .onnx model, or empty if
     // not bundled. Path: <assetsRoot>/piper/voices/en_US-amy-medium.onnx
     // (matching the model the prebake tool already uses).

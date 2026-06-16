@@ -26,9 +26,16 @@ add_executable(guitar_dsp_tests
     unit/audio/test_onset_detector.cpp
     unit/audio/test_word_aligner.cpp
     unit/audio/test_note_stepped_player.cpp
+    unit/audio/test_v1_golden.cpp
     unit/audio/test_clip_bank_player.cpp
     unit/audio/test_mic_capture.cpp
     unit/audio/test_mic_shaper.cpp
+    unit/audio/test_phoneme_compiles.cpp
+    unit/audio/test_phoneme_extractor.cpp
+    unit/audio/test_syllabifier.cpp
+    unit/audio/test_phoneme_aligned_clip_builder.cpp
+    unit/audio/test_vowel_grain_loop.cpp
+    unit/audio/test_phoneme_stepped_player.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
@@ -39,6 +46,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_library_carousel_pitch.cpp
     unit/scenes/test_scene_library_carousel_formant.cpp
+    unit/scenes/test_scene_library_speech_v2.cpp
     unit/scenes/test_scene_library_developers.cpp
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
@@ -81,6 +89,7 @@ add_executable(guitar_dsp_tests
     integration/test_au_state_persist_ai.cpp
     integration/test_ai_pedal_routing.cpp
     integration/test_headless_safety_ai.cpp
+    integration/test_speak_v2_scene.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp

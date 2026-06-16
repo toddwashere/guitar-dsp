@@ -41,6 +41,7 @@ private:
     PluginProcessor& processor_;
     int lastIndex_   = -2;
     int lastSceneId_ = -2;   // -2 = "never read"; forces first repaint
+    int lastSylIdx_  = -2;   // v2 phoneme-stepped syllable index
 };
 
 } // namespace guitar_dsp
