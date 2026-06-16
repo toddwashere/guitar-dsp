@@ -29,6 +29,7 @@ add_library(guitar_dsp_audio STATIC
     audio/Phoneme.cpp
     audio/PhonemeExtractor.cpp
     audio/Syllabifier.cpp
+    audio/PhonemeAlignedClipBuilder.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
