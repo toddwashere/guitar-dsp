@@ -45,6 +45,22 @@ TEST_CASE("PiperTTSSource: empty text returns nullptr",
     REQUIRE_FALSE(src.synthesize(""));
 }
 
+TEST_CASE("PiperTTSSource: synthesizes a short phrase end-to-end",
+          "[audio][piper][e2e]") {
+    using namespace guitar_dsp::audio;
+    PiperTTSSource src("assets/piper/piper",
+                       "assets/piper/voices/en_US-amy-medium.onnx");
+    src.prepare(48000.0);
+    if (!src.isReady()) {
+        WARN("PiperTTSSource not ready: " + src.statusDetail());
+        return;
+    }
+    auto clip = src.synthesize("hello world");
+    REQUIRE(clip);
+    REQUIRE(clip->samples.size() > 4800);   // > 0.1 s @ 48 kHz
+    REQUIRE(clip->sampleRate == 48000.0);
+}
+
 TEST_CASE("PiperTTSSource: live synthesis produces audio [opt-in]",
           "[audio][tts][piper][live]") {
     if (!piperTestEnabled()) {
