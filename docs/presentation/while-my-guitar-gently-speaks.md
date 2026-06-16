@@ -660,7 +660,100 @@ A few honest things to mention if asked:
 
 ---
 
-## 10. The talk arc, condensed (if you want one slide)
+## 10. Talking guitar v2 — making the guitar speak *naturally*
+
+The note-triggered speech in v1 is the demo's punchline, but listening hard it
+has two recurring problems on stage.
+
+**Problem 1: the syllable boundaries are fictional.** `WordAligner` finds word
+boundaries by listening for silence gaps in the baked TTS clip — ~30 ms
+release, 15 % peak threshold — and that part works. But *syllables* are then
+just split proportionally within each word's bounds:
+`start = wordStart + total*s/n` at `WordAligner.cpp:109`. There is no phoneme
+awareness anywhere. "Au-to-mat-i-cal-ly" gets six evenly-spaced slices
+regardless of which slice actually contains the /m/ or the /æ/. A pluck rarely
+lands on a real consonant attack, and the audience hears that mush even if
+they can't name it.
+
+**Problem 2: no sustain support.** Each pluck plays a fixed-length slice and
+stops. A held chord has nowhere to go — it can't ring the vowel out, it can't
+breathe. So the speech feels grid-locked to the right hand even when phrasing
+is legato.
+
+### What "naturally" could mean — three target modes
+
+These are not variants of one knob; they're meaningfully different signal
+graphs, so each ships as its own scene (FCB1010 footswitch + distinct preset)
+so onstage selection is unambiguous.
+
+- **A. Speech-leads, guitar-colors.** The phrase plays through at natural
+  speech rate; the guitar modulates timbre, emphasis, and gating but does not
+  pace it. A held chord lets a word ring; a flurry of plucks adds rhythmic
+  accents on top of words flowing past.
+- **B. Guitar-leads, speech-follows.** The pluck still triggers a speech
+  event, but the *unit* is a real phoneme-aligned syllable. Vowels stretch
+  under sustain; consonants snap on attack.
+- **C. Fused.** No baked clip at all. Continuous source-filter synthesis where
+  the guitar's pitch and dynamics shape phoneme targets in real time — the
+  guitar's sound *is* the talking voice.
+
+Underlying DSP is shared in `src/audio/` — one `SpeechSource`, one alignment
+pipeline, one `VocoderBus` — but each mode owns its own control surface.
+
+### v1 stays exactly as it is — it's the exhibit
+
+The current note-stepped behavior is preserved bit-for-bit, renamed
+*"Speak v1 — Note-Stepped"*. The demo narrative becomes "here's the naive
+approach, here's why it falls apart, here's what we tried." `NoteSteppedTTSPlayer`,
+the proportional split in `WordAligner`, the `WordSyncSelector` — all
+untouched. A golden-audio smoke test on the v1 scene catches accidental drift
+during the v2 build. A pre-recorded backup of v1's quirks covers rooms where
+live conditions hide the problem.
+
+### Three ways to build Mode B (the first one to ship)
+
+- **B1 — Phoneme-aligned clip + vowel grain-loop *(recommended)*.** Extract
+  phoneme timings from Piper/eSpeak-NG at synthesis time. Group phonemes into
+  real syllables by sonority peaks. On pluck, play the syllable's onset
+  through its vowel; on sustain, hold the vowel by pitch-synchronous grain
+  looping (~20–40 ms grains, PSOLA-style); on release or next pluck, play out
+  the consonant coda. Smallest jump from v1's architecture; fixes both
+  problems above.
+- **B2 — Phoneme-aligned clip + phase-vocoder time-stretch on sustain.** Same
+  boundaries, but stretch the vowel itself instead of looping a grain.
+  Preserves natural vibrato and breathiness; adds 30–50 ms latency; future
+  polish pass, not v1 of v2.
+- **B3 — Concatenative phoneme synthesis (no baked clip).** A phoneme/diphone
+  database driven directly by guitar onsets and sustain. Most flexible but
+  loses prosody; high engineering and asset-pipeline risk for a conference
+  deadline.
+
+### "Bake time" is overloaded — three text sources, one pipeline
+
+Phoneme alignment happens at different moments depending on where the text
+came from. The same `PhonemeAlignedClip` data structure feeds Mode B's player
+either way — only the build moment differs.
+
+| Source | When alignment happens | Latency tolerance |
+|---|---|---|
+| Demo clips (shipped) | Offline before app start; output is `samples.wav` + `meta.json` with phoneme timings | None — already done |
+| Say textbox (user-typed) | On-demand after the user hits Say; ~150–400 ms with Piper on M-series | Imperceptible |
+| LLM / conversation scene | On-demand per streamed sentence | Hidden inside LLM response time |
+
+The conversation scene actually benefits the most: today's
+`NoteSteppedTTSPlayer` slices LLM output by envelope-guess with no
+hand-authored timings to lean on; under Mode B, LLM text gets real phoneme
+boundaries automatically.
+
+Two honest constraints. Apple TTS (`AVSpeechSynthesizer`) does not expose
+phoneme timings, so Mode B scenes lock the source to Piper; the UI surfaces
+this. Streaming-during-synthesis — start playing chunk 1 while chunk 2 is
+still rendering — is a v2 of v2; sub-100 ms LLM-to-mouth response is not a
+v1-of-v2 goal.
+
+---
+
+## 11. The talk arc, condensed (if you want one slide)
 
 > 1. **Vocoders are 80-year-old phone tech.** Modulator shapes carrier; voice
 >    shapes guitar; guitar sounds like it talks.
@@ -683,7 +776,7 @@ A few honest things to mention if asked:
 
 ---
 
-## 11. Appendix — file pointers for follow-up reading
+## 12. Appendix — file pointers for follow-up reading
 
 - Top design: [`docs/superpowers/specs/2026-05-29-while-my-guitar-gently-speaks-design.md`](../superpowers/specs/2026-05-29-while-my-guitar-gently-speaks-design.md)
 - Carousel A (5 patches): [`docs/superpowers/specs/2026-05-31-instrument-carousel-a-design.md`](../superpowers/specs/2026-05-31-instrument-carousel-a-design.md)
