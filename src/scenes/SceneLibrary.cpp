@@ -51,6 +51,12 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
 
     if (obj->hasProperty("showChat"))
         s.showChat = static_cast<bool>(obj->getProperty("showChat"));
+    if (obj->hasProperty("showVocoder"))
+        s.showVocoder = static_cast<bool>(obj->getProperty("showVocoder"));
+    if (obj->hasProperty("showSay"))
+        s.showSay = static_cast<bool>(obj->getProperty("showSay"));
+    if (obj->hasProperty("showWordReadout"))
+        s.showWordReadout = static_cast<bool>(obj->getProperty("showWordReadout"));
 
     if (obj->hasProperty("mixer")) {
         if (auto* m = obj->getProperty("mixer").getDynamicObject()) {

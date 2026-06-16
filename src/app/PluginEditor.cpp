@@ -17,9 +17,13 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       oscilloscope_(p),
       spectrumAnalyzer_(p) {
     std::fprintf(stderr, "[PluginEditor] ctor begin\n"); std::fflush(stderr);
-    setSize(720, 880);
+    // Default height is sized for the most common scene (chrome hidden) plus
+    // a reasonable middle area. Tall scenes (Scene 7 Talk Box) still fit; the
+    // user can drag the resize handle to expand. Was 880 — shrunk because
+    // per-scene + view toggles now hide most chrome by default.
+    setSize(720, 620);
     setResizable(true, true);
-    setResizeLimits(520, 556, 1800, 1200);
+    setResizeLimits(520, 420, 1800, 1200);
     addAndMakeVisible(diagnosticPanel_);
     addAndMakeVisible(sceneIndicator_);
     addAndMakeVisible(wordReadout_);
@@ -91,33 +95,53 @@ void PluginEditor::paint(juce::Graphics& g) {
 
 void PluginEditor::resized() {
     auto bounds = getLocalBounds();
-    diagnosticPanel_.setBounds(bounds.removeFromTop(62));
+
+    // --- Per-scene + view-toggle visibility decisions --------------------
+    // Resolved up-front so every layout decision below reads from one place.
+    const bool showDiag         = processor_.showDiagHeader();
+    const bool showScope        = processor_.showScope();
+    const bool showChat         = processor_.activeSceneShowsChat();
+    const bool showVocoder      = processor_.activeSceneShowsVocoder();
+    const bool showSay          = processor_.activeSceneShowsSay();
+    const bool showWordReadout  = processor_.activeSceneShowsWordReadout();
+    std::fprintf(stderr,
+        "[PluginEditor::resized] scene=%d chat=%d vocoder=%d say=%d wordReadout=%d "
+        "diag=%d scope=%d\n",
+        processor_.sceneEngine().getActiveSceneId(),
+        (int)showChat, (int)showVocoder, (int)showSay,
+        (int)showWordReadout, (int)showDiag, (int)showScope);
+    std::fflush(stderr);
+
+    diagnosticPanel_.setVisible(showDiag);
+    wordReadout_   .setVisible(showWordReadout);
+    vocoderPanel_  .setVisible(showVocoder);
+    ttsStatusBar_  .setVisible(showDiag);  // tts source pills are dev-only
+    sayPanel_      .setVisible(showSay);
+    oscilloscope_     .setVisible(showScope);
+    spectrumAnalyzer_ .setVisible(showScope);
+    if (conversationPanel_) conversationPanel_->setVisible(showChat);
+
+    // --- Top fixed band --------------------------------------------------
+    if (showDiag) diagnosticPanel_.setBounds(bounds.removeFromTop(62));
     sceneIndicator_.setBounds(bounds.removeFromTop(48));
-    wordReadout_.setBounds(bounds.removeFromTop(44));
+    if (showWordReadout) wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
-    vocoderPanel_.setBounds(bounds.removeFromTop(230));
-    ttsStatusBar_.setBounds(bounds.removeFromTop(24));
+    if (showVocoder) vocoderPanel_.setBounds(bounds.removeFromTop(170));
+    if (showDiag) ttsStatusBar_.setBounds(bounds.removeFromTop(24));
     if (midiDevicePicker_.isVisible())
         midiDevicePicker_.setBounds(bounds.removeFromTop(28));
-    sayPanel_.setBounds(bounds.removeFromTop(40));
-
-    // Reserve AI Settings toggle and ConversationPanel at the bottom.
+    if (showSay) sayPanel_.setBounds(bounds.removeFromTop(40));
     toggleAiSettingsBtn_.setBounds(bounds.removeFromTop(24));
-    const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
-    const bool showChat = processor_.activeSceneShowsChat();
-    std::fprintf(stderr, "[PluginEditor::resized] activeSceneId=%d showChat=%d\n",
-                 processor_.sceneEngine().getActiveSceneId(), (int)showChat);
-    std::fflush(stderr);
-    if (conversationPanel_) conversationPanel_->setVisible(showChat);
-    if (showChat) {
-        const int convHeight = compact ? 80 : 220;
-        auto convArea = bounds.removeFromBottom(convHeight);
-        if (conversationPanel_) conversationPanel_->setBounds(convArea);
-    }
 
-    const int remaining = bounds.getHeight();
-    oscilloscope_.setBounds(bounds.removeFromTop(remaining / 2));
-    spectrumAnalyzer_.setBounds(bounds);
+    // --- Middle area: conversation (Scene 4) > scope > empty -------------
+    if (showChat) {
+        if (conversationPanel_) conversationPanel_->setBounds(bounds);
+    } else if (showScope) {
+        const int h = bounds.getHeight();
+        oscilloscope_.setBounds(bounds.removeFromTop(h / 2));
+        spectrumAnalyzer_.setBounds(bounds);
+    }
+    // else: middle stays empty (painted by editor background).
 
     if (aiSettingsPanel_ && aiSettingsPanel_->isVisible())
         aiSettingsPanel_->setBounds(getLocalBounds().reduced(40));
@@ -155,6 +179,8 @@ bool PluginEditor::keyPressed(const juce::KeyPress& key, juce::Component*) {
             processor_.setWordSyncMode(static_cast<audio::WordSyncMode>(next));
             return true;
         }
+        case 'd': case 'D': processor_.toggleShowDiagHeader(); resized(); return true;
+        case 'o': case 'O': processor_.toggleShowScope();      resized(); return true;
         default: break;
     }
     return false;

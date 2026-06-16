@@ -81,15 +81,15 @@ void ConversationPanel::timerCallback() {
     auto t = engine_.lastTimings();
     if (t.tts.count() > 0) {
         timingsLabel_.setText(
-            "STT " + juce::String(t.stt.count()/1000.0, 1) + "s · "
-            "LLM " + juce::String(t.llm.count()/1000.0, 1) + "s · "
+            "STT " + juce::String(t.stt.count()/1000.0, 1) + "s | "
+            "LLM " + juce::String(t.llm.count()/1000.0, 1) + "s | "
             "TTS " + juce::String(t.tts.count()/1000.0, 1) + "s",
             juce::dontSendNotification);
     }
     using S = ai::ConversationEngine::State;
     recordBtn_.setButtonText(engine_.state() == S::Capturing
-                              ? juce::String("■ Stop")    // ■
-                              : juce::String("● Record"));
+                              ? juce::String("[] Stop")
+                              : juce::String("(*) Record"));
 }
 
 } // namespace guitar_dsp

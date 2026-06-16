@@ -73,7 +73,7 @@ void SpectrumAnalyzer::paint(juce::Graphics& g) {
 
     g.setColour(juce::Colour::fromRGB(120, 130, 150));
     g.setFont(juce::Font{juce::FontOptions{}.withHeight(11.0f)});
-    g.drawText("Spectrum (20 Hz – 20 kHz, log; -80 dBFS – 0 dBFS)",
+    g.drawText("Spectrum (20 Hz - 20 kHz, log; -80 dBFS - 0 dBFS)",
                bounds.reduced(8, 4),
                juce::Justification::topLeft);
 

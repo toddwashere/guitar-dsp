@@ -65,8 +65,10 @@ juce::String DiagnosticPanel::describeAudioDevice() const {
     const auto bs = processor_.getBlockSize();
     if (sr <= 0.0) return "(audio not configured)";
     const double latencyMs = 1000.0 * bs / sr;
-    return juce::String(sr, 0) + " Hz · "
-         + juce::String(bs) + " samples · "
+    // ASCII separators only — Logic's plugin window font fallback mangles
+    // U+00B7 middle-dot into 'â·' mojibake. Stay in basic ASCII.
+    return juce::String(sr, 0) + " Hz | "
+         + juce::String(bs) + " samples | "
          + juce::String(latencyMs, 1) + " ms";
 }
 
@@ -89,10 +91,10 @@ void DiagnosticPanel::paint(juce::Graphics& g) {
 
     const juce::String statusText =
         describeAudioDevice()
-      + juce::String("   ·   I:") + juce::String(inCh)
-      + (inCh >= 2 ? juce::String("→mono") : juce::String(""))
-      + juce::String(" → O:") + juce::String(outCh)
-      + juce::String("   ·   Gate ");
+      + juce::String("   |   I:") + juce::String(inCh)
+      + (inCh >= 2 ? juce::String("->mono") : juce::String(""))
+      + juce::String(" -> O:") + juce::String(outCh)
+      + juce::String("   |   Gate ");
 
     g.drawText(statusText, statusRow, juce::Justification::left);
 

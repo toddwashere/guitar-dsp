@@ -97,7 +97,7 @@ void AiSettingsPanel::refreshOllama() {
     auto models = ai::OllamaClient::listInstalledModels(http_, prefs_.ollamaEndpoint());
     int id = 100;
     for (auto& m : models)
-        modelBox_.addItem(juce::String(m) + " (local — Ollama)", id++);
+        modelBox_.addItem(juce::String(m) + " (local - Ollama)", id++);
     modelStatus_.setText(
         models.empty()
             ? juce::String("Ollama: not running (run `ollama serve`)")
@@ -154,13 +154,13 @@ void AiSettingsPanel::selectModel(std::string id) {
             modelStatus_.setText("Ollama: " + juce::String(tag) + " ready",
                                  juce::dontSendNotification);
         else
-            modelStatus_.setText("Ollama: model not pulled — run: ollama pull "
+            modelStatus_.setText("Ollama: model not pulled - run: ollama pull "
                                   + juce::String(tag),
                                  juce::dontSendNotification);
     } else {
         modelStatus_.setText(prefs_.anthropicApiKey().empty()
                                 ? juce::String("Anthropic: key missing")
-                                : juce::String("Anthropic: key set \xe2\x9c\x93"),
+                                : juce::String("Anthropic: key set OK"),
                              juce::dontSendNotification);
     }
 }

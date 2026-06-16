@@ -99,11 +99,15 @@ struct Scene {
     TtsConfig      tts{};
     CarouselConfig carousel{};
 
-    // When true, PluginEditor shows the ConversationPanel (chat UI) on
-    // this scene. Off by default: only the dedicated conversation scene
-    // should expose chat. Other scenes use the same vertical space for
-    // the oscilloscope + spectrum.
-    bool showChat = false;
+    // Per-scene editor panel visibility. Designed so the live performance
+    // UI only shows what each scene actually uses. Defaults preserve old
+    // behavior for any scene that doesn't declare these explicitly: vocoder
+    // hidden, say box + word readout visible. Each scene JSON overrides
+    // what it needs.
+    bool showChat        = false;   // Scene 4 only: big conversation panel
+    bool showVocoder     = false;   // Scenes 7, 8 (talkbox, auto-vocal)
+    bool showSay         = true;    // Most TTS scenes; off for clipBank/mic
+    bool showWordReadout = true;    // Off for scenes with no per-word stepping
 
     static Scene defaults(int id);
 };

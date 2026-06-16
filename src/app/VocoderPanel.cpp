@@ -94,13 +94,30 @@ void VocoderPanel::timerCallback() {
 
 void VocoderPanel::configureSlider(juce::Slider& s, juce::Label& l,
                                    const juce::String& name) {
-    s.setSliderStyle(juce::Slider::LinearHorizontal);
-    s.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 18);
+    // Rotary knob style — value displayed inside the knob, labels above.
+    // Tradeoff: tighter than linear horizontal sliders (~80x80 vs 28x300)
+    // and reads as a "vocoder module" instead of a settings dialog.
+    s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    s.setRotaryParameters(juce::MathConstants<float>::pi * 1.2f,
+                          juce::MathConstants<float>::pi * 2.8f,
+                          true);
+    s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 14);
+    s.setColour(juce::Slider::rotarySliderFillColourId,
+                juce::Colour::fromRGB(140, 180, 230));
+    s.setColour(juce::Slider::rotarySliderOutlineColourId,
+                juce::Colour::fromRGB(40, 44, 52));
+    s.setColour(juce::Slider::textBoxOutlineColourId,
+                juce::Colours::transparentBlack);
+    s.setColour(juce::Slider::textBoxBackgroundColourId,
+                juce::Colours::transparentBlack);
+    s.setColour(juce::Slider::textBoxTextColourId,
+                juce::Colour::fromRGB(210, 215, 225));
     addAndMakeVisible(s);
 
     l.setText(name, juce::dontSendNotification);
-    l.setFont(juce::Font{juce::FontOptions{}.withHeight(11.0f)});
+    l.setFont(juce::Font{juce::FontOptions{}.withHeight(10.5f)});
     l.setColour(juce::Label::textColourId, juce::Colour::fromRGB(150, 160, 175));
+    l.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(l);
 }
 
@@ -166,21 +183,27 @@ void VocoderPanel::resized() {
 
     constexpr int selectorH = 22;
     wordSyncSelector_.setBounds(area.removeFromBottom(selectorH));
-    constexpr int readoutH = 36;
+    constexpr int readoutH = 28;
     noteReadout_.setBounds(area.removeFromBottom(readoutH));
 
-    const int rowH = area.getHeight() / 6;
-    auto row = [&](juce::Slider& s, juce::Label& l, int labelW) {
-        auto r = area.removeFromTop(rowH);
-        l.setBounds(r.removeFromLeft(labelW));
-        s.setBounds(r);
+    // 2x3 knob grid. Each cell holds: label (12px) + rotary knob (rest).
+    const int colW   = area.getWidth() / 3;
+    const int cellH  = area.getHeight() / 2;
+    auto cell = [&](int col, int row, juce::Slider& s, juce::Label& l) {
+        auto c = juce::Rectangle<int>(area.getX() + col * colW,
+                                      area.getY() + row * cellH,
+                                      colW, cellH);
+        l.setBounds(c.removeFromTop(12));
+        s.setBounds(c.reduced(2));
     };
-    row(makeup_,         makeupLabel_,         86);
-    row(carrierNoise_,   carrierNoiseLabel_,   86);
-    row(sibilance_,      sibilanceLabel_,      86);
-    row(clarity_,        clarityLabel_,       140);  // wider — also shows "(scene 0.50)"
-    row(gateThreshold_,  gateThresholdLabel_,  86);
-    row(micGain_,        micGainLabel_,        86);
+    // Row 0: Makeup | Carrier-noise | Sibilance
+    cell(0, 0, makeup_,        makeupLabel_);
+    cell(1, 0, carrierNoise_,  carrierNoiseLabel_);
+    cell(2, 0, sibilance_,     sibilanceLabel_);
+    // Row 1: Clarity | Gate threshold | Mic gain
+    cell(0, 1, clarity_,       clarityLabel_);
+    cell(1, 1, gateThreshold_, gateThresholdLabel_);
+    cell(2, 1, micGain_,       micGainLabel_);
 }
 
 } // namespace guitar_dsp

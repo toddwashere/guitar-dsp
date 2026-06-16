@@ -3,6 +3,9 @@
   "name": "Talk Box",
   "color": "#22a2c0",
   "mixer": { "masterGainDb": -7.0, "dryWet": 0.92, "transitionMs": 30 },
+  "showVocoder": true,
+  "showSay": false,
+  "showWordReadout": false,
   "tts": {
     "source": "mic",
     "clarity": 0.0

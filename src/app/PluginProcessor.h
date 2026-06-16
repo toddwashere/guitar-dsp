@@ -137,6 +137,15 @@ public:
     bool diagNoiseCarrier()  const noexcept { return graph_.diagNoiseCarrier(); }
     bool diagSibilanceOff()  const noexcept { return graph_.diagSibilanceOff(); }
 
+    // --- Editor view toggles (message thread; no audio impact) ----------
+    // Drive whether the diagnostic header + scope/spectrum analyzers are
+    // visible. Off by default for a performance-clean UI; flip on for
+    // dev/diag. Not persisted in PluginState — they reset per session.
+    bool showDiagHeader() const noexcept { return showDiagHeader_; }
+    bool showScope()      const noexcept { return showScope_; }
+    void toggleShowDiagHeader() noexcept { showDiagHeader_ = !showDiagHeader_; }
+    void toggleShowScope()      noexcept { showScope_      = !showScope_; }
+
     // --- Live vocoder controls (message thread) -------------------------
     // Drive the VocoderPanel sliders. Forward to the AudioGraph.
     void setVocoderMakeup(float linear) noexcept { graph_.setVocoderMakeup(linear); }
@@ -194,6 +203,15 @@ public:
     // scene. Default false; only scenes with "showChat": true expose it.
     bool activeSceneShowsChat() const {
         return sceneEngine_.getActiveScene().showChat;
+    }
+    bool activeSceneShowsVocoder() const {
+        return sceneEngine_.getActiveScene().showVocoder;
+    }
+    bool activeSceneShowsSay() const {
+        return sceneEngine_.getActiveScene().showSay;
+    }
+    bool activeSceneShowsWordReadout() const {
+        return sceneEngine_.getActiveScene().showWordReadout;
     }
     // Default text for the SayPanel input box — typically the scene's
     // tts.text, so e.g. Scene 1 ("Developers!") populates the input with
@@ -272,6 +290,10 @@ private:
     std::atomic<float> inputPeak_   {0.0f};
     std::atomic<float> outputPeak_  {0.0f};
     std::atomic<float> gateGain_    {1.0f};
+
+    // View-only toggles for the editor (message thread). Don't persist.
+    bool showDiagHeader_ {false};
+    bool showScope_      {false};
     std::atomic<int>   lastInputChannels_  {0};
     std::atomic<int>   lastOutputChannels_ {0};
 
