@@ -189,6 +189,10 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         }
     });
 
+    // PhonemeExtractor uses the espeak-ng binary shipped next to Piper.
+    phonemeExtractor_ = std::make_unique<audio::PhonemeExtractor>(
+        AssetLocator::espeakBinaryPath());
+
     currentTtsClipKey_.clear();
     lastSeenSceneId_ = -1;
     graph_.ttsClipPlayer().setClip(nullptr);
@@ -430,9 +434,12 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 // players + revert the modulator so a prior note-triggered scene
                 // can't keep speaking.
                 currentTtsClipKey_.clear();
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
+                graph_.phonemeSteppedPlayer().setClip(nullptr);
                 return;
             }
 
@@ -464,9 +471,12 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 if (currentTtsClipKey_ == kMicKey) return;
                 currentTtsClipKey_ = kMicKey;
 
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Mic);
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
+                graph_.phonemeSteppedPlayer().setClip(nullptr);
                 graph_.clipBankPlayer().setBank({});
                 lastResolvedSource_.store(0, std::memory_order_relaxed);  // "none"
                 return;
@@ -499,9 +509,12 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
 
                 graph_.clipBankPlayer().setBank(std::move(clips));
                 graph_.clipBankPlayer().rewind();  // start at clip 0 on entry
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::ClipBank);
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
+                graph_.phonemeSteppedPlayer().setClip(nullptr);
                 lastResolvedSource_.store(1, std::memory_order_relaxed);  // "prebaked-ish"
                 return;
             }
@@ -517,9 +530,12 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             if (key.empty()) {
                 // No-TTS vocoder scene (e.g. clean): silence both players +
                 // revert the modulator so a prior note-triggered scene stops.
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
+                graph_.phonemeSteppedPlayer().setClip(nullptr);
                 return;
             }
 
@@ -579,10 +595,51 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             }
             lastResolvedSource_.store(resolved, std::memory_order_relaxed);
 
-            // Route the clip per the scene's tts.trigger. "note" → segment into
-            // words and feed the note-stepped player (word-per-pluck). Anything
-            // else (default "auto") → linear whole-clip playback.
-            if (cfg.trigger == "note" && clip && !clip->samples.empty()) {
+            // Read the active scene's speech config to pick v1 vs v2 player.
+            const auto speechCfg = sceneEngine_.getActiveScene().speech;
+            const bool usePhoneme =
+                (speechCfg.player == scenes::Scene::Speech::Player::PhonemeStepped);
+
+            // Route the clip per the scene's tts.trigger and speech.player.
+            // "note" + NoteStepped (v1) → word-per-pluck (unchanged v1 path).
+            // PhonemeStepped (v2) → phoneme-aligned syllable-per-onset path.
+            // Anything else (default "auto") → linear whole-clip playback.
+            if (usePhoneme && piperTtsSource_ && phonemeExtractor_
+                    && !cfg.text.empty()) {
+                // Build a phoneme-aligned clip via PhonemeAlignedClipBuilder.
+                // This re-synthesizes via Piper + espeak-ng even if a plain clip
+                // was already fetched above, because the prewarmer cache holds
+                // plain clips (no phoneme timing data). Ideally the prewarmer
+                // would use PhonemeAlignedClipBuilder directly — that's a future
+                // optimisation; for now re-synthesize is acceptable (same Piper
+                // subprocess, ~300-800 ms, happens on the message thread).
+                audio::PhonemeAlignedClipBuilder builder(
+                    piperTtsSource_.get(), phonemeExtractor_.get());
+                auto phonClip = builder.build(cfg.text);
+                if (phonClip && !phonClip->samples.empty()) {
+                    graph_.setActiveSpeechPlayer(
+                        audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
+                    graph_.phonemeSteppedPlayer().setMaxSustainMs(speechCfg.maxSustainMs);
+                    graph_.phonemeSteppedPlayer().setClip(phonClip);
+                    graph_.phonemeSteppedPlayer().setLoop(true);
+                    // Also push to v1 player so it has a clip in case the selector
+                    // ever reverts mid-scene (safe — inactive player ignores it).
+                    graph_.noteSteppedPlayer().setClip(phonClip);
+                    graph_.setModulatorSource(
+                        audio::AudioGraph::ModulatorSource::NoteStepped);
+                    graph_.ttsClipPlayer().setClip(nullptr);
+                } else {
+                    // PhonemeAlignedClipBuilder failed (e.g. Piper not installed).
+                    // Fall back to linear playback of whatever clip we have.
+                    graph_.setActiveSpeechPlayer(
+                        audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+                    graph_.setModulatorSource(
+                        audio::AudioGraph::ModulatorSource::Linear);
+                    graph_.ttsClipPlayer().setClip(clip);
+                    graph_.noteSteppedPlayer().setClip(nullptr);
+                }
+            } else if (cfg.trigger == "note" && clip && !clip->samples.empty()) {
+                // v1 word-per-pluck path (unchanged).
                 // WordAligner needs a mutable copy (TTSClipPtr is shared<const>).
                 auto seg = std::make_shared<audio::TTSClip>(*clip);
                 // Build per-word hyphenated + plain lists. clip->words labels
@@ -613,6 +670,8 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 if (anyHyphen && !plainWords.empty() && seg->syllables.empty())
                     seg->syllables = audio::WordAligner::alignSyllables(
                         seg->samples, plainWords, hyphenatedWords, seg->sampleRate);
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
                 graph_.noteSteppedPlayer().setClip(seg);
                 // Scene-activation installs default to loop=true so chant
                 // scenes (e.g. Developers!) repeat. tryInstallSayText flips
@@ -621,6 +680,8 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
                 graph_.ttsClipPlayer().setClip(nullptr);
             } else {
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
                 graph_.ttsClipPlayer().setClip(clip);  // nullptr is OK (silences)
             }

@@ -78,6 +78,13 @@ std::string AssetLocator::piperBinaryPath() {
     return fs::exists(p) ? p : std::string{};
 }
 
+std::string AssetLocator::espeakBinaryPath() {
+    const auto root = assetsRoot();
+    if (root.empty()) return {};
+    const auto p = (fs::path(root) / "piper" / "espeak-ng").string();
+    return fs::exists(p) ? p : std::string{};
+}
+
 std::string AssetLocator::defaultPiperVoicePath() {
     const auto root = assetsRoot();
     if (root.empty()) return {};

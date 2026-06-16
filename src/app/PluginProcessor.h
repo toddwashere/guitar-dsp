@@ -12,6 +12,8 @@
 #include "audio/AudioGraph.h"
 #include "audio/AppleTTSSource.h"
 #include "audio/MicCapture.h"
+#include "audio/PhonemeAlignedClipBuilder.h"
+#include "audio/PhonemeExtractor.h"
 #include "audio/PiperTTSSource.h"
 #include "audio/PrebakedTTSSource.h"
 #include "audio/TTSPrewarmer.h"
@@ -301,6 +303,7 @@ private:
     std::unique_ptr<audio::TTSPrewarmer>      applePrewarmer_;
     std::unique_ptr<audio::PiperTTSSource>    piperTtsSource_;
     std::unique_ptr<audio::TTSPrewarmer>      piperPrewarmer_;
+    std::unique_ptr<audio::PhonemeExtractor>  phonemeExtractor_;
     std::string                                currentTtsClipKey_;  // audio thread perspective (only mutated via message-thread callAsync)
     std::atomic<int> lastResolvedSource_ {0};  // 0 none,1 prebaked,2 apple,3 piper
     std::atomic<int> micRoutingSource_   {0};  // 0 none,1 sidechain,2 ch2,3 self-mod
