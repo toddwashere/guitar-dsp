@@ -105,10 +105,15 @@ void PluginEditor::resized() {
     const bool showChat         = processor_.activeSceneShowsChat();
     const bool showSay          = processor_.activeSceneShowsSay();
     const bool showWordReadout  = processor_.activeSceneShowsWordReadout();
-    // Waveform + slice overlay: only when v2 phoneme-stepped player is active
-    // AND the user hasn't hidden it ('L' key). Default ON for stage demo.
-    const bool showWaveform     = processor_.activeSceneIsPhoneme()
-                                  && processor_.showSlices();
+    // Waveform + slice overlay: v2 phoneme-stepped scenes (4, 10) always show
+    // the slice view; v1 speaking scenes (1, 2, 6, 9) show it too so the
+    // audience can see the word/syllable boundaries vs the energy-aware v2
+    // slices. 'L' key hides it on either class of scene.
+    const int  activeSceneId     = processor_.activeSceneId();
+    const bool isV1WaveformScene = (activeSceneId == 1 || activeSceneId == 2
+                                 || activeSceneId == 6 || activeSceneId == 9);
+    const bool showWaveform      = (processor_.activeSceneIsPhoneme() || isV1WaveformScene)
+                                   && processor_.showSlices();
     std::fprintf(stderr,
         "[PluginEditor::resized] scene=%d chat=%d say=%d wordReadout=%d "
         "knobs=%d scope=%d\n",

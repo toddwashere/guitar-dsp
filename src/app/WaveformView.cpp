@@ -33,10 +33,14 @@ WaveformView::~WaveformView() { stopTimer(); }
 void WaveformView::timerCallback() {
     bool changed = false;
 
-    auto newClip = processor_.lastPhonemeClip();
+    audio::TTSClipPtr newClip = processor_.activeSceneIsPhoneme()
+        ? processor_.lastPhonemeClip()
+        : processor_.lastV1Clip();
     if (newClip != clip_) { clip_ = std::move(newClip); changed = true; }
 
-    const int newSyl  = processor_.currentSyllableIndex();
+    const int newSyl = processor_.activeSceneIsPhoneme()
+        ? processor_.currentSyllableIndex()
+        : processor_.currentSpokenWordIndex();
     if (newSyl != activeSylIdx_) { activeSylIdx_ = newSyl; changed = true; }
 
     const int newPlay = processor_.currentPhonemePlaySample();
@@ -70,8 +74,31 @@ void WaveformView::paint(juce::Graphics& g) {
     }
 
     const auto&  samples    = clip_->samples;
-    const auto&  syls       = clip_->sylsV2;
+    const auto&  syls       = clip_->sylsV2;   // may be empty for v1 clips
     const float  totalSamps = static_cast<float>(samples.size());
+
+    // Lambdas that present a uniform interface over v2 syllables, v1
+    // syllables (hyphenated text), and v1 words — in priority order.
+    const bool useV2Syls   = !syls.empty();
+    const bool useV1Syls   = !useV2Syls && !clip_->syllables.empty();
+    const bool useV1Words  = !useV2Syls && !useV1Syls && !clip_->words.empty();
+
+    auto numBoundaries = [&]() -> std::size_t {
+        if (useV2Syls)  return syls.size();
+        if (useV1Syls)  return clip_->syllables.size();
+        if (useV1Words) return clip_->words.size();
+        return 0;
+    };
+    auto startSampleAt = [&](std::size_t i) -> std::size_t {
+        if (useV2Syls)  return syls[i].startSample;
+        if (useV1Syls)  return clip_->syllables[i].startSample;
+        return clip_->words[i].startSample;
+    };
+    auto endSampleAt = [&](std::size_t i) -> std::size_t {
+        if (useV2Syls)  return syls[i].endSample;
+        if (useV1Syls)  return clip_->syllables[i].endSample;
+        return clip_->words[i].endSample;
+    };
     const float  yMid       = plot.getCentreY();
     const float  yScale     = plot.getHeight() * 0.45f;
     const int    pxLeft     = static_cast<int>(plot.getX());
@@ -84,13 +111,17 @@ void WaveformView::paint(juce::Graphics& g) {
     plotGeom_.totalSamps = totalSamps;
     plotGeom_.valid      = true;
 
-    // 1. Active-syllable highlight band (under the waveform).
-    if (activeSylIdx_ >= 0 && activeSylIdx_ < static_cast<int>(syls.size())) {
-        const auto& syl = syls[static_cast<std::size_t>(activeSylIdx_)];
+    // 1. Active-segment highlight band (under the waveform).
+    //    Uses the same priority-ordered accessors so v1 and v2 clips both work.
+    if (activeSylIdx_ >= 0 &&
+        activeSylIdx_ < static_cast<int>(numBoundaries())) {
+        const auto idx = static_cast<std::size_t>(activeSylIdx_);
         const float x0 = plot.getX()
-                       + (syl.startSample / totalSamps) * plot.getWidth();
+                       + (static_cast<float>(startSampleAt(idx)) / totalSamps)
+                             * plot.getWidth();
         const float x1 = plot.getX()
-                       + (syl.endSample / totalSamps) * plot.getWidth();
+                       + (static_cast<float>(endSampleAt(idx)) / totalSamps)
+                             * plot.getWidth();
         g.setColour(kActiveBand);
         g.fillRect(juce::Rectangle<float>(x0, plot.getY(),
                                           x1 - x0, plot.getHeight()));
@@ -133,11 +164,13 @@ void WaveformView::paint(juce::Graphics& g) {
     waveform.closeSubPath();
     g.fillPath(waveform);
 
-    // 3. Syllable boundary lines — full height, ~55% alpha.
+    // 3. Segment boundary lines — full height, ~55% alpha.
+    //    Draws for v2 syllables, v1 syllables, and v1 words in priority order.
     g.setColour(kBoundary);
-    for (const auto& syl : syls) {
+    for (std::size_t i = 0; i < numBoundaries(); ++i) {
         const float x = plot.getX()
-                      + (syl.startSample / totalSamps) * plot.getWidth();
+                      + (static_cast<float>(startSampleAt(i)) / totalSamps)
+                            * plot.getWidth();
         g.drawVerticalLine(static_cast<int>(x),
                            plot.getY(), plot.getBottom());
     }

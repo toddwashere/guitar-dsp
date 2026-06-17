@@ -132,6 +132,9 @@ public:
     // WaveformView to draw the waveform + syllable boundary lines.
     // Message-thread only (single-thread write/read of shared_ptr).
     audio::TTSClipPtr lastPhonemeClip() const noexcept { return lastPhonemeClip_; }
+    // Most recent clip handed to the v1 note-stepped player. Used by
+    // WaveformView for scenes 1, 2, 6, 9. Message-thread only.
+    audio::TTSClipPtr lastV1Clip() const noexcept { return lastV1Clip_; }
     // True when the active scene uses the v2 phoneme-stepped player.
     bool activeSceneIsPhoneme() const noexcept {
         return graph_.activeSpeechPlayer() ==
@@ -340,6 +343,9 @@ private:
     // WaveformView can read it from the message thread without racing the
     // audio thread on the player's internal activeClip_/pendingClip_.
     audio::TTSClipPtr lastPhonemeClip_;
+    // Most recent clip loaded into noteSteppedPlayer_ (v1 word-per-pluck).
+    // Mirrored here for WaveformView on v1 speaking scenes.
+    audio::TTSClipPtr lastV1Clip_;
     std::atomic<int>   lastInputChannels_  {0};
     std::atomic<int>   lastOutputChannels_ {0};
 
