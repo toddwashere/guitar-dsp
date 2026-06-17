@@ -42,6 +42,7 @@ target_sources(guitar_dsp_app PRIVATE
     DiagnosticPanel.cpp
     DiagToggleBar.cpp
     Oscilloscope.cpp
+    WaveformView.cpp
     SceneIndicator.cpp
     SpectrumAnalyzer.cpp
     VocoderPanel.cpp

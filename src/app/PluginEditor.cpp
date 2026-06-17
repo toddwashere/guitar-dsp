@@ -15,7 +15,8 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       midiDevicePicker_(p),
       sayPanel_(p),
       oscilloscope_(p),
-      spectrumAnalyzer_(p) {
+      spectrumAnalyzer_(p),
+      waveformView_(p) {
     std::fprintf(stderr, "[PluginEditor] ctor begin\n"); std::fflush(stderr);
     // Default height is sized for the most common scene (chrome hidden) plus
     // a reasonable middle area. Tall scenes (Scene 7 Talk Box) still fit; the
@@ -35,6 +36,7 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(sayPanel_);
     addAndMakeVisible(oscilloscope_);
     addAndMakeVisible(spectrumAnalyzer_);
+    addAndMakeVisible(waveformView_);
 
     const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
 
@@ -103,6 +105,10 @@ void PluginEditor::resized() {
     const bool showChat         = processor_.activeSceneShowsChat();
     const bool showSay          = processor_.activeSceneShowsSay();
     const bool showWordReadout  = processor_.activeSceneShowsWordReadout();
+    // Waveform + slice overlay: only when v2 phoneme-stepped player is active
+    // AND the user hasn't hidden it ('L' key). Default ON for stage demo.
+    const bool showWaveform     = processor_.activeSceneIsPhoneme()
+                                  && processor_.showSlices();
     std::fprintf(stderr,
         "[PluginEditor::resized] scene=%d chat=%d say=%d wordReadout=%d "
         "knobs=%d scope=%d\n",
@@ -118,6 +124,7 @@ void PluginEditor::resized() {
     sayPanel_      .setVisible(showSay);
     oscilloscope_     .setVisible(showScope);
     spectrumAnalyzer_ .setVisible(showScope);
+    waveformView_     .setVisible(showWaveform);
     if (conversationPanel_) conversationPanel_->setVisible(showChat);
 
     // --- Top fixed band --------------------------------------------------
@@ -126,6 +133,13 @@ void PluginEditor::resized() {
     if (showWordReadout) wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     if (showKnobs) vocoderPanel_.setBounds(bounds.removeFromTop(170));
+
+    // Waveform + slice overlay sits BETWEEN the knobs and the scope so
+    // when v2 is active the boundary lines are the most prominent thing
+    // on screen — the audience reads "here is the clip, here is where it
+    // cuts." Off when the active scene isn't phoneme-stepped or 'L' is
+    // toggled off.
+    if (showWaveform) waveformView_.setBounds(bounds.removeFromTop(120));
 
     // Scope (oscilloscope + spectrum) sits in the top stack, right under
     // knobs and ABOVE the MIDI/say/chat row. This way toggling K or O
@@ -199,8 +213,9 @@ bool PluginEditor::keyPressed(const juce::KeyPress& key, juce::Component*) {
             processor_.setWordSyncMode(static_cast<audio::WordSyncMode>(next));
             return true;
         }
-        case 'k': case 'K': processor_.toggleShowKnobs(); resized(); return true;
-        case 'o': case 'O': processor_.toggleShowScope(); resized(); return true;
+        case 'k': case 'K': processor_.toggleShowKnobs();  resized(); return true;
+        case 'o': case 'O': processor_.toggleShowScope();  resized(); return true;
+        case 'l': case 'L': processor_.toggleShowSlices(); resized(); return true;
         default: break;
     }
     return false;
