@@ -123,6 +123,15 @@ public:
     int currentSyllableCount() const noexcept {
         return static_cast<int>(graph_.phonemeSteppedPlayer().syllableCount());
     }
+    // Latest sample position into the active v2 clip (-1 idle).
+    // Drives WaveformView's playhead.
+    int currentPhonemePlaySample() const noexcept {
+        return graph_.phonemeSteppedPlayer().currentPlaySample();
+    }
+    // Most recent clip handed to the phoneme-stepped player. Used by
+    // WaveformView to draw the waveform + syllable boundary lines.
+    // Message-thread only (single-thread write/read of shared_ptr).
+    audio::TTSClipPtr lastPhonemeClip() const noexcept { return lastPhonemeClip_; }
     // True when the active scene uses the v2 phoneme-stepped player.
     bool activeSceneIsPhoneme() const noexcept {
         return graph_.activeSpeechPlayer() ==
@@ -164,10 +173,12 @@ public:
     // Scope (oscilloscope + spectrum): default OFF.
     //
     // Toggles aren't persisted across sessions.
-    bool showKnobs() const noexcept { return showKnobs_; }
-    bool showScope() const noexcept { return showScope_; }
-    void toggleShowKnobs() noexcept { showKnobs_ = !showKnobs_; }
-    void toggleShowScope() noexcept { showScope_ = !showScope_; }
+    bool showKnobs()  const noexcept { return showKnobs_; }
+    bool showScope()  const noexcept { return showScope_; }
+    bool showSlices() const noexcept { return showSlices_; }
+    void toggleShowKnobs()  noexcept { showKnobs_  = !showKnobs_;  }
+    void toggleShowScope()  noexcept { showScope_  = !showScope_;  }
+    void toggleShowSlices() noexcept { showSlices_ = !showSlices_; }
 
     // --- Live vocoder controls (message thread) -------------------------
     // Drive the VocoderPanel sliders. Forward to the AudioGraph.
@@ -315,8 +326,14 @@ private:
     std::atomic<float> gateGain_    {1.0f};
 
     // View-only toggles for the editor (message thread). Don't persist.
-    bool showKnobs_ {true};
-    bool showScope_ {false};
+    bool showKnobs_  {true};
+    bool showScope_  {false};
+    bool showSlices_ {true};
+
+    // Most recent clip loaded into phonemeSteppedPlayer_. Cached here so
+    // WaveformView can read it from the message thread without racing the
+    // audio thread on the player's internal activeClip_/pendingClip_.
+    audio::TTSClipPtr lastPhonemeClip_;
     std::atomic<int>   lastInputChannels_  {0};
     std::atomic<int>   lastOutputChannels_ {0};
 

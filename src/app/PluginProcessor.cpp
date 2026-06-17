@@ -447,6 +447,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
                 graph_.phonemeSteppedPlayer().setClip(nullptr);
+                lastPhonemeClip_.reset();
                 return;
             }
 
@@ -484,6 +485,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
                 graph_.phonemeSteppedPlayer().setClip(nullptr);
+                lastPhonemeClip_.reset();
                 graph_.clipBankPlayer().setBank({});
                 lastResolvedSource_.store(0, std::memory_order_relaxed);  // "none"
                 return;
@@ -522,6 +524,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
                 graph_.phonemeSteppedPlayer().setClip(nullptr);
+                lastPhonemeClip_.reset();
                 lastResolvedSource_.store(1, std::memory_order_relaxed);  // "prebaked-ish"
                 return;
             }
@@ -543,6 +546,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
                 graph_.phonemeSteppedPlayer().setClip(nullptr);
+                lastPhonemeClip_.reset();
                 return;
             }
 
@@ -628,6 +632,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                         audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
                     graph_.phonemeSteppedPlayer().setMaxSustainMs(speechCfg.maxSustainMs);
                     graph_.phonemeSteppedPlayer().setClip(phonClip);
+                    lastPhonemeClip_ = phonClip;
                     graph_.phonemeSteppedPlayer().setLoop(true);
                     // Also push to v1 player so it has a clip in case the selector
                     // ever reverts mid-scene (safe — inactive player ignores it).

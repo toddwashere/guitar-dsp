@@ -164,3 +164,32 @@ TEST_CASE("PhonemeSteppedTTSPlayer: process() is allocation/lock-free",
     rts.unmarkCurrentThreadAsRealtime();
     REQUIRE(rts.violations() == 0);
 }
+
+TEST_CASE("PhonemeSteppedTTSPlayer: currentPlaySample published for the visualizer",
+          "[audio][phstep][visualizer]") {
+    PhonemeSteppedTTSPlayer p;
+    p.prepare(48000.0, 256);
+    p.setClip(threeSylClip());     // syls at 0-3000, 3000-6000, 6000-9000
+
+    // Idle: nothing playing yet.
+    REQUIRE(p.currentPlaySample() == -1);
+
+    // First pluck → Attack on syllable 0. After ~800 samples consumed,
+    // playhead should be inside syllable 0's range and > 0.
+    std::vector<float> out;
+    runBlock(p, 800, true, out);
+    REQUIRE(p.currentState() == PhonemeSteppedTTSPlayer::State::Attack);
+    REQUIRE(p.currentPlaySample() >= 0);
+    REQUIRE(p.currentPlaySample() < 3000);
+
+    // Hold long enough to enter Sustain — playhead should report the
+    // vowel-nucleus sample of syllable 0 (parked, not the grain offset).
+    runBlock(p, 4000, true, out);
+    REQUIRE(p.currentState() == PhonemeSteppedTTSPlayer::State::Sustain);
+    REQUIRE(p.currentPlaySample() == 1500);  // (0 + 3000) / 2 per threeSylClip()
+
+    // Rewind → playhead returns to -1.
+    p.rewind();
+    runBlock(p, 100, false, out);
+    REQUIRE(p.currentPlaySample() == -1);
+}

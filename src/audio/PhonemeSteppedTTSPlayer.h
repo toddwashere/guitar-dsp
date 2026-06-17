@@ -34,6 +34,13 @@ public:
     int currentSyllableIndex() const noexcept {
         return currentSylIdx_.load(std::memory_order_relaxed);
     }
+    // Latest sample position into the active clip (-1 when idle).
+    // Published once per process block; safe to read from the message thread.
+    // During Sustain (grain loop), reports the syllable's vowel-nucleus
+    // sample — the playhead "parks" at the vowel while the grain loops.
+    int currentPlaySample() const noexcept {
+        return currentPlaySample_.load(std::memory_order_relaxed);
+    }
     // Number of syllables in the currently active clip (0 if no clip or empty).
     // Safe from the message thread — the shared_ptr count is stable once set.
     std::size_t syllableCount() const noexcept {
@@ -66,6 +73,7 @@ private:
 
     std::atomic<int>  currentSylIdx_{-1};
     std::atomic<int>  currentState_{0};
+    std::atomic<int>  currentPlaySample_{-1};
     std::atomic<bool> loop_{true};
 };
 

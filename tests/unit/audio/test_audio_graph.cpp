@@ -446,3 +446,50 @@ TEST_CASE("AudioGraph: pitchSinging on with TTS modulator -> wet path peak at gu
     REQUIRE(goertzel(220.0f) > 2.0f * goertzel(313.0f));
 }
 
+TEST_CASE("AudioGraph: rewindSpoken resets the phoneme-stepped player when v2 is active",
+          "[audio][graph][rewind][regression]") {
+    using guitar_dsp::audio::TTSClip;
+    using guitar_dsp::audio::SyllableSpan;
+    using guitar_dsp::audio::PhonemeSteppedTTSPlayer;
+
+    AudioGraph g;
+    g.prepare(48000.0, 256);
+    g.setActiveSpeechPlayer(AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
+
+    auto clip = std::make_shared<TTSClip>();
+    clip->sampleRate = 48000.0;
+    clip->samples.assign(9000, 0.0f);
+    for (int i = 0; i < 9000; ++i)
+        clip->samples[i] = 0.5f * std::sin(2.0f * 3.14159265f * 220.0f * i / 48000.0f);
+    auto mk = [](std::size_t s, std::size_t e) {
+        SyllableSpan sp;
+        sp.startSample = s; sp.endSample = e;
+        sp.vowelNucleusSample  = (s + e) / 2;
+        sp.attackEndSample     = s + (e - s) / 3;
+        sp.codaStartSample     = s + 2 * (e - s) / 3;
+        sp.nucleusIsFricative  = false;
+        return sp;
+    };
+    clip->sylsV2 = { mk(0, 3000), mk(3000, 6000), mk(6000, 9000) };
+
+    auto& php = g.phonemeSteppedPlayer();
+    php.setClip(clip);
+
+    // Drive the phoneme player past syllable 0 with a synthetic pluck.
+    std::vector<float> onset(256, 0.0f), out(256, 0.0f);
+    for (std::size_t i = 0; i < 240; ++i) onset[i] = 0.8f;
+    php.process(onset.data(), out.data(), out.size());
+    REQUIRE(php.currentSyllableIndex() == 0);
+
+    // Now rewind via AudioGraph's API (the path the Rewind pill uses).
+    g.rewindSpoken();
+
+    // Consume the pending flag with one quiet process block.
+    std::fill(onset.begin(), onset.end(), 0.0f);
+    php.process(onset.data(), out.data(), out.size());
+
+    // Pre-fix: stayed at 0 because AudioGraph::rewindSpoken() only rewound
+    // the v1 note-stepped player. Post-fix: back to idle (-1).
+    REQUIRE(php.currentSyllableIndex() == -1);
+}
+

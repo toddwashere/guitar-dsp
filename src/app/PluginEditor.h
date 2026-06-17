@@ -14,6 +14,7 @@
 #include "SpectrumAnalyzer.h"
 #include "TtsStatusBar.h"
 #include "VocoderPanel.h"
+#include "WaveformView.h"
 #include "WordReadout.h"
 
 namespace guitar_dsp {
@@ -52,6 +53,7 @@ private:
     SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;
     SpectrumAnalyzer   spectrumAnalyzer_;
+    WaveformView       waveformView_;
 
     std::unique_ptr<ConversationPanel> conversationPanel_;
     std::unique_ptr<AiSettingsPanel>   aiSettingsPanel_;
