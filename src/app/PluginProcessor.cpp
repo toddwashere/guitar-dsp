@@ -295,13 +295,44 @@ std::vector<std::string> PluginProcessor::activeSceneWords() const {
 
 void PluginProcessor::enqueueSayText(const std::string& text,
                                       const std::string& voiceId) {
-    if (text.empty() || !appleTtsSource_ || !applePrewarmer_) return;
+    if (text.empty()) return;
+    // On phoneme-stepped scenes, the install path will build the clip
+    // synchronously via Piper + PhonemeAlignedClipBuilder (no prewarmer
+    // queue exists for that path yet). Don't waste an Apple synthesis.
+    if (activeSceneIsPhoneme()) return;
+    if (!appleTtsSource_ || !applePrewarmer_) return;
     if (!voiceId.empty()) appleTtsSource_->setVoice(voiceId);
     applePrewarmer_->enqueue(text);
 }
 
 int PluginProcessor::tryInstallSayText(const std::string& text) {
-    if (text.empty() || !applePrewarmer_) return -1;
+    if (text.empty()) return -1;
+
+    // Phoneme-stepped scenes: build the phoneme-aligned clip synchronously
+    // via Piper. This blocks the message thread for ~300-800 ms (Piper
+    // subprocess), which is acceptable for a user-triggered Say action.
+    if (activeSceneIsPhoneme()
+        && piperTtsSource_ && phonemeExtractor_) {
+        audio::PhonemeAlignedClipBuilder builder(
+            piperTtsSource_.get(), phonemeExtractor_.get());
+        auto phonClip = builder.build(text);
+        if (!phonClip || phonClip->samples.empty()) return -1;
+        currentTtsClipKey_.clear();
+        currentSayText_ = text;
+        graph_.setActiveSpeechPlayer(
+            audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
+        graph_.phonemeSteppedPlayer().setClip(phonClip);
+        // Say is one-shot, like the existing v1 Say flow.
+        graph_.phonemeSteppedPlayer().setLoop(false);
+        lastPhonemeClip_ = phonClip;
+        graph_.setModulatorSource(
+            audio::AudioGraph::ModulatorSource::NoteStepped);
+        graph_.ttsClipPlayer().setClip(nullptr);
+        graph_.noteSteppedPlayer().setClip(phonClip);   // safety; inactive
+        return 1;
+    }
+
+    if (!applePrewarmer_) return -1;
     if (!applePrewarmer_->isCached(text)) return 0;
     auto clip = applePrewarmer_->takeIfReady(text);
     if (!clip) return -1;
