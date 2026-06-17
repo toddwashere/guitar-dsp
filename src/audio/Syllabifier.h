@@ -72,4 +72,14 @@ bool removeBoundary(std::vector<SyllableSpan>& syls,
                     const std::vector<float>& audio,
                     double sampleRate);
 
+// Snaps each interior boundary in `syls` to the local RMS minimum between
+// the two flanking vowel nuclei. Re-runs energy-anchor refinement on every
+// affected syllable so the per-syllable anchors stay coherent.
+//
+// Must run AFTER refineAnchorByEnergy (so vowelNucleusSample reflects the
+// actual peak, not the linearly-rescaled phoneme position).
+void snapBoundariesToEnergyValleys(std::vector<SyllableSpan>& syls,
+                                   const std::vector<float>& audio,
+                                   double sampleRate);
+
 } // namespace guitar_dsp::audio

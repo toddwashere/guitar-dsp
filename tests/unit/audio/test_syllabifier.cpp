@@ -7,6 +7,7 @@ using guitar_dsp::audio::Phoneme;
 using guitar_dsp::audio::moveBoundary;
 using guitar_dsp::audio::addBoundary;
 using guitar_dsp::audio::removeBoundary;
+using guitar_dsp::audio::snapBoundariesToEnergyValleys;
 
 namespace {
 Phoneme make(const std::string& l, Phoneme::Type t,
@@ -178,4 +179,68 @@ TEST_CASE("removeBoundary: rejects boundary 0 or last", "[audio][slice]") {
     REQUIRE_FALSE(removeBoundary(syls, 0,          audio, 48000.0));
     REQUIRE_FALSE(removeBoundary(syls, syls.size(), audio, 48000.0));
     REQUIRE(syls.size() == 2);  // unchanged
+}
+
+// ---------------------------------------------------------------------------
+// snapBoundariesToEnergyValleys
+// ---------------------------------------------------------------------------
+
+TEST_CASE("snapBoundariesToEnergyValleys: moves boundary to local minimum",
+          "[audio][slice]") {
+    // Build a 4000-sample audio with two energy peaks centered at 1000 and
+    // 3000, with a clear valley (silence) between 1400 and 2600. Syllables
+    // are initialized with the boundary at 1500 (already on the edge of the
+    // valley) — the function should snap it to the lowest-RMS point in the
+    // search window [nucleus+safety, nucleus-safety] = [1240, 2760).
+    //
+    // After snapping, the boundary must lie within the silent valley region
+    // (1400–2600) and both syllables must share the new boundary position.
+    std::vector<float> audio(4000, 0.0f);
+    // Bell-shaped envelope around each center using a sine half-wave.
+    auto bell = [&](std::size_t center, std::size_t halfWidth, float amp) {
+        const std::size_t lo = (center > halfWidth) ? center - halfWidth : 0;
+        const std::size_t hi = std::min(center + halfWidth, audio.size());
+        for (std::size_t i = lo; i < hi; ++i) {
+            const float t = float(i - lo) / float(hi - lo);
+            audio[i] += amp * std::sin(t * 3.14159265f);
+        }
+    };
+    bell(1000, 400, 0.5f);
+    bell(3000, 400, 0.5f);
+    // Peaks: [600,1400) and [2600,3400). Valley (zeros): [1400, 2600).
+
+    std::vector<SyllableSpan> syls = {
+        { {}, 0,    1500, 1000, 800,  1200, false },
+        { {}, 1500, 4000, 3000, 2800, 3200, false },
+    };
+    snapBoundariesToEnergyValleys(syls, audio, 48000.0);
+    // Boundary should have moved into the silent valley [1400, 2600).
+    REQUIRE(syls[0].endSample   >= 1400);
+    REQUIRE(syls[0].endSample   <  2600);
+    REQUIRE(syls[1].startSample == syls[0].endSample);
+}
+
+TEST_CASE("snapBoundariesToEnergyValleys: no-op when only one syllable",
+          "[audio][slice]") {
+    std::vector<SyllableSpan> syls = {
+        { {}, 0, 2000, 1000, 800, 1200, false },
+    };
+    std::vector<float> audio(2000, 0.5f);
+    snapBoundariesToEnergyValleys(syls, audio, 48000.0);
+    REQUIRE(syls.size() == 1);
+    REQUIRE(syls[0].endSample == 2000);
+}
+
+TEST_CASE("snapBoundariesToEnergyValleys: skips boundaries between adjacent vowel nuclei",
+          "[audio][slice]") {
+    // Vowel nuclei at 1000 and 1100 with safety 240 — window is empty,
+    // boundary at 1050 must be left unchanged.
+    std::vector<SyllableSpan> syls = {
+        { {}, 0,    1050, 1000, 800,  1000, false },
+        { {}, 1050, 2200, 1100, 1100, 1300, false },
+    };
+    std::vector<float> audio(2200, 0.5f);
+    snapBoundariesToEnergyValleys(syls, audio, 48000.0);
+    REQUIRE(syls[0].endSample   == 1050);
+    REQUIRE(syls[1].startSample == 1050);
 }

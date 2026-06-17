@@ -61,6 +61,12 @@ TTSClipPtr PhonemeAlignedClipBuilder::build(const std::string& text) const {
         refineAnchorByEnergy(syl, clip->samples, clip->sampleRate);
     }
 
+    // Snap each interior boundary to the local RMS minimum between the two
+    // flanking vowel nuclei. This moves cuts from vowel peaks (wrong) into
+    // the quiet gaps between syllables (correct). Re-refines all anchors
+    // afterward so attackEnd/codaStart stay coherent with the new bounds.
+    snapBoundariesToEnergyValleys(syllables, clip->samples, clip->sampleRate);
+
     // Build a new clip with the existing audio + phoneme + syllable maps.
     auto out = std::make_shared<TTSClip>(*clip);
     out->phonemes = std::move(rescaled);

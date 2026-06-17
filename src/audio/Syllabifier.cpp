@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace guitar_dsp::audio {
 
@@ -248,6 +249,59 @@ bool removeBoundary(std::vector<SyllableSpan>& syls,
 
     syls.erase(syls.begin() + static_cast<std::ptrdiff_t>(boundaryIndex));
     return true;
+}
+
+void snapBoundariesToEnergyValleys(std::vector<SyllableSpan>& syls,
+                                   const std::vector<float>& audio,
+                                   double sampleRate) {
+    if (syls.size() < 2) return;
+
+    const std::size_t winSamples =
+        static_cast<std::size_t>(0.005 * sampleRate);  // 5 ms RMS window
+    const std::size_t stride =
+        std::max(std::size_t(1), static_cast<std::size_t>(0.001 * sampleRate));
+    const std::size_t hardSafety =
+        static_cast<std::size_t>(0.005 * sampleRate);  // 5 ms = 240 @ 48 kHz
+
+    auto rmsAt = [&](std::size_t center) -> float {
+        const std::size_t lo = (center > winSamples / 2) ? center - winSamples / 2 : 0;
+        const std::size_t hi = std::min(center + winSamples / 2, audio.size());
+        if (hi <= lo) return 0.0f;
+        double sumSq = 0.0;
+        for (std::size_t i = lo; i < hi; ++i) sumSq += double(audio[i]) * audio[i];
+        return static_cast<float>(std::sqrt(sumSq / double(hi - lo)));
+    };
+
+    for (std::size_t i = 1; i < syls.size(); ++i) {
+        const auto& left  = syls[i - 1];
+        const auto& right = syls[i];
+        if (right.endSample <= left.startSample) continue;  // degenerate
+
+        // Safety = max(hardSafety, 10 % of smaller syllable's length).
+        const std::size_t leftLen  = left.endSample  - left.startSample;
+        const std::size_t rightLen = right.endSample - right.startSample;
+        const std::size_t smaller  = std::min(leftLen, rightLen);
+        const std::size_t safety   = std::max(hardSafety, smaller / 10);
+
+        if (left.vowelNucleusSample + safety >= right.vowelNucleusSample)
+            continue;  // window empty — leave boundary
+
+        const std::size_t lo = left.vowelNucleusSample  + safety;
+        const std::size_t hi = right.vowelNucleusSample - safety;
+
+        std::size_t bestIdx = (lo + hi) / 2;
+        float bestVal = std::numeric_limits<float>::max();
+        for (std::size_t s = lo; s < hi; s += stride) {
+            const float v = rmsAt(s);
+            if (v < bestVal) { bestVal = v; bestIdx = s; }
+        }
+
+        syls[i - 1].endSample  = bestIdx;
+        syls[i].startSample    = bestIdx;
+    }
+
+    // Re-refine all anchors so attackEnd/codaStart match the new bounds.
+    for (auto& s : syls) refineAnchorByEnergy(s, audio, sampleRate);
 }
 
 } // namespace guitar_dsp::audio
