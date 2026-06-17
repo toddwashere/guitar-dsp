@@ -569,10 +569,25 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             currentTtsClipKey_ = key;
 
             if (key.empty()) {
-                // No-TTS vocoder scene (e.g. clean): silence both players +
-                // revert the modulator so a prior note-triggered scene stops.
-                graph_.setActiveSpeechPlayer(
-                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+                // No-TTS vocoder scene (e.g. clean), OR a phoneme-stepped scene
+                // whose text hasn't been set yet (e.g. Conversation scene before
+                // the first LLM reply). In both cases silence the clip players +
+                // revert the modulator.
+                // Pre-emptively set the active player based on the scene's
+                // speech.player declaration so UI affordances (Ph pill,
+                // WaveformView, syllable readout) reflect intent immediately —
+                // even before a clip has been built.
+                const auto speechCfgEmpty = sceneEngine_.getActiveScene().speech;
+                const bool usePhonemeEmpty =
+                    (speechCfgEmpty.player == scenes::Scene::Speech::Player::PhonemeStepped);
+                if (usePhonemeEmpty) {
+                    graph_.setActiveSpeechPlayer(
+                        audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
+                    graph_.phonemeSteppedPlayer().setMaxSustainMs(speechCfgEmpty.maxSustainMs);
+                } else {
+                    graph_.setActiveSpeechPlayer(
+                        audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+                }
                 graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
                 graph_.ttsClipPlayer().setClip(nullptr);
                 graph_.noteSteppedPlayer().setClip(nullptr);
@@ -642,6 +657,23 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             const bool usePhoneme =
                 (speechCfg.player == scenes::Scene::Speech::Player::PhonemeStepped);
 
+            // Pre-emptively switch the active player so UI affordances (Ph pill,
+            // WaveformView, syllable readout) reflect the scene's intent even
+            // before a clip is built. The clip-building branches below may
+            // rebuild this or fall back; in the empty-text case (e.g. the
+            // Conversation scene where the LLM hasn't replied yet), this is the
+            // only place it gets set (the key.empty() branch above handles the
+            // truly-empty-text path, so we arrive here only when cfg.text is
+            // non-empty; still, set it unconditionally for robustness).
+            if (usePhoneme) {
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
+                graph_.phonemeSteppedPlayer().setMaxSustainMs(speechCfg.maxSustainMs);
+            } else {
+                graph_.setActiveSpeechPlayer(
+                    audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+            }
+
             // Route the clip per the scene's tts.trigger and speech.player.
             // "note" + NoteStepped (v1) → word-per-pluck (unchanged v1 path).
             // PhonemeStepped (v2) → phoneme-aligned syllable-per-onset path.
@@ -659,9 +691,8 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                     piperTtsSource_.get(), phonemeExtractor_.get());
                 auto phonClip = builder.build(cfg.text);
                 if (phonClip && !phonClip->samples.empty()) {
-                    graph_.setActiveSpeechPlayer(
-                        audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
-                    graph_.phonemeSteppedPlayer().setMaxSustainMs(speechCfg.maxSustainMs);
+                    // setActiveSpeechPlayer + setMaxSustainMs already called
+                    // in the pre-emptive block above; just install the clip.
                     graph_.phonemeSteppedPlayer().setClip(phonClip);
                     lastPhonemeClip_ = phonClip;
                     graph_.phonemeSteppedPlayer().setLoop(true);
