@@ -67,6 +67,24 @@ VocoderPanel::VocoderPanel(PluginProcessor& p)
 VocoderPanel::~VocoderPanel() { stopTimer(); }
 
 void VocoderPanel::timerCallback() {
+    // Sync sliders to processor values so that a scene activation (which writes
+    // new knob values directly into the processor) is reflected on-screen.
+    // dontSendNotification prevents the onValueChange lambda from re-firing and
+    // pushing the value back through to the audio thread needlessly.
+    const auto syncSlider = [](juce::Slider& s, double expected,
+                                double epsilon = 0.001) {
+        if (std::abs(s.getValue() - expected) > epsilon)
+            s.setValue(expected, juce::dontSendNotification);
+    };
+
+    syncSlider(makeup_,        processor_.vocoderMakeup());
+    syncSlider(carrierNoise_,  processor_.vocoderCarrierNoise());
+    syncSlider(sibilance_,     processor_.vocoderSibilance());
+    syncSlider(clarity_,       processor_.vocoderClarity());
+    syncSlider(gateThreshold_, processor_.noiseGateThresholdDb());
+    syncSlider(micGain_,
+               20.0 * std::log10(juce::jmax(0.001f, processor_.micCaptureGain())));
+
     // Clarity label is intentionally just "Clarity" — the per-scene authored
     // default was previously appended (" (scene 0.50)") but it bloated the
     // column width in the knob grid and the operator can see the live slider
