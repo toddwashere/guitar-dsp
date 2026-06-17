@@ -22,6 +22,7 @@ void PhonemeSteppedTTSPlayer::reset() {
     sustainSamplesPlayed_ = 0;
     currentSylIdx_.store(-1, std::memory_order_relaxed);
     currentState_.store(0, std::memory_order_relaxed);
+    currentPlaySample_.store(-1, std::memory_order_relaxed);
 }
 
 void PhonemeSteppedTTSPlayer::setClip(TTSClipPtr c) {
@@ -132,6 +133,20 @@ void PhonemeSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
         }
         modOut[i] = s;
     }
+
+    // Publish the end-of-block play position so the UI (30 Hz polling) can
+    // draw a playhead inside the active syllable. During Sustain the grain
+    // loop bounces around the vowel nucleus — we park the visible playhead
+    // there because the audience-facing message is "I'm holding this vowel,"
+    // not the grain offset.
+    int published = -1;
+    if (haveClip && state_ != State::Idle && sylIdx_ >= 0) {
+        if (state_ == State::Sustain)
+            published = static_cast<int>(activeClip_->sylsV2[sylIdx_].vowelNucleusSample);
+        else
+            published = static_cast<int>(playPos_);
+    }
+    currentPlaySample_.store(published, std::memory_order_relaxed);
 }
 
 } // namespace guitar_dsp::audio
