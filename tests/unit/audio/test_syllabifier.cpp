@@ -2,7 +2,11 @@
 #include "audio/Syllabifier.h"
 
 using guitar_dsp::audio::Syllabifier;
+using guitar_dsp::audio::SyllableSpan;
 using guitar_dsp::audio::Phoneme;
+using guitar_dsp::audio::moveBoundary;
+using guitar_dsp::audio::addBoundary;
+using guitar_dsp::audio::removeBoundary;
 
 namespace {
 Phoneme make(const std::string& l, Phoneme::Type t,
@@ -76,4 +80,102 @@ TEST_CASE("Syllabifier: silence ends a syllable", "[audio][syl]") {
     REQUIRE(s.size() == 2);
     REQUIRE(s[0].endSample <= 1500);
     REQUIRE(s[1].startSample >= 2000);
+}
+
+// ---------------------------------------------------------------------------
+// Slice-editing free functions
+// ---------------------------------------------------------------------------
+
+TEST_CASE("moveBoundary: clamps within neighbor bounds + min width",
+          "[audio][slice]") {
+    std::vector<SyllableSpan> syls = {
+        { /*phonemeIndices*/ {}, 0,    1000, 500,  300,  700,  false },
+        { {},                   1000, 2000, 1500, 1300, 1700, false },
+    };
+    std::vector<float> audio(2000, 0.5f);  // flat — anchor refinement is moot
+
+    const auto newPos = moveBoundary(syls, 1, 1200, audio, 48000.0, 100);
+    REQUIRE(newPos == 1200);
+    REQUIRE(syls[0].endSample   == 1200);
+    REQUIRE(syls[1].startSample == 1200);
+
+    // Too close to syls[1].endSample (min width 100); should clamp to 1900.
+    const auto blockedHigh = moveBoundary(syls, 1, 1950, audio, 48000.0, 100);
+    REQUIRE(blockedHigh == 1900);  // clamped to 2000 - 100
+    REQUIRE(syls[0].endSample   == 1900);
+    REQUIRE(syls[1].startSample == 1900);
+}
+
+TEST_CASE("moveBoundary: boundary 0 and last are non-editable",
+          "[audio][slice]") {
+    std::vector<SyllableSpan> syls = {
+        { {}, 0,    1000, 500,  300,  700,  false },
+        { {}, 1000, 2000, 1500, 1300, 1700, false },
+    };
+    std::vector<float> audio(2000, 0.5f);
+
+    // Boundary 0 — should return clip start (0), not crash.
+    const auto r0 = moveBoundary(syls, 0, 500, audio, 48000.0, 100);
+    REQUIRE(r0 == 0);
+    REQUIRE(syls[0].startSample == 0);  // unchanged
+
+    // Boundary syls.size() — clip end, unchanged.
+    const auto rN = moveBoundary(syls, syls.size(), 1500, audio, 48000.0, 100);
+    REQUIRE(rN == 2000);
+    REQUIRE(syls.back().endSample == 2000);  // unchanged
+}
+
+TEST_CASE("addBoundary: splits a syllable into two", "[audio][slice]") {
+    std::vector<SyllableSpan> syls = {
+        { {}, 0, 2000, 1000, 500, 1500, false },
+    };
+    std::vector<float> audio(2000, 0.5f);
+
+    REQUIRE(addBoundary(syls, 1000, audio, 48000.0, 100));
+    REQUIRE(syls.size() == 2);
+    REQUIRE(syls[0].startSample == 0);
+    REQUIRE(syls[0].endSample   == 1000);
+    REQUIRE(syls[1].startSample == 1000);
+    REQUIRE(syls[1].endSample   == 2000);
+}
+
+TEST_CASE("addBoundary: rejects insertion too close to existing boundary",
+          "[audio][slice]") {
+    std::vector<SyllableSpan> syls = {
+        { {}, 0,    1000, 500,  300,  700,  false },
+        { {}, 1000, 2000, 1500, 1300, 1700, false },
+    };
+    std::vector<float> audio(2000, 0.5f);
+
+    // 1050 is only 50 samples from the boundary at 1000 — below minWidth 100.
+    REQUIRE_FALSE(addBoundary(syls, 1050, audio, 48000.0, 100));
+    REQUIRE(syls.size() == 2);  // unchanged
+}
+
+TEST_CASE("removeBoundary: merges adjacent syllables", "[audio][slice]") {
+    std::vector<SyllableSpan> syls = {
+        { {}, 0,    1000, 500,  300,  700,  false },
+        { {}, 1000, 2000, 1500, 1300, 1700, false },
+        { {}, 2000, 3000, 2500, 2300, 2700, false },
+    };
+    std::vector<float> audio(3000, 0.5f);
+
+    REQUIRE(removeBoundary(syls, 1, audio, 48000.0));
+    REQUIRE(syls.size() == 2);
+    REQUIRE(syls[0].startSample == 0);
+    REQUIRE(syls[0].endSample   == 2000);   // merged
+    REQUIRE(syls[1].startSample == 2000);
+    REQUIRE(syls[1].endSample   == 3000);   // unchanged
+}
+
+TEST_CASE("removeBoundary: rejects boundary 0 or last", "[audio][slice]") {
+    std::vector<SyllableSpan> syls = {
+        { {}, 0,    1000, 500,  300,  700,  false },
+        { {}, 1000, 2000, 1500, 1300, 1700, false },
+    };
+    std::vector<float> audio(2000, 0.5f);
+
+    REQUIRE_FALSE(removeBoundary(syls, 0,          audio, 48000.0));
+    REQUIRE_FALSE(removeBoundary(syls, syls.size(), audio, 48000.0));
+    REQUIRE(syls.size() == 2);  // unchanged
 }

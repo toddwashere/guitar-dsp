@@ -1,6 +1,7 @@
 #include "WaveformView.h"
 
 #include "PluginProcessor.h"
+#include "audio/Syllabifier.h"
 
 #include <algorithm>
 #include <cmath>
@@ -77,6 +78,12 @@ void WaveformView::paint(juce::Graphics& g) {
     const int    pxRight    = static_cast<int>(plot.getRight());
     const int    pxWidth    = std::max(1, pxRight - pxLeft);
 
+    // Cache geometry for mouse handlers.
+    plotGeom_.xLeft      = plot.getX();
+    plotGeom_.xRight     = plot.getRight();
+    plotGeom_.totalSamps = totalSamps;
+    plotGeom_.valid      = true;
+
     // 1. Active-syllable highlight band (under the waveform).
     if (activeSylIdx_ >= 0 && activeSylIdx_ < static_cast<int>(syls.size())) {
         const auto& syl = syls[static_cast<std::size_t>(activeSylIdx_)];
@@ -143,6 +150,124 @@ void WaveformView::paint(juce::Graphics& g) {
         g.setColour(kPlayhead);
         g.fillRect(juce::Rectangle<float>(x - 1.0f, plot.getY(),
                                           2.0f, plot.getHeight()));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Coordinate helpers
+// ---------------------------------------------------------------------------
+
+float WaveformView::boundaryToPx(std::size_t sampleIdx) const {
+    if (!plotGeom_.valid || plotGeom_.totalSamps <= 0.0f) return -1.0f;
+    return plotGeom_.xLeft +
+        (plotGeom_.xRight - plotGeom_.xLeft) *
+        static_cast<float>(sampleIdx) / plotGeom_.totalSamps;
+}
+
+std::size_t WaveformView::pxToSample(float px) const {
+    if (!plotGeom_.valid || plotGeom_.xRight <= plotGeom_.xLeft) return 0;
+    const float t       = (px - plotGeom_.xLeft) /
+                          (plotGeom_.xRight - plotGeom_.xLeft);
+    const float clamped = std::clamp(t, 0.0f, 1.0f);
+    return static_cast<std::size_t>(clamped * plotGeom_.totalSamps);
+}
+
+// ---------------------------------------------------------------------------
+// Hit test — returns interior boundary index 1..syls.size()-1, or -1.
+// ---------------------------------------------------------------------------
+
+int WaveformView::hitBoundary_(float px) const {
+    if (!clip_ || clip_->sylsV2.size() < 2) return -1;
+    const auto& syls = clip_->sylsV2;
+    // Interior boundaries: index i corresponds to syls[i].startSample
+    // (= syls[i-1].endSample). i ranges from 1 to syls.size()-1.
+    int bestIdx  = -1;
+    float bestDist = static_cast<float>(kBoundaryHitPx) + 1.0f;
+    for (std::size_t i = 1; i < syls.size(); ++i) {
+        const float bx   = boundaryToPx(syls[i].startSample);
+        const float dist = std::fabs(px - bx);
+        if (dist <= static_cast<float>(kBoundaryHitPx) && dist < bestDist) {
+            bestDist = dist;
+            bestIdx  = static_cast<int>(i);
+        }
+    }
+    return bestIdx;
+}
+
+// ---------------------------------------------------------------------------
+// Mouse handlers
+// ---------------------------------------------------------------------------
+
+void WaveformView::mouseMove(const juce::MouseEvent& e) {
+    if (!clip_ || clip_->sylsV2.empty()) {
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+        return;
+    }
+    if (hitBoundary_(e.position.x) >= 0)
+        setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);
+    else
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+}
+
+void WaveformView::mouseDown(const juce::MouseEvent& e) {
+    if (!clip_ || clip_->sylsV2.empty()) return;
+    const int idx = hitBoundary_(e.position.x);
+
+    if (e.mods.isRightButtonDown()) {
+        if (idx >= 1) {
+            juce::PopupMenu menu;
+            menu.addItem(1, "Delete this boundary");
+            menu.showMenuAsync(juce::PopupMenu::Options{},
+                [this, idx](int chosen) {
+                    if (chosen == 1)
+                        deleteBoundary_(static_cast<std::size_t>(idx));
+                });
+        }
+        return;
+    }
+
+    dragBoundaryIndex_ = idx;  // -1 if not on a boundary
+}
+
+void WaveformView::mouseDrag(const juce::MouseEvent& e) {
+    if (dragBoundaryIndex_ < 1) return;
+    if (!clip_) return;
+    const std::size_t newSample = pxToSample(e.position.x);
+    moveBoundary_(static_cast<std::size_t>(dragBoundaryIndex_), newSample);
+}
+
+void WaveformView::mouseUp(const juce::MouseEvent&) {
+    dragBoundaryIndex_ = -1;
+}
+
+void WaveformView::mouseDoubleClick(const juce::MouseEvent& e) {
+    if (!clip_ || clip_->sylsV2.empty()) return;
+    const std::size_t at = pxToSample(e.position.x);
+    auto edited = std::make_shared<audio::TTSClip>(*clip_);
+    if (audio::addBoundary(edited->sylsV2, at, edited->samples,
+                            edited->sampleRate)) {
+        processor_.installEditedPhonemeClip(edited);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Edit helpers
+// ---------------------------------------------------------------------------
+
+void WaveformView::moveBoundary_(std::size_t idx, std::size_t newSample) {
+    if (!clip_) return;
+    auto edited = std::make_shared<audio::TTSClip>(*clip_);
+    audio::moveBoundary(edited->sylsV2, idx, newSample,
+                        edited->samples, edited->sampleRate);
+    processor_.installEditedPhonemeClip(edited);
+}
+
+void WaveformView::deleteBoundary_(std::size_t idx) {
+    if (!clip_) return;
+    auto edited = std::make_shared<audio::TTSClip>(*clip_);
+    if (audio::removeBoundary(edited->sylsV2, idx,
+                               edited->samples, edited->sampleRate)) {
+        processor_.installEditedPhonemeClip(edited);
     }
 }
 

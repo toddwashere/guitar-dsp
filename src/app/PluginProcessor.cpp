@@ -213,6 +213,12 @@ void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
     if (midiRouter_) midiRouter_->setPreferredDeviceName(name);
 }
 
+void PluginProcessor::installEditedPhonemeClip(audio::TTSClipPtr clip) {
+    if (!clip) return;
+    graph_.phonemeSteppedPlayer().setClip(clip);
+    lastPhonemeClip_ = clip;
+}
+
 void PluginProcessor::rebuildLlmClient() {
     if (selectedModelId_.rfind("ollama:", 0) == 0) {
         const auto tag = selectedModelId_.substr(7);

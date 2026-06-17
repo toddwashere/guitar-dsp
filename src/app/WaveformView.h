@@ -21,6 +21,12 @@ class PluginProcessor;
 // Intended audience: the performer (debug) and the audience (demo).
 // Cuts in the wrong place are visible at a glance — the boundary
 // lines either sit on real silences or they don't.
+//
+// Interactive slice editing (message thread only):
+//   Drag a boundary line to move it, double-click to insert a new
+//   boundary, right-click a boundary for a Delete context menu.
+//   Edits are pushed into the processor via installEditedPhonemeClip()
+//   and wiped when Say fires a new bake.
 class WaveformView : public juce::Component,
                      private juce::Timer {
 public:
@@ -29,8 +35,22 @@ public:
 
     void paint(juce::Graphics&) override;
 
+    // Mouse interaction for boundary editing.
+    void mouseMove(const juce::MouseEvent&) override;
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
+    void mouseDoubleClick(const juce::MouseEvent&) override;
+
 private:
     void timerCallback() override;
+
+    // Helpers for boundary editing.
+    // Returns the interior boundary index (1 .. syls.size()-1) nearest
+    // to px within kBoundaryHitPx, or -1 if none.
+    int  hitBoundary_(float px) const;
+    void moveBoundary_(std::size_t idx, std::size_t newSample);
+    void deleteBoundary_(std::size_t idx);
 
     PluginProcessor& processor_;
 
@@ -40,6 +60,24 @@ private:
     audio::TTSClipPtr clip_;       // shared_ptr; cheap to compare/assign
     int activeSylIdx_  = -1;
     int playSample_    = -1;
+
+    // Drag state.
+    int dragBoundaryIndex_ = -1;  // -1 = not dragging
+
+    // Geometry cached during paint() so mouse handlers share the same
+    // coordinate transform without recomputing.
+    struct PlotGeom {
+        float xLeft      = 0.0f;
+        float xRight     = 0.0f;
+        float totalSamps = 0.0f;
+        bool  valid      = false;
+    } plotGeom_;
+
+    static constexpr int kBoundaryHitPx = 5;
+
+    // Coordinate helpers.
+    float       boundaryToPx(std::size_t sampleIdx) const;
+    std::size_t pxToSample(float px) const;
 };
 
 } // namespace guitar_dsp

@@ -316,6 +316,12 @@ public:
     // Pass-through to MidiRouter::setPreferredDeviceName. Empty = auto-pick.
     void setMidiPreferredDeviceName(const juce::String& name);
 
+    // Replaces the active phoneme-aligned clip with `clip` (e.g. after user
+    // edits a slice boundary in the WaveformView). Pushes the new clip into
+    // the v2 player atomically and updates lastPhonemeClip_ so the waveform
+    // re-renders. Message thread only.
+    void installEditedPhonemeClip(audio::TTSClipPtr clip);
+
 private:
     audio::AudioGraph graph_;
     audio::MicCapture micCapture_;
