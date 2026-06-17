@@ -142,8 +142,15 @@ public:
     }
 
     // Rewind the note-triggered TTS sequence to the start (next onset
-    // plays segment 0). Message thread; RT-safe via pending flag.
-    void rewindSpoken() noexcept { noteSteppedPlayer_.rewind(); }
+    // plays segment/syllable 0). Routes to whichever speech player is
+    // currently active so v2 (phoneme-stepped) scenes rewind too.
+    // Message thread; RT-safe via pending flag.
+    void rewindSpoken() noexcept {
+        if (activeSpeechPlayer() == ActiveSpeechPlayer::PhonemeStepped)
+            phonemeSteppedPlayer_.rewind();
+        else
+            noteSteppedPlayer_.rewind();
+    }
 
     // Rewind the clip-bank cursor (Scene 2 / Phase A). Independent of the
     // note-stepped rewind. Message thread; RT-safe via the player's pending flag.
