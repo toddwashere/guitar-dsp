@@ -14,6 +14,7 @@
 #include "SpectrumAnalyzer.h"
 #include "TtsStatusBar.h"
 #include "VocoderPanel.h"
+#include "MicScopeView.h"
 #include "WaveformView.h"
 #include "WordReadout.h"
 
@@ -54,6 +55,7 @@ private:
     Oscilloscope       oscilloscope_;
     SpectrumAnalyzer   spectrumAnalyzer_;
     WaveformView       waveformView_;
+    MicScopeView       micScopeView_;
 
     std::unique_ptr<ConversationPanel> conversationPanel_;
     std::unique_ptr<AiSettingsPanel>   aiSettingsPanel_;

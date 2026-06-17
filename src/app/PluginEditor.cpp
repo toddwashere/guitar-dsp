@@ -16,7 +16,8 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       sayPanel_(p),
       oscilloscope_(p),
       spectrumAnalyzer_(p),
-      waveformView_(p) {
+      waveformView_(p),
+      micScopeView_(p) {
     std::fprintf(stderr, "[PluginEditor] ctor begin\n"); std::fflush(stderr);
     // Default height is sized for the most common scene (chrome hidden) plus
     // a reasonable middle area. Tall scenes (Scene 7 Talk Box) still fit; the
@@ -37,6 +38,7 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(oscilloscope_);
     addAndMakeVisible(spectrumAnalyzer_);
     addAndMakeVisible(waveformView_);
+    addAndMakeVisible(micScopeView_);
 
     const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
 
@@ -114,6 +116,10 @@ void PluginEditor::resized() {
                                  || activeSceneId == 6 || activeSceneId == 9);
     const bool showWaveform      = (processor_.activeSceneIsPhoneme() || isV1WaveformScene)
                                    && processor_.showSlices();
+    // Scene 7 (Talk Box) has tts.source == "mic" — no static clip to display.
+    // Show the live scrolling mic-input scope instead. Mutually exclusive with
+    // the static waveform view (scene 7 is never a waveform scene).
+    const bool showMicScope = (activeSceneId == 7);
     std::fprintf(stderr,
         "[PluginEditor::resized] scene=%d chat=%d say=%d wordReadout=%d "
         "knobs=%d scope=%d\n",
@@ -130,6 +136,7 @@ void PluginEditor::resized() {
     oscilloscope_     .setVisible(showScope);
     spectrumAnalyzer_ .setVisible(showScope);
     waveformView_     .setVisible(showWaveform);
+    micScopeView_     .setVisible(showMicScope);
     if (conversationPanel_) conversationPanel_->setVisible(showChat);
 
     // --- Top fixed band --------------------------------------------------
@@ -144,7 +151,8 @@ void PluginEditor::resized() {
     // on screen — the audience reads "here is the clip, here is where it
     // cuts." Off when the active scene isn't phoneme-stepped or 'L' is
     // toggled off.
-    if (showWaveform) waveformView_.setBounds(bounds.removeFromTop(120));
+    if (showWaveform)  waveformView_.setBounds(bounds.removeFromTop(120));
+    if (showMicScope)  micScopeView_.setBounds(bounds.removeFromTop(120));
 
     // Scope (oscilloscope + spectrum) sits in the top stack, right under
     // knobs and ABOVE the MIDI/say/chat row. This way toggling K or O

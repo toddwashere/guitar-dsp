@@ -29,6 +29,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_v1_golden.cpp
     unit/audio/test_clip_bank_player.cpp
     unit/audio/test_mic_capture.cpp
+    unit/audio/test_mic_scope_buffer.cpp
     unit/audio/test_mic_shaper.cpp
     unit/audio/test_phoneme_compiles.cpp
     unit/audio/test_phoneme_extractor.cpp

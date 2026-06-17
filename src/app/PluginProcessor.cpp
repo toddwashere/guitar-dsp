@@ -852,6 +852,7 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
                 boostedBuf[i] = std::clamp(s, -1.0f, 1.0f);
             }
             graph_.setMicBlock(boostedBuf, static_cast<std::size_t>(boostN));
+            micScope_.push(boostedBuf, static_cast<std::size_t>(boostN));
             if (micCapture_.isCapturing())
                 micCapture_.appendFromAudioBlock(boostedBuf, boostN);
         } else {

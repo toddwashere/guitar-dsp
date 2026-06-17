@@ -12,6 +12,7 @@
 #include "audio/AudioGraph.h"
 #include "audio/AppleTTSSource.h"
 #include "audio/MicCapture.h"
+#include "audio/MicScopeBuffer.h"
 #include "audio/PhonemeAlignedClipBuilder.h"
 #include "audio/PhonemeExtractor.h"
 #include "audio/PiperTTSSource.h"
@@ -273,6 +274,10 @@ public:
     float micCaptureGain() const noexcept {
         return micCaptureGain_.load(std::memory_order_relaxed);
     }
+    // Live mic-input scope buffer (1 s ring, 48 kHz). Audio thread fills this
+    // from boostedBuf every processBlock; MicScopeView reads it at 30 Hz.
+    const audio::MicScopeBuffer& micScopeBuffer() const noexcept { return micScope_; }
+
     int  clipBankCursor() const { return graph_.clipBankPlayer().currentClipIndex(); }
     int  clipBankSize()   const { return graph_.clipBankPlayer().bankSize(); }
     // Returns the current clip's key (e.g. "03_new") or empty when idle.
@@ -351,6 +356,10 @@ private:
 
     std::array<float, kAudioRingSize> audioRing_{};
     std::atomic<int>                  audioRingWriteIdx_{0};
+
+    // 1-second mic-input ring buffer for the live scope on scene 7.
+    // Audio thread writes via push(); MicScopeView reads via copyMostRecent().
+    audio::MicScopeBuffer micScope_{};
 
     scenes::SceneEngine sceneEngine_;
 

@@ -25,6 +25,7 @@ add_library(guitar_dsp_audio STATIC
     audio/WordAligner.cpp
     audio/NoteSteppedTTSPlayer.cpp
     audio/MicCapture.cpp
+    audio/MicScopeBuffer.cpp
     audio/MicShaper.cpp
     audio/Phoneme.cpp
     audio/PhonemeExtractor.cpp
