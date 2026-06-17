@@ -95,12 +95,26 @@ void PhonemeSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,
         if (haveClip) {
             const auto& syl = activeClip_->sylsV2[sylIdx_ >= 0 ? sylIdx_ : 0];
             if (state_ == State::Attack) {
-                if (playPos_ < syl.attackEndSample
+                // When Sustain is disabled (maxSustainSamples_==0), Attack extends
+                // all the way to syl.endSample — playing the entire syllable
+                // linearly. Without this, the state machine would jump from
+                // attackEndSample to codaStartSample, skipping the entire vowel
+                // body that carries most of the formant / word identity.
+                const std::size_t attackBound = (maxSustainSamples_ == 0)
+                                                ? syl.endSample
+                                                : syl.attackEndSample;
+                if (playPos_ < attackBound
                     && playPos_ < activeClip_->samples.size()) {
                     s = activeClip_->samples[playPos_++];
                 } else {
-                    if (syl.nucleusIsFricative) enterCoda_();
-                    else enterSustain_();
+                    if (maxSustainSamples_ == 0) {
+                        state_ = State::Idle;
+                        currentState_.store(0, std::memory_order_relaxed);
+                    } else if (syl.nucleusIsFricative) {
+                        enterCoda_();
+                    } else {
+                        enterSustain_();
+                    }
                 }
             } else if (state_ == State::Sustain) {
                 s = grain_.next();

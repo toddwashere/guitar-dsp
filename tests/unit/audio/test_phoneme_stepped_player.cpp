@@ -110,6 +110,48 @@ TEST_CASE("PhonemeSteppedTTSPlayer: rewind resets to start",
     REQUIRE(p.currentSyllableIndex() == 0);
 }
 
+TEST_CASE("PhonemeSteppedTTSPlayer: maxSustainMs=0 plays syllable linearly to end",
+          "[audio][phstep]") {
+    auto c = std::make_shared<TTSClip>();
+    c->sampleRate = 48000.0;
+    // 3000-sample syllable. Audio is a ramp 0.0 -> 1.0 so we can tell
+    // exactly which samples were played (output value == input value).
+    c->samples.assign(3000, 0.0f);
+    for (int i = 0; i < 3000; ++i) c->samples[i] = float(i) / 3000.0f;
+    // Syllable spans the whole clip. attackEnd=1000 (1/3), codaStart=2000 (2/3).
+    SyllableSpan s;
+    s.startSample = 0;
+    s.endSample = 3000;
+    s.vowelNucleusSample = 1500;
+    s.attackEndSample = 1000;
+    s.codaStartSample = 2000;
+    s.nucleusIsFricative = false;
+    c->sylsV2 = { s };
+
+    PhonemeSteppedTTSPlayer p;
+    p.prepare(48000.0, 256);
+    p.setClip(c);
+    p.setMaxSustainMs(0.0);   // disable Sustain
+
+    // First 480 samples: onset pulse; the rest: silence to drain Attack.
+    std::vector<float> mixed(3500, 0.0f);
+    for (std::size_t i = 0; i < 480; ++i) mixed[i] = 0.8f;
+    std::vector<float> out(3500, 0.0f);
+    p.process(mixed.data(), out.data(), out.size());
+
+    // The middle of the ramp (sample 1500 -> value ~0.5) MUST appear in
+    // output. With the old jump-to-codaStartSample bug, value ~0.4..0.6
+    // would be entirely missing (the vowel body was skipped).
+    bool sawMiddle = false;
+    for (float v : out) if (v > 0.45f && v < 0.55f) { sawMiddle = true; break; }
+    REQUIRE(sawMiddle);
+
+    // End of ramp (value > 0.95) must also appear (played all the way through).
+    bool sawEnd = false;
+    for (float v : out) if (v > 0.95f) { sawEnd = true; break; }
+    REQUIRE(sawEnd);
+}
+
 TEST_CASE("PhonemeSteppedTTSPlayer: process() is allocation/lock-free",
           "[audio][phstep][rt]") {
     PhonemeSteppedTTSPlayer p;
