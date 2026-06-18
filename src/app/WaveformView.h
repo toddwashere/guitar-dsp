@@ -82,6 +82,9 @@ private:
 
     static constexpr int kBoundaryHitPx = 5;
 
+    enum class ClipKind { None, V2, V1Syl };
+    ClipKind activeClipKind_() const;
+
     // Coordinate helpers.
     float       boundaryToPx(std::size_t sampleIdx) const;
     std::size_t pxToSample(float px) const;
