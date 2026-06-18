@@ -91,9 +91,7 @@ live performance look like, now that AI tools are in the kit?
 
 ---
 
-# Join the Evolution
-
-<div class="flex items-center justify-center h-[75vh]">
+<div class="absolute inset-0 flex items-center justify-center p-6">
   <img src="/guitar-evolution.png" class="max-h-full max-w-full object-contain rounded-lg" />
 </div>
 
