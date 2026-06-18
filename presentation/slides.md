@@ -922,19 +922,6 @@ State machine, not a callback chain. Every error path returns to Idle with a vis
 </v-click>
 
 ---
-
-# What's still open
-
-<v-clicks>
-
-- **Phoneme-level alignment** — the most lyrically-impactful next thing
-- **Polyphonic pitch tracking** — open research on guitar (sympathetic vibration, overlapping harmonics)
-- **Neural vocoder** — `IVocoder` seam exists, ONNX Runtime + RVC could swap in
-- **Audience-text encore** — embedded HTTP + QR code, audience submits a text, the guitar speaks it
-
-</v-clicks>
-
----
 layout: section
 ---
 
