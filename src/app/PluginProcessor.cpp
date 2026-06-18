@@ -227,6 +227,26 @@ void PluginProcessor::installEditedV1Clip(audio::TTSClipPtr clip) {
     graph_.noteSteppedPlayer().setClip(clip);
 }
 
+juce::String PluginProcessor::activeSceneGspeakPath() const {
+    return juce::String(sceneEngine_.getActiveScene().gspeakPath);
+}
+
+juce::String PluginProcessor::currentSayText() const {
+    return sayPanel_ ? sayPanel_->currentText() : juce::String{};
+}
+
+void PluginProcessor::setSayPanelText(juce::String t) {
+    if (sayPanel_) sayPanel_->setText(std::move(t));
+}
+
+void PluginProcessor::flashStatusMessage(juce::String msg, int durationMs) {
+    if (ttsStatusBar_) ttsStatusBar_->flashMessage(std::move(msg), durationMs);
+}
+
+double PluginProcessor::currentSampleRate() const noexcept {
+    return getSampleRate();
+}
+
 bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     if (scene.gspeakPath.empty() || !scene.gspeakAutoLoad) return false;
 

@@ -105,6 +105,10 @@ void SayPanel::finishPending(bool /*succeeded*/) {
     input_.setEnabled(true);
 }
 
+juce::String SayPanel::currentText() const {
+    return input_.getText();
+}
+
 void SayPanel::setText(juce::String text) {
     input_.setText(std::move(text), juce::dontSendNotification);
     // Prevent the timer-driven scene-default from overwriting this on

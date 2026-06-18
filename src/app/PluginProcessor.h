@@ -344,6 +344,13 @@ public:
     void setStatusBar(TtsStatusBar* p) { ttsStatusBar_ = p; }
     void setSayPanel (SayPanel*     p) { sayPanel_     = p; }
 
+    // WaveformView accessors for the Save/Load buttons.
+    juce::String activeSceneGspeakPath() const;  // scene's gspeakPath, or "" if none
+    juce::String currentSayText() const;          // SayPanel text, or "" if no panel
+    void         setSayPanelText(juce::String t); // forwards to SayPanel::setText
+    void         flashStatusMessage(juce::String msg, int durationMs);  // forwards to TtsStatusBar
+    double       currentSampleRate() const noexcept;
+
 private:
     audio::AudioGraph graph_;
     audio::MicCapture micCapture_;

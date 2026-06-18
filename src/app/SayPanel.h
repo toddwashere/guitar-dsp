@@ -31,6 +31,9 @@ public:
     // Does not trigger a synth. Message thread only.
     void setText(juce::String text);
 
+    // Returns the current text in the input field (without modifying state).
+    juce::String currentText() const;
+
 private:
     void say();
     void timerCallback() override;

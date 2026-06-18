@@ -34,6 +34,7 @@ public:
     ~WaveformView() override;
 
     void paint(juce::Graphics&) override;
+    void resized() override;
 
     // Mouse interaction for boundary editing.
     void mouseMove(const juce::MouseEvent&) override;
@@ -44,6 +45,12 @@ public:
 
 private:
     void timerCallback() override;
+
+    juce::TextButton saveButton_ {"Save"};
+    juce::TextButton loadButton_ {"Load"};
+
+    void onSavePressed_();
+    void onLoadPressed_();
 
     // Helpers for boundary editing.
     // Returns the interior boundary index (1 .. syls.size()-1) nearest
