@@ -135,44 +135,28 @@ what else could make this better?
 
 ---
 
-<iframe
-  src="https://www.activeviz.com/stranger-things-lights"
-  class="absolute inset-0 w-full h-full border-0"
-  loading="lazy"
-  referrerpolicy="no-referrer"
-  allow="microphone *; camera *; autoplay *; fullscreen *"
-></iframe>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+  <div class="text-5xl">What if my guitar could</div>
+  <div class="text-9xl font-bold pt-6">speak</div>
+</div>
 
 <!--
-Sitting on the porch in costume, that's the question that led to
-the ActiveViz rig: addressable LED strips, hand-mapped STRANGER
-THINGS letters and ghost characters, wired to react to what I was
-playing in real time. One person, one guitar, one block — full
-A/V show. People stopped. That's when I knew mixing creativity +
-tech was something I wanted to keep pushing — and that thread
-leads straight to this project.
+The pivot question. Pause after "speak" — let it land.
+This is the setup for the demo.
 -->
 
 ---
 transition: fade-out
 ---
 
-# What if your guitar could speak?
-
-<v-clicks>
-
-- Plug a guitar in
-- Plug a foot controller in
-- Step on a pedal
-- Pluck a note → guitar says a word
-- Pluck another → next word
-- Hold a chord → the word *sings* the note you played
-
-</v-clicks>
+<div class="absolute inset-0 flex items-center justify-center">
+  <div class="text-8xl font-bold">Demo Time</div>
+</div>
 
 <!--
-This is the demo. In the live talk, this is where the first audio
-clip plays. Embed audio with: <audio src="/demo.wav" controls />
+Beat. Hit the FCB1010 pedal for the first scene and let the
+guitar do the talking. The demo arc carries the rest of this
+section without slides.
 -->
 
 ---
