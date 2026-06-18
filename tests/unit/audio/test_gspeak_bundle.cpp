@@ -119,3 +119,53 @@ TEST_CASE("GspeakBundle::read rejects length mismatch", "[audio][gspeak]") {
     REQUIRE_FALSE(guitar_dsp::audio::GspeakBundle::read(temp, 48000.0).has_value());
     temp.deleteFile();
 }
+
+namespace {
+
+guitar_dsp::audio::TTSClip makeV1Clip() {
+    guitar_dsp::audio::TTSClip c;
+    c.name = "v1-test";
+    c.sampleRate = 44100.0;
+    c.samples.resize(11025);  // 0.25s at 44.1
+    for (std::size_t i = 0; i < c.samples.size(); ++i)
+        c.samples[i] = std::sin(2.0f * 3.14159f * 220.0f
+                                * (float) i / 44100.0f) * 0.5f;
+    guitar_dsp::audio::WordSegment w;
+    w.word = "De";  w.startSample = 0;     w.endSample = 5000;  c.syllables.push_back(w);
+    w.word = "vel"; w.startSample = 5000;  w.endSample = 11025; c.syllables.push_back(w);
+    w.word = "Developers"; w.startSample = 0; w.endSample = 11025;
+    c.words.push_back(w);
+    return c;
+}
+
+} // namespace
+
+TEST_CASE("GspeakBundle round-trip preserves v1 clip", "[audio][gspeak]") {
+    auto temp = juce::File::createTempFile(".gspeak");
+    auto orig = makeV1Clip();
+    REQUIRE(guitar_dsp::audio::GspeakBundle::write(temp, orig, "Developers"));
+    auto loaded = guitar_dsp::audio::GspeakBundle::read(temp, 44100.0);
+    REQUIRE(loaded.has_value());
+    REQUIRE_FALSE(loaded->isV2);
+    REQUIRE(loaded->clip->syllables.size() == orig.syllables.size());
+    REQUIRE(loaded->clip->words.size()     == orig.words.size());
+    REQUIRE(loaded->clip->syllables[0].word == "De");
+    REQUIRE(loaded->clip->syllables[1].word == "vel");
+    REQUIRE(loaded->text == "Developers");
+    temp.deleteFile();
+}
+
+TEST_CASE("GspeakBundle resamples on rate mismatch", "[audio][gspeak]") {
+    auto temp = juce::File::createTempFile(".gspeak");
+    auto orig = makeV2Clip();  // 48000 Hz, 12000 samples
+    REQUIRE(guitar_dsp::audio::GspeakBundle::write(temp, orig, "x"));
+    auto loaded = guitar_dsp::audio::GspeakBundle::read(temp, 44100.0);
+    REQUIRE(loaded.has_value());
+    REQUIRE(loaded->clip->sampleRate == Catch::Approx(44100.0));
+    // 12000 * (44100/48000) = 11025; allow ±1 for resampler rounding
+    REQUIRE(std::abs((int) loaded->clip->samples.size() - 11025) <= 1);
+    // Boundary at sample 6000 in 48k -> 6000 * (44100/48000) ≈ 5512 or 5513.
+    REQUIRE(std::abs((int) loaded->clip->sylsV2[0].endSample - 5513) <= 1);
+    REQUIRE(loaded->clip->sylsV2.back().endSample == loaded->clip->samples.size());
+    temp.deleteFile();
+}
