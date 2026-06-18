@@ -159,6 +159,53 @@ This is the setup for the demo.
 transition: fade-out
 ---
 
+# What could make this possible?
+
+<div class="grid grid-cols-2 gap-8 pt-4 text-sm">
+
+<div>
+
+### Voice in & out
+
+- **STT** — whisper.cpp (local, ~150 MB model, runs on CPU)
+- **TTS** — Piper (local neural), Apple AVSpeechSynthesizer, prebaked WAV
+- **LLM** — Anthropic Claude (cloud, fast) + Ollama (local fallback)
+- **Phoneme alignment** — espeak-ng labels + sonority-peak syllabifier
+
+</div>
+
+<div>
+
+### Audio & control
+
+- **DSP** — 24-band channel vocoder, YIN pitch detection, PolyBLEP saw
+- **Framework** — C++ with JUCE — production-grade, allocation-free on the audio thread
+- **Plugin & host** — AUv2 inside Logic Pro + standalone macOS app
+- **Live control** — Behringer FCB1010 MIDI foot controller + JSON scenes
+
+</div>
+
+</div>
+
+<div class="pt-6 text-center opacity-75 text-sm">
+
+All open-source or off-the-shelf.<br/>
+The interesting part isn't any one piece — it's how they compose.
+
+</div>
+
+<!--
+Walk the audience left → right. Speech side first (STT, TTS, LLM)
+because that's the AI part the room cares about. Audio side
+second — the JUCE/vocoder/pitch stack is the unglamorous glue
+that makes any of it work on stage.
+Punchline: nothing here is exotic. The thing that makes it land
+is the integration plus the cannot-crash constraint.
+-->
+
+
+---
+
 <div class="absolute inset-0 flex items-center justify-center">
   <div class="text-8xl font-bold">Demo Time</div>
 </div>
@@ -310,18 +357,6 @@ layout: section
 # Part 2 — The stack
 
 C++, JUCE, three TTS sources, one foot controller
-
----
-
-# Why C++ + JUCE
-
-<v-clicks>
-
-- **JUCE has the most production miles in live audio.** "No allocations on the audio thread" is built into its idioms.
-- **Plugin formats are free.** AUv2, VST3, AAX — same source.
-- The interesting alternatives — Swift, Rust, Faust — each missed on either real-time safety, plugin-format support, or the glue (MIDI, GUI, state, I/O) that this project is mostly made of.
-
-</v-clicks>
 
 ---
 
