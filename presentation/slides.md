@@ -140,6 +140,7 @@ what else could make this better?
   class="absolute inset-0 w-full h-full border-0"
   loading="lazy"
   referrerpolicy="no-referrer"
+  allow="microphone *; camera *; autoplay *; fullscreen *"
 ></iframe>
 
 <!--
