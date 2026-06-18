@@ -44,3 +44,17 @@ TEST_CASE("SceneLibrary: missing wordSync defaults to \"global\"",
     REQUIRE(s.has_value());
     REQUIRE(s->tts.wordSync == "global");
 }
+
+TEST_CASE("SceneLibrary parses gspeakPath and gspeakAutoLoad", "[scenes][gspeak]") {
+    auto s = SceneLibrary::loadOne(fixturePath("scenes/with_gspeak.json"));
+    REQUIRE(s.has_value());
+    REQUIRE(s->gspeakPath == "assets/clips/gspeak/test.gspeak");
+    REQUIRE(s->gspeakAutoLoad == true);
+}
+
+TEST_CASE("SceneLibrary defaults gspeak fields when absent", "[scenes][gspeak]") {
+    auto s = SceneLibrary::loadOne(fixturePath("scenes/valid_minimal.json"));
+    REQUIRE(s.has_value());
+    REQUIRE(s->gspeakPath.empty());
+    REQUIRE(s->gspeakAutoLoad == false);
+}
