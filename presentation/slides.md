@@ -215,12 +215,12 @@ The architecture mirrors the show:
 <v-clicks>
 
 1. **Clean.** Establish dry guitar tone.
-2. **Carousel.** Same riff, 5 timbres.
-3. **The pivot.** *"What if it could speak?"*
-4. **Whole-clip speech.** Pedal → guitar plays a full phrase.
-5. **Note-triggered speech.** One pluck = one word.
-6. **Pitched singing.** Carrier tracks your pitch.
-7. **Sing mode.** Vibrato + chromatic snap.
+2. **Whole-clip speech.** Pedal → guitar plays a full phrase.
+3. **Note-triggered speech.** One pluck = one word.
+4. **Talk Box.** Sing into a mic, the guitar shapes the vowel.
+5. **Pitched singing.** Carrier tracks your pitch.
+6. **Sing mode.** Vibrato + chromatic snap.
+7. **Conversation.** Press a pedal, speak, the guitar replies.
 8. **Panic.** Back to clean in ≤30 ms.
 
 </v-clicks>
@@ -367,6 +367,12 @@ flowchart LR
   Piper -.fallback.-> Prebaked
 ```
 
+<div class="text-sm opacity-75 pt-2">
+
+**Piper:** open-source neural TTS that runs locally (~150 MB model, no cloud). The C++ binary is shelled out to as a subprocess; text in, PCM out.
+
+</div>
+
 <v-click>
 
 **Defense in depth.** Any one can break on stage — a model file goes missing, a subprocess crashes, a voice gets uninstalled — and the show keeps going.
@@ -386,20 +392,18 @@ Per-scene JSON: `"fallback": "prebaked"`. Walk one hop on failure.
 ```mermaid {scale: 0.7}
 flowchart LR
   Guitar([Guitar in]) --> Input["InputStage<br/>DC block · gate · gain"]
-  Input --> Carousel["Carousel<br/>scenes 1-5"]
   Input --> Vocoder["Vocoder<br/>carrier=guitar"]
   Input --> Clean["Clean dry"]
-  TTS["NoteSteppedTTSPlayer"] -- modulator --> Vocoder
+  TTS["TTS clip<br/>(or mic)"] -- modulator --> Vocoder
   Pitch["PitchTrackedCarrier"] -- pitched saw --> Vocoder
-  Carousel --> Mix["Mixer + master"]
-  Vocoder --> Mix
+  Vocoder --> Mix["Mixer + master"]
   Clean --> Mix
   Mix --> Out([Output])
 ```
 
 <v-click>
 
-**One wet branch per block, no overlap.** Carousel OR vocoder, never both.
+**One wet branch per block, no overlap.** Dry + vocoder mix, scene picks the modulator.
 
 </v-click>
 
@@ -418,57 +422,6 @@ layout: section
 # Part 3 — The evolution
 
 Every interesting decision came from a bug
-
----
-
-# v1: Instrument Carousel
-
-Five pedal patches, hand-rolled DSP.
-
-<div class="grid grid-cols-5 gap-3 pt-4 text-center text-sm">
-
-<div class="p-3 border rounded">
-
-**Choir**
-multi-voice + vowel formant + reverb
-
-</div>
-
-<div class="p-3 border rounded">
-
-**Distortion**
-waveshaper + tone stack
-
-</div>
-
-<div class="p-3 border rounded">
-
-**Piano**
-octave + comb resonance
-
-</div>
-
-<div class="p-3 border rounded">
-
-**8-bit**
-crusher + downsample
-
-</div>
-
-<div class="p-3 border rounded">
-
-**Auto-wah**
-envelope-tracked SVF
-
-</div>
-
-</div>
-
-<div v-click class="pt-8 text-sm opacity-75">
-
-**Trade-off:** the "easy wins" came first. No pitch shift, no harmony, no formant — those were Phase 4b, the riskiest DSP under the latency budget.
-
-</div>
 
 ---
 
@@ -656,7 +609,7 @@ A naive digital saw aliases at high pitches → crackly buzz. PolyBLEP adds a ti
 
 ---
 
-# Sing mode
+# Can we make it sing?
 
 Speaking-on-a-pitch isn't singing. Two small additions:
 
@@ -680,8 +633,22 @@ Speaking-on-a-pitch isn't singing. Two small additions:
 </div>
 
 ---
+layout: center
+class: text-center
+---
 
-# v2: Phoneme-aligned (this week)
+# Not quite.
+
+<!--
+Beat. The audience hears the sing-mode demo right before this slide.
+It's close — the carrier sings the note you played. But the words
+still slice on phoneme indices, not on real syllable boundaries.
+The next slide is the fix.
+-->
+
+---
+
+# v2: Phoneme-aligned
 
 The v1 player splits syllables by equal subdivision. The next pluck after the *m* in "automatically" usually lands somewhere in the *l*.
 
@@ -761,9 +728,10 @@ A 5 ms safety margin from each nucleus keeps the cut away from the loudest forma
 </div>
 
 <!--
-The user-reported screenshot showed the original bug clearly: vertical
-boundary lines landed on top of the loud peaks (vowel centers) — exactly
-where the cut shouldn't be. The two-pass anchor algorithm is the fix.
+The original bug was visible at a glance once we built the
+waveform visualizer: vertical boundary lines landed on top of the
+loud peaks (vowel centers) — exactly where the cut shouldn't be.
+The two-pass anchor algorithm is the fix.
 -->
 
 ---
@@ -781,9 +749,9 @@ layout: section
 <v-clicks>
 
 - **Zero allocations on the audio thread.** Ever. A test harness hooks `operator new` / `pthread_mutex_lock` and aborts on violation.
-- **290+ tests.** Per-module unit, golden-file scene renders, integration, headless-safety. CI blocks on red.
+- **380+ tests.** Per-module unit, golden-file scene renders, integration, headless-safety. CI blocks on red.
 - **`auval` + `pluginval` strictness-10** as gates *before* Logic ever sees a build.
-- **Brick-wall limiter** at the carousel output. Filters self-oscillate; the PA + audience eardrums don't get the surprise.
+- **Brick-wall limiter** at the wet bus. Filters self-oscillate; the PA + audience eardrums don't get the surprise.
 - **Graceful degradation everywhere.** TTS fails → fallback. Piper missing → noise floor still works. AI times out → canned reply. FCB unplugged → keyboard shortcuts.
 
 </v-clicks>
