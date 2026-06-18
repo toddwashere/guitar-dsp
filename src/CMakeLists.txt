@@ -27,6 +27,7 @@ add_library(guitar_dsp_audio STATIC
     audio/MicCapture.cpp
     audio/MicScopeBuffer.cpp
     audio/MicShaper.cpp
+    audio/GspeakBundle.cpp
     audio/Phoneme.cpp
     audio/PhonemeExtractor.cpp
     audio/Syllabifier.cpp

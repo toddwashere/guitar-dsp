@@ -31,6 +31,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_mic_capture.cpp
     unit/audio/test_mic_scope_buffer.cpp
     unit/audio/test_mic_shaper.cpp
+    unit/audio/test_gspeak_bundle.cpp
     unit/audio/test_phoneme_compiles.cpp
     unit/audio/test_phoneme_extractor.cpp
     unit/audio/test_syllabifier.cpp
