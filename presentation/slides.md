@@ -127,14 +127,16 @@ whole thread started.
   <img src="/eddie-munson-1.jpg" class="max-h-full max-w-full object-contain rounded-lg" />
 </div>
 
-<a
-  href="https://www.activeviz.com/stranger-things-lights"
-  target="_blank"
-  rel="noopener noreferrer"
-  class="absolute bottom-4 left-0 right-0 text-center text-sm opacity-80 hover:opacity-100 z-10"
->
-  activeviz.com/stranger-things-lights ↗
-</a>
+<div class="absolute bottom-4 left-0 right-0 text-center text-sm opacity-80 z-10">
+  <a
+    href="https://www.activeviz.com/stranger-things-lights"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="hover:opacity-100"
+  >
+    activeviz.com/stranger-things-lights ↗
+  </a>
+</div>
 
 <!--
 One year I dressed as Eddie Munson from Stranger Things season 4.
@@ -159,94 +161,36 @@ This is the setup for the demo.
 transition: fade-out
 ---
 
-# What could make this possible?
+# Tools to use
 
-<div class="grid grid-cols-2 gap-8 pt-4 text-sm">
+- **JUCE has the most production miles in live audio.** 
+  "No allocations on the audio thread" is built into its idioms. C++ FTW!
+- **Plugin formats are free.** AUv2, VST3, AAX — same source.
+- **TTS** — Piper (local neural), Apple AVSpeechSynthesizer, prebaked WAV.
+- **DSP** — 24-band channel vocoder, YIN pitch detection, PolyBLEP saw.
 
-<div>
+---
 
-### Voice in & out
+# Working together
 
-- **STT** — whisper.cpp (local, ~150 MB model, runs on CPU)
-- **TTS** — Piper (local neural), Apple AVSpeechSynthesizer, prebaked WAV
-- **LLM** — Anthropic Claude (cloud, fast) + Ollama (local fallback)
+insert diagram of current iteration here.
+
+---
+
+# Syllables are tricky!
+
 - **Phoneme alignment** — espeak-ng labels + sonority-peak syllabifier
 
-</div>
-
-<div>
-
-### Audio & control
-
-- **DSP** — 24-band channel vocoder, YIN pitch detection, PolyBLEP saw
-- **Framework** — C++ with JUCE — production-grade, allocation-free on the audio thread
-- **Plugin & host** — AUv2 inside Logic Pro + standalone macOS app
-- **Live control** — Behringer FCB1010 MIDI foot controller + JSON scenes
-
-</div>
-
-</div>
-
-<div class="pt-6 text-center opacity-75 text-sm">
-
-All open-source or off-the-shelf.<br/>
-The interesting part isn't any one piece — it's how they compose.
-
-</div>
-
-<!--
-Walk the audience left → right. Speech side first (STT, TTS, LLM)
-because that's the AI part the room cares about. Audio side
-second — the JUCE/vocoder/pitch stack is the unglamorous glue
-that makes any of it work on stage.
-Punchline: nothing here is exotic. The thing that makes it land
-is the integration plus the cannot-crash constraint.
--->
-
+This really sucks n stuff.
 
 ---
 
-<div class="absolute inset-0 flex items-center justify-center">
-  <div class="text-8xl font-bold">Demo Time</div>
-</div>
+# Conversations are a two way street
 
-<!--
-Beat. Hit the FCB1010 pedal for the first scene and let the
-guitar do the talking. The demo arc carries the rest of this
-section without slides.
--->
+- **STT** — whisper.cpp (local, ~150 MB model, runs on CPU)
+- **LLM** — Ollama (local models)
 
----
-layout: two-cols
-class: gap-8
----
-
-# The 15-minute demo arc
-
-The architecture mirrors the show:
-
-<v-clicks>
-
-1. **Clean.** Establish dry guitar tone.
-2. **Whole-clip speech.** Pedal → guitar plays a full phrase.
-3. **Note-triggered speech.** One pluck = one word.
-4. **Talk Box.** Sing into a mic, the guitar shapes the vowel.
-5. **Pitched singing.** Carrier tracks your pitch.
-6. **Sing mode.** Vibrato + chromatic snap.
-7. **Conversation.** Press a pedal, speak, the guitar replies.
-8. **Panic.** Back to clean in ≤30 ms.
-
-</v-clicks>
-
-::right::
-
-<div class="pt-8 opacity-75 text-sm">
-
-Each pedal is a clear **before / after** the audience can hear.
-
-The *evolution of the idea* lands as the show progresses, not in slides.
-
-</div>
+Insert diagram here 
 
 ---
 layout: section
@@ -354,9 +298,62 @@ We pay fidelity to get latency, allocation-safety, and debuggability.<br/>
 layout: section
 ---
 
-# Part 2 — The stack
+# Can we make it sing?
 
-C++, JUCE, three TTS sources, one foot controller
+## Next Stop: Pitch detection.
+
+---
+
+<div class="absolute inset-0 flex items-center justify-center p-6">
+  <img src="/frequencies-f0.png" class="max-h-full max-w-full object-contain rounded-lg" />
+</div>
+
+---
+
+# YIN FTW: finding the fundamental
+
+<div class="grid grid-cols-[1.05fr_1fr] gap-8 pt-2 text-sm">
+
+<div>
+
+A guitar note is **rich and harmonic** — naive autocorrelation keeps locking onto the wrong octave. **YIN** (de Cheveigné & Kawahara, 2002) fixes that in four steps:
+
+1. **Difference function** — slide the signal against a delayed copy of itself: `d(τ) = Σ (x[j] − x[j+τ])²`. It dips toward zero when the lag `τ` matches the period.
+2. **Cumulative mean normalize (CMNDF)** — divide by the running average so tiny lags stop always winning. This is the step that kills octave errors.
+3. **Absolute threshold** — take the *first* dip below `0.15`, not the global minimum. That lag is the period `τ`.
+4. **Parabolic interpolation** — refine `τ` between samples for sub-Hz precision.
+
+<div class="pt-2 opacity-75">
+
+`f₀ = sampleRate / τ` — clamped to 40–2000 Hz. Nothing below threshold ⇒ **unvoiced**.
+
+</div>
+
+</div>
+
+<div class="flex items-center justify-center">
+  <img src="/yin-simple-diagram.png" class="w-full max-w-md rounded-lg" />
+</div>
+
+</div>
+
+<div class="absolute bottom-4 left-6 right-6 text-xs opacity-50">
+
+**Why YIN over a plain FFT?** It runs sample-by-sample with no block latency, stays allocation-free on the audio thread, and the CMNDF step makes it far more robust to octave errors on a harmonically-rich guitar than peak-picking an FFT or raw autocorrelation.
+
+</div>
+
+<!--
+This is the "how do we know what note you're playing" slide.
+Key intuition for steps 1-2: the difference function finds repeats,
+but it trivially dips at tiny lags too — the cumulative-mean
+normalization is what stops it from snapping an octave (or two) high.
+Threshold + parabolic interp are just "pick the right dip" and
+"get the decimal places." The output f0 drives the pitched saw
+carrier the vocoder shapes — that's how a spoken word comes out *sung*.
+Real params live in PitchTrackedCarrier: 2048-sample window,
+256-sample hop, threshold 0.15, 40-2000 Hz range.
+-->
 
 ---
 
@@ -614,7 +611,7 @@ A naive digital saw aliases at high pitches → crackly buzz. PolyBLEP adds a ti
 
 ---
 
-# Can we make it sing?
+# Can we make it sing ... better?
 
 Speaking-on-a-pitch isn't singing. Two small additions:
 
