@@ -105,4 +105,11 @@ void SayPanel::finishPending(bool /*succeeded*/) {
     input_.setEnabled(true);
 }
 
+void SayPanel::setText(juce::String text) {
+    input_.setText(std::move(text), juce::dontSendNotification);
+    // Prevent the timer-driven scene-default from overwriting this on
+    // the next 100 ms tick.
+    lastSeenSceneId_ = processor_.activeSceneId();
+}
+
 } // namespace guitar_dsp

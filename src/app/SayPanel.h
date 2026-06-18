@@ -25,6 +25,12 @@ public:
 
     void resized() override;
 
+    // Replaces the input field's text (used by the gspeak Load path
+    // so the field reflects the loaded clip's canonical text instead
+    // of the scene-default that the timer would otherwise restore).
+    // Does not trigger a synth. Message thread only.
+    void setText(juce::String text);
+
 private:
     void say();
     void timerCallback() override;
