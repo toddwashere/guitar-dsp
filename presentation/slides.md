@@ -347,9 +347,7 @@ C++, JUCE, three TTS sources, one foot controller
 
 - **JUCE has the most production miles in live audio.** "No allocations on the audio thread" is built into its idioms.
 - **Plugin formats are free.** AUv2, VST3, AAX — same source.
-- **Swift + AVAudioEngine?** Smaller live-audio track record.
-- **Rust + cpal?** Real-time-safety story is younger; plugin formats aren't first-class.
-- **Faust?** Great for DSP, awkward for the MIDI / state / GUI / I/O glue that this project is mostly made of.
+- The interesting alternatives — Swift, Rust, Faust — each missed on either real-time safety, plugin-format support, or the glue (MIDI, GUI, state, I/O) that this project is mostly made of.
 
 </v-clicks>
 
@@ -735,6 +733,39 @@ The two-pass anchor algorithm is the fix.
 -->
 
 ---
+
+# One more demo — Talk Box
+
+Same vocoder, different modulator: **your voice** drives the formants, the guitar carries the timbre.
+
+<v-clicks>
+
+- A mic on the sidechain bus → `MicCapture` → modulator
+- Pluck a chord, sing a vowel into the mic — the guitar shapes the vowel
+- No TTS, no clip, no boundaries; the modulator is literally you
+- Live scrolling waveform shows the mic envelope at the bottom of the screen
+
+</v-clicks>
+
+<div v-click class="pt-6 opacity-75 text-sm">
+
+This is closer to the Peter Frampton talk box, but routed through the same
+channel vocoder as the speaking scenes — one DSP, two completely different
+performance modes.
+
+</div>
+
+<!--
+We've shown TTS-driven speech (note-triggered, phoneme-aligned). The
+same vocoder takes a different modulator: the mic. Sing into it,
+pluck a chord, and the chord borrows the vowel shape. It's the Talk
+Box scene. Same channel vocoder under the hood; the modulator source
+selector picks Mic instead of TTSClip. The mic-input waveform
+scrolls live at the bottom of the editor so you can see your own
+envelope reach the vocoder.
+-->
+
+---
 layout: section
 ---
 
@@ -801,6 +832,69 @@ Every internal decision the app makes should be **visible on stage**.
 Free UX. Doubles as the demo's pedagogy.
 
 </div>
+
+---
+
+# Visibility in action — the slice visualizer
+
+<div class="grid grid-cols-2 gap-8 pt-2">
+<div>
+
+The strongest expression of the principle: a live waveform of the active TTS clip with the syllable cuts drawn on top of it.
+
+<v-clicks>
+
+- Teal waveform of the active clip
+- White vertical lines at every syllable boundary
+- Orange tinted band over the active syllable
+- Yellow playhead follows the audio sample-accurate
+- **Boundaries are draggable** — fix a cut on the fly without leaving the app
+
+</v-clicks>
+
+<div v-click class="pt-4 text-sm opacity-75">
+
+Same data, two audiences: the performer sees *exactly* what the player will play; the audience sees *how* the player slices the words. The bug from the previous arc — cuts on vowel peaks — was found by looking at this panel for ten seconds.
+
+</div>
+
+</div>
+<div>
+
+<svg viewBox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" class="w-full">
+  <rect x="0" y="0" width="480" height="220" fill="#0e1016" rx="6"/>
+  <text x="14" y="22" font-size="11" fill="#9aa3b8">Waveform + slice boundaries</text>
+  <line x1="14" y1="110" x2="466" y2="110" stroke="#2a2e36" stroke-width="0.5"/>
+  <!-- active syllable highlight band -->
+  <rect x="180" y="40" width="100" height="140" fill="#ffaa50" opacity="0.18"/>
+  <rect x="180" y="40" width="100" height="140" fill="none" stroke="#ffaa50" stroke-width="1"/>
+  <!-- waveform mirrored envelope -->
+  <path fill="#6cc89a" opacity="0.85" d="M 14 110 L 30 108 L 50 102 L 70 92 L 90 84 L 110 96 L 130 104 L 150 102 L 170 100 L 190 78 L 210 60 L 230 56 L 250 60 L 270 76 L 290 96 L 310 92 L 330 88 L 350 94 L 370 100 L 390 96 L 410 92 L 430 100 L 450 106 L 466 110 L 450 114 L 430 120 L 410 128 L 390 124 L 370 120 L 350 126 L 330 132 L 310 128 L 290 124 L 270 144 L 250 160 L 230 164 L 210 160 L 190 142 L 170 120 L 150 118 L 130 116 L 110 124 L 90 136 L 70 128 L 50 118 L 30 112 L 14 110 Z"/>
+  <!-- boundary lines (white-ish) -->
+  <line x1="100" y1="40" x2="100" y2="180" stroke="#dde2ea" stroke-width="1.5" opacity="0.55"/>
+  <line x1="180" y1="40" x2="180" y2="180" stroke="#dde2ea" stroke-width="1.5" opacity="0.55"/>
+  <line x1="280" y1="40" x2="280" y2="180" stroke="#dde2ea" stroke-width="1.5" opacity="0.55"/>
+  <line x1="370" y1="40" x2="370" y2="180" stroke="#dde2ea" stroke-width="1.5" opacity="0.55"/>
+  <!-- playhead -->
+  <line x1="225" y1="40" x2="225" y2="180" stroke="#ffeb5a" stroke-width="2.5"/>
+</svg>
+
+<div class="pt-2 text-center text-xs opacity-50">
+Active syllable highlighted; playhead inside it; boundaries are draggable.
+</div>
+
+</div>
+</div>
+
+<!--
+This panel is the literal embodiment of the visibility principle.
+When the boundary-snapping bug landed, I didn't need to log or print
+anything — the lines were visibly sitting on top of the vowel peaks.
+Fix it, lines move into the silences, demo lands. Same panel doubles
+as the audience-facing "see how the slicing works" visual, and the
+drag-edit handles let me tune a problem cut live without leaving
+the show.
+-->
 
 ---
 
