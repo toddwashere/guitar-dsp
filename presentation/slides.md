@@ -15,21 +15,170 @@ mdc: true
 
 # While My Guitar Gently Speaks
 
-Building a real-time talking, singing guitar — and what shipping for the stage taught me about building with AI
+<div class="grid grid-cols-[1fr_auto] gap-12 pt-12 items-center max-w-3xl mx-auto">
 
-<div class="pt-12 opacity-75 text-lg">
-AI Engineering Conference · San Francisco · 2026
+<div class="text-left">
+  <div class="text-2xl font-semibold">Todd Fisher</div>
+  <div class="text-lg opacity-75 pt-1">Head of Engineering · Philo Ventures</div>
+  <div class="pt-8 opacity-50 text-sm">
+    AI Engineering Conference · San Francisco · 2026
+  </div>
 </div>
 
-<div class="pt-4 opacity-50 text-sm">
-Todd Fisher
+<img src="/todd.jpg" class="w-48 h-48 rounded-full object-cover" />
+
 </div>
 
 <!--
-Hi, I'm Todd. For the next ~30 minutes I'm going to walk you through
-a real-time audio project — a guitar that talks and sings — and the
-five lessons it taught me about building with AI for environments
-where you can't afford to crash.
+Hi, I'm Todd Fisher, Head of Engineering at Philo Ventures. For
+the next ~30 minutes I'm going to walk you through a real-time
+audio project — a guitar that talks and sings — and what shipping
+it for the stage taught me about building with AI.
+-->
+
+---
+
+# Setting the stage
+
+<v-clicks>
+
+- A lot of interesting things are happening with AI right now
+- Creativity × technology yields surprising results
+- The tools we have today are opening up new possibilities for **live performance**
+
+</v-clicks>
+
+<!--
+This talk lives at the intersection of all three. I'm a software
+engineer who plays guitar; I built a tool that uses TTS, LLMs,
+real-time DSP, and a foot controller to make a guitar talk and
+sing on stage. The interesting part isn't the AI — it's what live
+performance lets you do with it.
+-->
+
+---
+layout: two-cols
+class: gap-8
+---
+
+# Live performances rock
+
+<v-clicks>
+
+- **Slipknot's drummer** — flips upside-down mid-set
+- **Blue Man Group** — silence as performance
+- **The Sphere** — Las Vegas
+- **Stranger Things: The First Shadow** — NYC
+
+</v-clicks>
+
+<div class="pt-8 opacity-75 text-sm">
+We've all been blown away at some point.<br/>
+Live shows connect us in a way recorded media can't.
+</div>
+
+<div class="pt-6 text-xl">
+What's the next evolution — with AI?
+</div>
+
+::right::
+
+<img src="/slipknot.jpg" class="rounded-lg w-full" />
+
+<!--
+Slipknot's drummer is on a rig that flips upside-down. Blue Man
+Group turned percussion and silence into a brand. The Sphere is
+its own visual category. Stranger Things in NYC is a full
+theatrical experience. We've all been amazed at some point.
+The question this talk is about: what does the next layer of
+live performance look like, now that AI tools are in the kit?
+-->
+
+---
+
+# Evolution of "the guitar that speaks"
+
+<v-clicks>
+
+- **Analog pedals** — fuzz, chorus, delay shape the tone
+- **Software emulation** — same effects, now in plugins
+- **Wah pedal** — foot-controlled formant filter; the first "speaking" guitar
+- **Talk box** — Peter Frampton's mouth-as-resonator trick
+- **Ebow** *(side path)* — 9 V electromagnet vibrates the string with no pick; infinite sustain
+- **AI tools** — where this talk lives
+
+</v-clicks>
+
+<div v-click class="pt-8 text-center text-xl opacity-75">
+What's next?
+</div>
+
+<!--
+Pedals shaped tone. Software replicated pedals. Wah was the first
+real "speaking" guitar — a sweep filter that makes vowels. Talk
+box went further: Frampton ran the amp through a tube into his
+mouth and used his mouth as a resonator. Ebow is a side path: a
+9V electromagnet that vibrates the string without picking,
+infinite sustain. (If you have the Ebow with you, PLAY DEMO.)
+AI is the next layer — the rest of this talk is one example.
+-->
+
+---
+layout: two-cols
+class: gap-8
+---
+
+# How this started — Halloween
+
+<v-clicks>
+
+- Two Halloween choices: walk with the kids, or stay home
+- Found out you can crank a guitar amp loud outside on Halloween — no one calls the cops
+- One year I dressed as **Eddie Munson** *(anyone here watch Stranger Things?)*
+- Sitting on the porch in costume — *what else could make this better?*
+
+</v-clicks>
+
+::right::
+
+<img src="/halloween-eddie.jpg" class="rounded-lg w-full" />
+
+<!--
+Quick origin story. Halloween I had two choices: walk with the kids
+or stay home. Found out you can crank a guitar amp loud on
+Halloween and no one calls the cops. One year I dressed as Eddie
+Munson from Stranger Things season 4 — pause and read the room:
+"anyone here watch Stranger Things?" That night, sitting on the
+porch in costume, I started asking: what else could make this
+better?
+-->
+
+---
+
+# That same Halloween — synced lights
+
+<v-clicks>
+
+- ActiveViz addressable LED strips on the porch
+- Hand-mapped "STRANGER THINGS" letters + ghost characters in Photoshop
+- Wired them to react to what I was playing in real time
+- One person, one guitar, one block — full A/V show
+
+</v-clicks>
+
+<div v-click class="pt-8 opacity-75">
+That's where mixing creativity + tech got real for me.<br/>
+Felt like there was more to explore.
+</div>
+
+<!--
+Rigged ActiveViz addressable LED strips around the porch. Hand-
+photoshopped pixel maps for the "STRANGER THINGS" letters and the
+ghost characters from the show. Wired them to react to what I was
+playing on the guitar in real time. One person, one guitar, one
+block. People stopped. That's when I knew mixing creativity + tech
+was something I wanted to keep pushing — and that thread leads
+straight to this project.
 -->
 
 ---
