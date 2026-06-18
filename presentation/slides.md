@@ -143,6 +143,10 @@ better?
 
 # That same Halloween — synced lights
 
+<div class="grid grid-cols-[1fr_1.2fr] gap-6 pt-2 h-[70vh]">
+
+<div>
+
 <v-clicks>
 
 - ActiveViz addressable LED strips on the porch
@@ -152,9 +156,22 @@ better?
 
 </v-clicks>
 
-<div v-click class="pt-8 opacity-75">
+<div v-click class="pt-8 opacity-75 text-sm">
 That's where mixing creativity + tech got real for me.<br/>
 Felt like there was more to explore.
+</div>
+
+</div>
+
+<div class="rounded-lg overflow-hidden border border-white/10">
+  <iframe
+    src="https://www.activeviz.com/stranger-things-lights"
+    class="w-full h-full"
+    loading="lazy"
+    referrerpolicy="no-referrer"
+  ></iframe>
+</div>
+
 </div>
 
 <!--
