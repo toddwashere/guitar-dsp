@@ -34,6 +34,22 @@ guitar_dsp::audio::TTSClip makeV2Clip() {
     return c;
 }
 
+guitar_dsp::audio::TTSClip makeV1Clip() {
+    guitar_dsp::audio::TTSClip c;
+    c.name = "v1-test";
+    c.sampleRate = 44100.0;
+    c.samples.resize(11025);  // 0.25s at 44.1
+    for (std::size_t i = 0; i < c.samples.size(); ++i)
+        c.samples[i] = std::sin(2.0f * 3.14159f * 220.0f
+                                * (float) i / 44100.0f) * 0.5f;
+    guitar_dsp::audio::WordSegment w;
+    w.word = "De";  w.startSample = 0;     w.endSample = 5000;  c.syllables.push_back(w);
+    w.word = "vel"; w.startSample = 5000;  w.endSample = 11025; c.syllables.push_back(w);
+    w.word = "Developers"; w.startSample = 0; w.endSample = 11025;
+    c.words.push_back(w);
+    return c;
+}
+
 } // namespace
 
 TEST_CASE("GspeakBundle::write produces a valid zip", "[audio][gspeak]") {
@@ -120,26 +136,6 @@ TEST_CASE("GspeakBundle::read rejects length mismatch", "[audio][gspeak]") {
     temp.deleteFile();
 }
 
-namespace {
-
-guitar_dsp::audio::TTSClip makeV1Clip() {
-    guitar_dsp::audio::TTSClip c;
-    c.name = "v1-test";
-    c.sampleRate = 44100.0;
-    c.samples.resize(11025);  // 0.25s at 44.1
-    for (std::size_t i = 0; i < c.samples.size(); ++i)
-        c.samples[i] = std::sin(2.0f * 3.14159f * 220.0f
-                                * (float) i / 44100.0f) * 0.5f;
-    guitar_dsp::audio::WordSegment w;
-    w.word = "De";  w.startSample = 0;     w.endSample = 5000;  c.syllables.push_back(w);
-    w.word = "vel"; w.startSample = 5000;  w.endSample = 11025; c.syllables.push_back(w);
-    w.word = "Developers"; w.startSample = 0; w.endSample = 11025;
-    c.words.push_back(w);
-    return c;
-}
-
-} // namespace
-
 TEST_CASE("GspeakBundle round-trip preserves v1 clip", "[audio][gspeak]") {
     auto temp = juce::File::createTempFile(".gspeak");
     auto orig = makeV1Clip();
@@ -147,6 +143,7 @@ TEST_CASE("GspeakBundle round-trip preserves v1 clip", "[audio][gspeak]") {
     auto loaded = guitar_dsp::audio::GspeakBundle::read(temp, 44100.0);
     REQUIRE(loaded.has_value());
     REQUIRE_FALSE(loaded->isV2);
+    REQUIRE(loaded->clip->sampleRate == Catch::Approx(44100.0));
     REQUIRE(loaded->clip->syllables.size() == orig.syllables.size());
     REQUIRE(loaded->clip->words.size()     == orig.words.size());
     REQUIRE(loaded->clip->syllables[0].word == "De");
