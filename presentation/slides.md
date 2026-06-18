@@ -43,13 +43,9 @@ it for the stage taught me about building with AI.
 
 # Setting the stage
 
-<v-clicks>
-
 - A lot of interesting things are happening with AI right now
 - Creativity × technology yields surprising results
 - The tools we have today are opening up new possibilities for **live performance**
-
-</v-clicks>
 
 <!--
 This talk lives at the intersection of all three. I'm a software
@@ -66,14 +62,10 @@ class: gap-8
 
 # Live performances rock
 
-<v-clicks>
-
 - **Slipknot's drummer** — flips upside-down mid-set
 - **Blue Man Group** — silence as performance
 - **The Sphere** — Las Vegas
 - **Stranger Things: The First Shadow** — NYC
-
-</v-clicks>
 
 <div class="pt-8 opacity-75 text-sm">
 We've all been blown away at some point.<br/>
@@ -101,8 +93,6 @@ live performance look like, now that AI tools are in the kit?
 
 # Evolution of "the guitar that speaks"
 
-<v-clicks>
-
 - **Analog pedals** — fuzz, chorus, delay shape the tone
 - **Software emulation** — same effects, now in plugins
 - **Wah pedal** — foot-controlled formant filter; the first "speaking" guitar
@@ -110,9 +100,7 @@ live performance look like, now that AI tools are in the kit?
 - **Ebow** *(side path)* — 9 V electromagnet vibrates the string with no pick; infinite sustain
 - **AI tools** — where this talk lives
 
-</v-clicks>
-
-<div v-click class="pt-8 text-center text-xl opacity-75">
+<div class="pt-8 text-center text-xl opacity-75">
 What's next?
 </div>
 
