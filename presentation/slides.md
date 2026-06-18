@@ -322,6 +322,12 @@ We pay fidelity to get latency, allocation-safety, and debuggability.<br/>
 
 </div>
 
+<div class="absolute bottom-4 left-6 right-6 text-xs opacity-50">
+
+**FFT** *(Fast Fourier Transform)*: an algorithm that takes a window of audio samples and returns the amount of energy at each frequency. The basic tool for moving between the time domain (what the mic records) and the frequency domain (what the ear hears as pitch + timbre).
+
+</div>
+
 ---
 layout: section
 ---
