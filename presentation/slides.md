@@ -11,6 +11,9 @@ drawings:
   persist: false
 transition: slide-left
 mdc: true
+# Hide the built-in editor sidebar — protects the live show from a
+# stray click on the pencil icon popping the slide-list drawer open.
+editor: false
 ---
 
 # While My Guitar Gently Speaks

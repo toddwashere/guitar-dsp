@@ -1,0 +1,16 @@
+/* Backstop for the editor sidebar (the slide-list drawer that hangs
+ * on the right when the pencil/Editor icon is clicked). `editor: false`
+ * in slides.md should be enough; this hides any residual button/drawer
+ * if a future Slidev version flips defaults. */
+button[title*="Editor" i],
+button[title*="Open" i][title*="Editor" i],
+.slidev-nav-controls button[title*="Slides" i] {
+  display: none !important;
+}
+
+/* Hide any docked editor panel that survives despite editor: false. */
+[class*="slidev-editor"],
+.slidev-nav-go-editor,
+.slidev-editor {
+  display: none !important;
+}
