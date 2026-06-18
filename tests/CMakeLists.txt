@@ -93,6 +93,8 @@ add_executable(guitar_dsp_tests
     integration/test_ai_pedal_routing.cpp
     integration/test_headless_safety_ai.cpp
     integration/test_speak_v2_scene.cpp
+    integration/test_gspeak_autoload.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/AssetLocator.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
