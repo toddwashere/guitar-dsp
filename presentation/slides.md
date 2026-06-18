@@ -127,6 +127,15 @@ whole thread started.
   <img src="/eddie-munson-1.jpg" class="max-h-full max-w-full object-contain rounded-lg" />
 </div>
 
+<a
+  href="https://www.activeviz.com/stranger-things-lights"
+  target="_blank"
+  rel="noopener noreferrer"
+  class="absolute bottom-4 left-0 right-0 text-center text-sm opacity-80 hover:opacity-100 z-10"
+>
+  activeviz.com/stranger-things-lights ↗
+</a>
+
 <!--
 One year I dressed as Eddie Munson from Stranger Things season 4.
 Pause and read the room: "anyone here watch Stranger Things?"
@@ -138,7 +147,7 @@ what else could make this better?
 
 <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
   <div class="text-5xl">What if my guitar could</div>
-  <div class="text-9xl font-bold pt-6">speak</div>
+  <div class="text-9xl font-bold pt-6">speak?</div>
 </div>
 
 <!--
