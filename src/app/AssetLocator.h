@@ -37,6 +37,14 @@ public:
     // bundled. Path: <assetsRoot>/whisper/ggml-base.en.bin
     static std::string whisperModelPath();
 
+    // Resolves a relative path (e.g. "clips/gspeak/scene0.gspeak") against the
+    // assets root. Returns empty string if the assets root can't be found.
+    // Does NOT check whether the resolved file exists.
+    // If relPath starts with "assets/", the prefix is stripped before joining
+    // (scene JSONs write "assets/clips/gspeak/foo.gspeak" for human readability,
+    // but assetsRoot() already includes the "assets/" segment).
+    static std::string resolveRelativePath(const std::string& relPath);
+
 private:
     static std::string assetsRoot();
 };

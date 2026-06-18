@@ -102,4 +102,17 @@ std::string AssetLocator::whisperModelPath() {
     return (resources / "whisper" / "ggml-base.en.bin").string();
 }
 
+std::string AssetLocator::resolveRelativePath(const std::string& relPath) {
+    if (relPath.empty()) return {};
+    const auto root = assetsRoot();
+    if (root.empty()) return {};
+    // If relPath starts with "assets/", strip it (the caller's scene JSON
+    // commonly writes paths as "assets/clips/gspeak/foo.gspeak"; assetsRoot()
+    // already returns ".../assets", so a literal join would double the prefix).
+    const std::string stripped = (relPath.rfind("assets/", 0) == 0)
+                                    ? relPath.substr(7)
+                                    : relPath;
+    return (fs::path(root) / stripped).string();
+}
+
 } // namespace guitar_dsp

@@ -37,6 +37,9 @@
 
 namespace guitar_dsp {
 
+class TtsStatusBar;
+class SayPanel;
+
 class PluginProcessor : public juce::AudioProcessor {
 public:
     PluginProcessor();
@@ -335,6 +338,12 @@ public:
     // Message thread only.
     void installEditedV1Clip(audio::TTSClipPtr clip);
 
+    // The editor registers itself here so the processor can flash status
+    // messages and update the Say input field from non-UI code paths
+    // (e.g., scene-activation auto-load of a .gspeak clip).
+    void setStatusBar(TtsStatusBar* p) { ttsStatusBar_ = p; }
+    void setSayPanel (SayPanel*     p) { sayPanel_     = p; }
+
 private:
     audio::AudioGraph graph_;
     audio::MicCapture micCapture_;
@@ -435,6 +444,16 @@ private:
     std::unique_ptr<ai::ConversationEngine> engine_;
 
     void rebuildLlmClient();   // re-create llm_ based on selectedModelId_
+
+    TtsStatusBar* ttsStatusBar_ = nullptr;
+    SayPanel*     sayPanel_     = nullptr;
+
+    // Attempts to load scene.gspeakPath via GspeakBundle and install the
+    // resulting clip. Returns true if the bundle loaded successfully and
+    // the scene-activation path should skip the normal TTS dispatch.
+    // Used only when scene.gspeakAutoLoad is true; the manual Load
+    // button (WaveformView) calls into the bundle reader directly.
+    bool tryAutoLoadGspeak_(const scenes::Scene& scene);
 };
 
 } // namespace guitar_dsp
