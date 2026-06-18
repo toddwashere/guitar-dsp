@@ -108,6 +108,7 @@ Walk the audience through the panels left → right:
 Ebow gets a mention but isn't pictured; it's the side path.
 -->
 
+---
 
 <div class="absolute inset-0 flex items-center justify-center p-6">
   <img src="/halloween-guitar-pumpkin.png" class="max-h-full max-w-full object-contain rounded-lg" />
