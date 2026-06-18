@@ -91,28 +91,25 @@ live performance look like, now that AI tools are in the kit?
 
 ---
 
-# Evolution of "the guitar that speaks"
+# Join the Evolution
 
-- **Analog pedals** — fuzz, chorus, delay shape the tone
-- **Software emulation** — same effects, now in plugins
-- **Wah pedal** — foot-controlled formant filter; the first "speaking" guitar
-- **Talk box** — Peter Frampton's mouth-as-resonator trick
-- **Ebow** *(side path)* — 9 V electromagnet vibrates the string with no pick; infinite sustain
-- **AI tools** — where this talk lives
-
-<div class="pt-8 text-center text-xl opacity-75">
-What's next?
+<div class="flex items-center justify-center h-[75vh]">
+  <img src="/guitar-evolution.png" class="max-h-full max-w-full object-contain rounded-lg" />
 </div>
 
 <!--
-Pedals shaped tone. Software replicated pedals. Wah was the first
-real "speaking" guitar — a sweep filter that makes vowels. Talk
-box went further: Frampton ran the amp through a tube into his
-mouth and used his mouth as a resonator. Ebow is a side path: a
-9V electromagnet that vibrates the string without picking,
-infinite sustain. (If you have the Ebow with you, PLAY DEMO.)
-AI is the next layer — the rest of this talk is one example.
+Walk the audience through the panels left → right:
+1. Acoustic Scream — caveman with an acoustic. The starting point.
+2. Electric Distortion — pickup + amp + dirt. The first big leap.
+3. The Pedal Chain — fuzz, wah, delay; tone-shaping at the foot.
+4. The Talkbox Voice — Peter Frampton, "Do You Feel Like We Do."
+   First real "speaking" guitar. The mouth is the resonator.
+5. Software Emulation — same effects, now in a plugin host.
+6. AI Tools — synthesis + language generation. Where this talk lives.
+
+Ebow gets a mention but isn't pictured; it's the side path.
 -->
+
 
 ---
 layout: two-cols
