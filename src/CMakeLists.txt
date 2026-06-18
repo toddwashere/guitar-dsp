@@ -32,6 +32,7 @@ add_library(guitar_dsp_audio STATIC
     audio/PhonemeExtractor.cpp
     audio/Syllabifier.cpp
     audio/PhonemeAlignedClipBuilder.cpp
+    audio/V1BoundaryEdits.cpp
     audio/VowelGrainLoop.cpp
     audio/PhonemeSteppedTTSPlayer.cpp
 )

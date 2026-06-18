@@ -36,6 +36,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_phoneme_extractor.cpp
     unit/audio/test_syllabifier.cpp
     unit/audio/test_phoneme_aligned_clip_builder.cpp
+    unit/audio/test_v1_boundary_edits.cpp
     unit/audio/test_vowel_grain_loop.cpp
     unit/audio/test_phoneme_stepped_player.cpp
     unit/scenes/test_scene_compiles.cpp
