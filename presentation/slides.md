@@ -109,79 +109,47 @@ Ebow gets a mention but isn't pictured; it's the side path.
 -->
 
 
----
-layout: two-cols
-class: gap-8
----
-
-# How this started — Halloween
-
-<v-clicks>
-
-- Two Halloween choices: walk with the kids, or stay home
-- Found out you can crank a guitar amp loud outside on Halloween — no one calls the cops
-- One year I dressed as **Eddie Munson** *(anyone here watch Stranger Things?)*
-- Sitting on the porch in costume — *what else could make this better?*
-
-</v-clicks>
-
-::right::
-
-<img src="/halloween-eddie.jpg" class="rounded-lg w-full" />
+<div class="absolute inset-0 flex items-center justify-center p-6">
+  <img src="/halloween-guitar-pumpkin.png" class="max-h-full max-w-full object-contain rounded-lg" />
+</div>
 
 <!--
-Quick origin story. Halloween I had two choices: walk with the kids
-or stay home. Found out you can crank a guitar amp loud on
-Halloween and no one calls the cops. One year I dressed as Eddie
-Munson from Stranger Things season 4 — pause and read the room:
-"anyone here watch Stranger Things?" That night, sitting on the
-porch in costume, I started asking: what else could make this
-better?
+Quick origin story. Every Halloween I had two choices: walk with
+the kids or stay home. Found out you can crank a guitar amp loud
+outside on Halloween and no one calls the cops. That's how this
+whole thread started.
 -->
 
 ---
 
-# That same Halloween — synced lights
-
-<div class="grid grid-cols-[1fr_1.2fr] gap-6 pt-2 h-[70vh]">
-
-<div>
-
-<v-clicks>
-
-- ActiveViz addressable LED strips on the porch
-- Hand-mapped "STRANGER THINGS" letters + ghost characters in Photoshop
-- Wired them to react to what I was playing in real time
-- One person, one guitar, one block — full A/V show
-
-</v-clicks>
-
-<div v-click class="pt-8 opacity-75 text-sm">
-That's where mixing creativity + tech got real for me.<br/>
-Felt like there was more to explore.
-</div>
-
-</div>
-
-<div class="rounded-lg overflow-hidden border border-white/10">
-  <iframe
-    src="https://www.activeviz.com/stranger-things-lights"
-    class="w-full h-full"
-    loading="lazy"
-    referrerpolicy="no-referrer"
-  ></iframe>
-</div>
-
+<div class="absolute inset-0 flex items-center justify-center p-6">
+  <img src="/halloween-eddie.jpg" class="max-h-full max-w-full object-contain rounded-lg" />
 </div>
 
 <!--
-Rigged ActiveViz addressable LED strips around the porch. Hand-
-photoshopped pixel maps for the "STRANGER THINGS" letters and the
-ghost characters from the show. Wired them to react to what I was
-playing on the guitar in real time. One person, one guitar, one
-block. People stopped. That's when I knew mixing creativity + tech
-was something I wanted to keep pushing — and that thread leads
-straight to this project.
+One year I dressed as Eddie Munson from Stranger Things season 4.
+Pause and read the room: "anyone here watch Stranger Things?"
+That night, sitting on the porch in costume, I started asking:
+what else could make this better?
+-->
+
+---
+
+<iframe
+  src="https://www.activeviz.com/stranger-things-lights"
+  class="absolute inset-0 w-full h-full border-0"
+  loading="lazy"
+  referrerpolicy="no-referrer"
+></iframe>
+
+<!--
+Sitting on the porch in costume, that's the question that led to
+the ActiveViz rig: addressable LED strips, hand-mapped STRANGER
+THINGS letters and ghost characters, wired to react to what I was
+playing in real time. One person, one guitar, one block — full
+A/V show. People stopped. That's when I knew mixing creativity +
+tech was something I wanted to keep pushing — and that thread
+leads straight to this project.
 -->
 
 ---
