@@ -14,3 +14,41 @@ button[title*="Open" i][title*="Editor" i],
 .slidev-editor {
   display: none !important;
 }
+
+/* --- Aggressive backstop: the slide-list popover (GoToPage / Pages) ---
+ * In Slidev v0.50 the page-counter region in the bottom toolbar shows a
+ * popover with all slide titles on hover. That's the panel we're trying
+ * to kill. Targets every name we know it's gone by across versions. */
+.slidev-pages,
+.slidev-pages-list,
+.slidev-page-list,
+.slidev-page-popover,
+.slidev-go-to-page,
+.slidev-go-to-page-popover,
+[class*="slidev-pages" i],
+[class*="GoToPage" i],
+[class*="PagesPopover" i],
+[class*="page-popover" i] {
+  display: none !important;
+}
+
+/* Kill the hover trigger entirely so the popover never opens. */
+.slidev-page-counter,
+.slidev-nav-page,
+.slidev-nav-controls [class*="page" i] {
+  pointer-events: none !important;
+}
+
+/* The actual culprit (DOM inspection, 2026-06-18):
+ *   <div class="fixed right-5 transition-all -top-20">
+ *     <div class="autocomplete-list">
+ *       <ul>... slide titles ...</ul>
+ * That's the "Go to slide" autocomplete (keyboard 'g' opens it).
+ * Hide the list + force the wrapper off-screen. */
+.autocomplete-list,
+.autocomplete-list * {
+  display: none !important;
+}
+div.fixed.right-5.transition-all {
+  display: none !important;
+}
