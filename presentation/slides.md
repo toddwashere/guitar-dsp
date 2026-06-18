@@ -933,8 +933,6 @@ What translates from this project to yours
 
 # Five lessons that translate
 
-<v-clicks>
-
 1. **Build for the stage even when there's no stage.** The "cannot crash" constraint forced every other good decision: fallbacks, RT-safe, visibility, defense in depth.
 
 2. **Latency is a feature.** Not a thing you optimize later. A vocoder you can't hear yourself in is a different product.
@@ -944,8 +942,6 @@ What translates from this project to yours
 4. **Iterate where you can see the failure.** The standalone app was the dev loop; Logic was the milestone. Don't optimize for the deploy target — optimize for the *feedback speed*.
 
 5. **Visibility is free UX.** Every internal toggle, every fallback walk, every detected pitch — surface it. The user (or the audience) sees what's happening.
-
-</v-clicks>
 
 ---
 layout: center
