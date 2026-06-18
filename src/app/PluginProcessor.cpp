@@ -219,6 +219,11 @@ void PluginProcessor::installEditedPhonemeClip(audio::TTSClipPtr clip) {
     lastPhonemeClip_ = clip;
 }
 
+void PluginProcessor::installEditedV1Clip(audio::TTSClipPtr clip) {
+    lastV1Clip_ = clip;
+    graph_.noteSteppedPlayer().setClip(clip);
+}
+
 void PluginProcessor::rebuildLlmClient() {
     if (selectedModelId_.rfind("ollama:", 0) == 0) {
         const auto tag = selectedModelId_.substr(7);

@@ -330,6 +330,11 @@ public:
     // re-renders. Message thread only.
     void installEditedPhonemeClip(audio::TTSClipPtr clip);
 
+    // Mirrors installEditedPhonemeClip but installs into the v1
+    // note-stepped player (used by scenes 0/1 — prebaked v1 clips).
+    // Message thread only.
+    void installEditedV1Clip(audio::TTSClipPtr clip);
+
 private:
     audio::AudioGraph graph_;
     audio::MicCapture micCapture_;
