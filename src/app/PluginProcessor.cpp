@@ -275,15 +275,25 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     else if (scene.tts.wordSync == "syllable")
         graph_.setWordSyncMode(audio::WordSyncMode::Syllable);
 
-    graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
+    // Clear any leftover clip-bank state from a previous scene (e.g. scene 2
+    // Vocal-Guitar). The normal scene-activation paths do this branch-by-branch;
+    // the autoload helper has to be explicit because it short-circuits them.
+    graph_.clipBankPlayer().setBank({});
+    // Modulator routes through the note-stepped (v1) / phoneme-stepped (v2)
+    // player so onset-driven plucks actually advance through words / syllables.
+    // The normal-path equivalents are at PluginProcessor.cpp ~797 (v2) and ~850 (v1).
+    graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
 
     if (loaded->isV2) {
         graph_.setActiveSpeechPlayer(
             audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
         graph_.phonemeSteppedPlayer().setMaxSustainMs(scene.speech.maxSustainMs);
         graph_.ttsClipPlayer().setClip(nullptr);
-        graph_.noteSteppedPlayer().setClip(nullptr);
         installEditedPhonemeClip(loaded->clip);
+        graph_.phonemeSteppedPlayer().setLoop(true);
+        // Push to the v1 player too, mirroring the normal v2 path — safe
+        // because the inactive player is muted by setActiveSpeechPlayer.
+        graph_.noteSteppedPlayer().setClip(loaded->clip);
     } else {
         graph_.setActiveSpeechPlayer(
             audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
@@ -291,6 +301,7 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
         graph_.phonemeSteppedPlayer().setClip(nullptr);
         lastPhonemeClip_.reset();
         installEditedV1Clip(loaded->clip);
+        graph_.noteSteppedPlayer().setLoop(true);
     }
 
     if (sayPanel_) sayPanel_->setText(juce::String(loaded->text));

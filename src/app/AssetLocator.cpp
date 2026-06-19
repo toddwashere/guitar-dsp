@@ -115,4 +115,37 @@ std::string AssetLocator::resolveRelativePath(const std::string& relPath) {
     return (fs::path(root) / stripped).string();
 }
 
+std::string AssetLocator::sourceAssetsRoot() {
+    // Find the repo's source assets dir by walking up from the binary
+    // location (dladdr), looking for an `assets/` directory that's a SIBLING
+    // of a `build/` directory — that's the dev-build signature. Avoids
+    // matching the bundle's internal Resources/assets/ (which sits inside
+    // the build/ tree but doesn't have build/ as a sibling).
+    Dl_info info{};
+    if (dladdr(reinterpret_cast<const void*>(&AssetLocator::sourceAssetsRoot), &info) == 0
+            || info.dli_fname == nullptr)
+        return {};
+    auto p = fs::path(info.dli_fname).parent_path();
+    for (int i = 0; i < 12; ++i) {
+        std::error_code ec;
+        const auto assets = p / "assets";
+        const auto build  = p / "build";
+        if (fs::is_directory(assets, ec) && fs::is_directory(build, ec))
+            return assets.string();
+        if (p == p.parent_path()) break;  // hit filesystem root
+        p = p.parent_path();
+    }
+    return {};
+}
+
+std::string AssetLocator::resolveSourceRelativePath(const std::string& relPath) {
+    if (relPath.empty()) return {};
+    const auto root = sourceAssetsRoot();
+    if (root.empty()) return {};
+    const std::string stripped = (relPath.rfind("assets/", 0) == 0)
+                                    ? relPath.substr(7)
+                                    : relPath;
+    return (fs::path(root) / stripped).string();
+}
+
 } // namespace guitar_dsp

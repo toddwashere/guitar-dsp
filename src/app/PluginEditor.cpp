@@ -120,8 +120,9 @@ void PluginEditor::resized() {
     // audience can see the word/syllable boundaries vs the energy-aware v2
     // slices. 'L' key hides it on either class of scene.
     const int  activeSceneId     = processor_.activeSceneId();
-    const bool isV1WaveformScene = (activeSceneId == 1 || activeSceneId == 2
-                                 || activeSceneId == 6 || activeSceneId == 9);
+    const bool isV1WaveformScene = (activeSceneId == 0 || activeSceneId == 1
+                                 || activeSceneId == 2 || activeSceneId == 6
+                                 || activeSceneId == 9);
     const bool showWaveform      = (processor_.activeSceneIsPhoneme() || isV1WaveformScene)
                                    && processor_.showSlices();
     // Scene 7 (Talk Box) has tts.source == "mic" — no static clip to display.

@@ -367,7 +367,12 @@ void WaveformView::onSavePressed_() {
     if (!clip_ || clip_->samples.empty()) return;
     const auto rel = processor_.activeSceneGspeakPath();
     if (rel.isEmpty()) return;
-    const auto resolved = AssetLocator::resolveRelativePath(rel.toStdString());
+    // Prefer the source assets dir (so saves persist across rebuilds) when
+    // running from a dev build; fall back to the runtime-resolved path (the
+    // bundle's Resources/assets) for installed/AU runs in hosts like Logic.
+    auto resolved = AssetLocator::resolveSourceRelativePath(rel.toStdString());
+    if (resolved.empty())
+        resolved = AssetLocator::resolveRelativePath(rel.toStdString());
     if (resolved.empty()) {
         processor_.flashStatusMessage("Save failed: can't resolve " + rel, 3000);
         return;

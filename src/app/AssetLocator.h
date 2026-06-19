@@ -45,8 +45,17 @@ public:
     // but assetsRoot() already includes the "assets/" segment).
     static std::string resolveRelativePath(const std::string& relPath);
 
+    // Like resolveRelativePath, but targets the SOURCE assets dir (the repo's
+    // working tree), not the runtime/bundle dir. Returns empty if the binary
+    // doesn't appear to live inside a development build tree (e.g. an
+    // installed AU in Logic). Used by Save handlers so hand-tuned files
+    // persist across rebuilds — the bundle copy gets refreshed from source
+    // each build, so saving INTO the bundle is wiped on next build.
+    static std::string resolveSourceRelativePath(const std::string& relPath);
+
 private:
     static std::string assetsRoot();
+    static std::string sourceAssetsRoot();
 };
 
 } // namespace guitar_dsp
