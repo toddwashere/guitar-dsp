@@ -120,6 +120,14 @@ struct Scene {
     bool showSay         = true;    // Most TTS scenes; off for clipBank/mic
     bool showWordReadout = true;    // Off for scenes with no per-word stepping
 
+    // .gspeak clip bundle integration. Optional per-scene path to a
+    // .gspeak file (zip containing audio.wav + manifest.json). When
+    // gspeakAutoLoad is true, the scene engine loads the bundle on
+    // activation, skipping the normal TTS source path; otherwise the
+    // bundle is loaded only via the WaveformView Load button.
+    std::string gspeakPath;
+    bool        gspeakAutoLoad = false;
+
     static Scene defaults(int id);
 };
 

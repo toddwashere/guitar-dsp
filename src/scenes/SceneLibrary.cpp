@@ -120,6 +120,11 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
         }
     }
 
+    if (obj->hasProperty("gspeakPath"))
+        s.gspeakPath = obj->getProperty("gspeakPath").toString().toStdString();
+    if (obj->hasProperty("gspeakAutoLoad"))
+        s.gspeakAutoLoad = (bool) obj->getProperty("gspeakAutoLoad");
+
     if (obj->hasProperty("carousel")) {
         if (auto* c = obj->getProperty("carousel").getDynamicObject()) {
             auto& cc = s.carousel;

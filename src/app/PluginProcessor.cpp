@@ -11,8 +11,11 @@
 #include <juce_events/juce_events.h>
 
 #include "AssetLocator.h"
+#include "audio/GspeakBundle.h"
 #include "audio/TTSSynthChain.h"
 #include "scenes/SceneLibrary.h"
+#include "TtsStatusBar.h"
+#include "SayPanel.h"
 
 namespace guitar_dsp {
 
@@ -217,6 +220,86 @@ void PluginProcessor::installEditedPhonemeClip(audio::TTSClipPtr clip) {
     if (!clip) return;
     graph_.phonemeSteppedPlayer().setClip(clip);
     lastPhonemeClip_ = clip;
+}
+
+void PluginProcessor::installEditedV1Clip(audio::TTSClipPtr clip) {
+    lastV1Clip_ = clip;
+    graph_.noteSteppedPlayer().setClip(clip);
+}
+
+juce::String PluginProcessor::activeSceneGspeakPath() const {
+    return juce::String(sceneEngine_.getActiveScene().gspeakPath);
+}
+
+juce::String PluginProcessor::currentSayText() const {
+    return sayPanel_ ? sayPanel_->currentText() : juce::String{};
+}
+
+void PluginProcessor::setSayPanelText(juce::String t) {
+    if (sayPanel_) sayPanel_->setText(std::move(t));
+}
+
+void PluginProcessor::flashStatusMessage(juce::String msg, int durationMs) {
+    if (ttsStatusBar_) ttsStatusBar_->flashMessage(std::move(msg), durationMs);
+}
+
+double PluginProcessor::currentSampleRate() const noexcept {
+    return getSampleRate();
+}
+
+bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
+    if (scene.gspeakPath.empty() || !scene.gspeakAutoLoad) return false;
+
+    const auto path = AssetLocator::resolveRelativePath(scene.gspeakPath);
+    if (path.empty()) {
+        if (ttsStatusBar_)
+            ttsStatusBar_->flashMessage(
+                juce::String(scene.gspeakPath) + " missing — using fallback", 5000);
+        return false;
+    }
+    juce::File file(path);
+    auto loaded = audio::GspeakBundle::read(file, getSampleRate());
+    if (!loaded.has_value()) {
+        if (ttsStatusBar_)
+            ttsStatusBar_->flashMessage(
+                juce::String(scene.gspeakPath) + " missing — using fallback", 5000);
+        return false;
+    }
+
+    // Configure the player + modulator state for the scene, then install the clip.
+    graph_.setClarity(scene.tts.clarity);
+    if (scene.tts.wordSync == "latch")
+        graph_.setWordSyncMode(audio::WordSyncMode::Latch);
+    else if (scene.tts.wordSync == "advance")
+        graph_.setWordSyncMode(audio::WordSyncMode::Advance);
+    else if (scene.tts.wordSync == "syllable")
+        graph_.setWordSyncMode(audio::WordSyncMode::Syllable);
+
+    graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::Linear);
+
+    if (loaded->isV2) {
+        graph_.setActiveSpeechPlayer(
+            audio::AudioGraph::ActiveSpeechPlayer::PhonemeStepped);
+        graph_.phonemeSteppedPlayer().setMaxSustainMs(scene.speech.maxSustainMs);
+        graph_.ttsClipPlayer().setClip(nullptr);
+        graph_.noteSteppedPlayer().setClip(nullptr);
+        installEditedPhonemeClip(loaded->clip);
+    } else {
+        graph_.setActiveSpeechPlayer(
+            audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+        graph_.ttsClipPlayer().setClip(nullptr);
+        graph_.phonemeSteppedPlayer().setClip(nullptr);
+        lastPhonemeClip_.reset();
+        installEditedV1Clip(loaded->clip);
+    }
+
+    if (sayPanel_) sayPanel_->setText(juce::String(loaded->text));
+
+    // Mark the clip-key as "consumed" so the normal-path early-return
+    // (`if (key == currentTtsClipKey_) return;`) fires if this scene is
+    // re-activated without changing the bundle.
+    currentTtsClipKey_ = std::string("gspeak:") + scene.gspeakPath;
+    return true;
 }
 
 void PluginProcessor::rebuildLlmClient() {
@@ -467,6 +550,11 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         currentSayText_.clear();
         juce::MessageManager::callAsync([this, activeSceneId] {
             if (sceneEngine_.getActiveSceneId() != activeSceneId) return;
+
+            // Gspeak auto-load: if the scene declares a .gspeak bundle with
+            // gspeakAutoLoad=true and we can read it, install the clip and
+            // skip the normal TTS source dispatch.
+            if (tryAutoLoadGspeak_(sceneEngine_.getActiveScene())) return;
 
             // Carousel branch selection + config push (message thread).
             const auto carouselCfg = sceneEngine_.activeCarouselConfig();

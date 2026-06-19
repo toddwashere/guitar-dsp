@@ -40,6 +40,9 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(waveformView_);
     addAndMakeVisible(micScopeView_);
 
+    processor_.setStatusBar(&ttsStatusBar_);
+    processor_.setSayPanel(&sayPanel_);
+
     const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
 
     conversationPanel_ = std::make_unique<ConversationPanel>(
@@ -83,6 +86,11 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     // Poll active scene id; trigger resized() when it flips so the
     // ConversationPanel visibility toggles correctly per scene.
     startTimer(100);
+}
+
+PluginEditor::~PluginEditor() {
+    processor_.setStatusBar(nullptr);
+    processor_.setSayPanel(nullptr);
 }
 
 void PluginEditor::timerCallback() {

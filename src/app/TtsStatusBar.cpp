@@ -40,6 +40,28 @@ void TtsStatusBar::paint(juce::Graphics& g) {
     if (resolved.isNotEmpty() && resolved != active)
         msg += "   -> using: " + resolved;
     g.drawText(msg, area, juce::Justification::centredLeft);
+
+    if (juce::Time::currentTimeMillis() < flashUntilMs_ && flashText_.isNotEmpty()) {
+        g.setColour(juce::Colour::fromRGB(150, 150, 150));  // muted grey
+        g.setFont(juce::Font{juce::FontOptions{}.withHeight(11.0f)});
+        g.drawText(flashText_, getLocalBounds().reduced(8, 2),
+                   juce::Justification::centredRight);
+    }
+}
+
+void TtsStatusBar::flashMessage(juce::String message, int durationMs) {
+    flashText_    = std::move(message);
+    flashUntilMs_ = juce::Time::currentTimeMillis() + (juce::int64) durationMs;
+    repaint();
+}
+
+void TtsStatusBar::timerCallback() {
+    if (flashUntilMs_ != 0 && juce::Time::currentTimeMillis() > flashUntilMs_) {
+        flashUntilMs_ = 0;
+        flashText_.clear();
+        repaint();
+    }
+    repaint();
 }
 
 void TtsStatusBar::mouseDown(const juce::MouseEvent& e) {

@@ -31,10 +31,12 @@ add_executable(guitar_dsp_tests
     unit/audio/test_mic_capture.cpp
     unit/audio/test_mic_scope_buffer.cpp
     unit/audio/test_mic_shaper.cpp
+    unit/audio/test_gspeak_bundle.cpp
     unit/audio/test_phoneme_compiles.cpp
     unit/audio/test_phoneme_extractor.cpp
     unit/audio/test_syllabifier.cpp
     unit/audio/test_phoneme_aligned_clip_builder.cpp
+    unit/audio/test_v1_boundary_edits.cpp
     unit/audio/test_vowel_grain_loop.cpp
     unit/audio/test_phoneme_stepped_player.cpp
     unit/scenes/test_scene_compiles.cpp
@@ -91,6 +93,8 @@ add_executable(guitar_dsp_tests
     integration/test_ai_pedal_routing.cpp
     integration/test_headless_safety_ai.cpp
     integration/test_speak_v2_scene.cpp
+    integration/test_gspeak_autoload.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/AssetLocator.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp

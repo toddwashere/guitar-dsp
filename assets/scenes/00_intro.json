@@ -12,5 +12,7 @@
     "trigger": "note",
     "wordSync": "syllable",
     "clarity": 1.0
-  }
+  },
+  "gspeakPath": "assets/clips/gspeak/scene0.gspeak",
+  "gspeakAutoLoad": true
 }

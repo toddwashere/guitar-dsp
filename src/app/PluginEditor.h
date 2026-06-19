@@ -25,7 +25,7 @@ class PluginEditor : public juce::AudioProcessorEditor,
                      private juce::Timer {
 public:
     explicit PluginEditor(PluginProcessor&);
-    ~PluginEditor() override = default;
+    ~PluginEditor() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;

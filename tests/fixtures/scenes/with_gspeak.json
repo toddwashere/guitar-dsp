@@ -1,0 +1,7 @@
+{
+  "id": 42,
+  "name": "Test",
+  "tts": { "source": "piper", "text": "hi" },
+  "gspeakPath": "assets/clips/gspeak/test.gspeak",
+  "gspeakAutoLoad": true
+}
