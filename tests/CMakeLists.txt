@@ -25,6 +25,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_formant_modulator.cpp
     unit/audio/test_onset_detector.cpp
     unit/audio/test_word_aligner.cpp
+    unit/audio/test_audio_file_decoder.cpp
     unit/audio/test_note_stepped_player.cpp
     unit/audio/test_v1_golden.cpp
     unit/audio/test_clip_bank_player.cpp

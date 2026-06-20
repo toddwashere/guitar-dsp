@@ -35,6 +35,7 @@ add_library(guitar_dsp_audio STATIC
     audio/V1BoundaryEdits.cpp
     audio/VowelGrainLoop.cpp
     audio/PhonemeSteppedTTSPlayer.cpp
+    audio/AudioFileDecoder.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
