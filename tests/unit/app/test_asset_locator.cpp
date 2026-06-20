@@ -16,8 +16,10 @@ TEST_CASE("resolveForRead returns source path when source file exists",
           "[unit][asset-locator]") {
     namespace fs = std::filesystem;
     const auto src = guitar_dsp::AssetLocator::resolveSourceRelativePath(kRel);
-    if (src.empty())
-        SUCCEED("no source-tree dev build detected; skipping");
+    if (src.empty()) {
+        WARN("no source-tree dev build detected; skipping");
+        return;
+    }
     REQUIRE_FALSE(src.empty());
 
     fs::create_directories(fs::path(src).parent_path());
@@ -33,8 +35,10 @@ TEST_CASE("resolveForRead falls back to runtime when source file is absent",
           "[unit][asset-locator]") {
     namespace fs = std::filesystem;
     const auto src = guitar_dsp::AssetLocator::resolveSourceRelativePath(kRel);
-    if (src.empty())
-        SUCCEED("no source-tree dev build detected; skipping");
+    if (src.empty()) {
+        WARN("no source-tree dev build detected; skipping");
+        return;
+    }
     REQUIRE_FALSE(src.empty());
 
     // Make sure the source file is NOT present.

@@ -152,7 +152,7 @@ std::string AssetLocator::resolveForRead(const std::string& relPath) {
     auto src = resolveSourceRelativePath(relPath);
     if (!src.empty()) {
         std::error_code ec;
-        if (std::filesystem::exists(src, ec))
+        if (fs::exists(src, ec))
             return src;
     }
     return resolveRelativePath(relPath);
