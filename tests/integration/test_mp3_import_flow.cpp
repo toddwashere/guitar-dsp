@@ -70,7 +70,6 @@ TEST_CASE("Auto-slice: WordAligner produces monotonic per-syllable boundaries",
     for (std::size_t i = 16200; i < n; ++i)
         samples[i] = (float) std::sin(2.0 * 3.14159 * 250.0 * i / sr) * 0.3f;
 
-    std::vector<std::string> words           = { "hel-lo", "world" };
     std::vector<std::string> hyphenatedForms = { "hel-lo", "world" };
     // Strip hyphens for the unhyphenated form expected by WordAligner.
     std::vector<std::string> unhyphenated    = { "hello", "world" };

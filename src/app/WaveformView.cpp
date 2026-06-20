@@ -478,7 +478,7 @@ void WaveformView::onAutoSlicePressed_() {
 WaveformView::ParsedTranscript
 WaveformView::parseTranscript_(const juce::String& text) {
     ParsedTranscript out;
-    const auto std = text.toStdString();
+    const auto raw = text.toStdString();
     std::string cur;
     auto flush = [&] {
         if (cur.empty()) return;
@@ -500,7 +500,7 @@ WaveformView::parseTranscript_(const juce::String& text) {
         }
         cur.clear();
     };
-    for (char c : std) {
+    for (char c : raw) {
         if (c == ' ' || c == '\t' || c == '\n' || c == '\r') flush();
         else cur += c;
     }
