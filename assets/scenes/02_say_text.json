@@ -9,6 +9,6 @@
     "voice": "com.apple.voice.compact.en-US.Samantha",
     "trigger": "note",
     "wordSync": "latch",
-    "clarity": 0.6
+    "clarity": 0.95
   }
 }
