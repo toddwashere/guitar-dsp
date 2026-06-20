@@ -1,5 +1,6 @@
 #include "audio/AudioFileDecoder.h"
 #include "audio/TTSClip.h"
+#include "audio/WordAligner.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -55,4 +56,33 @@ TEST_CASE("Import flow: decode produces a single-span v1 clip",
     REQUIRE(clip->phonemes.empty());
 
     path.deleteFile();
+}
+
+TEST_CASE("Auto-slice: WordAligner produces monotonic per-syllable boundaries",
+          "[integration][import]") {
+    // 0.5 s of audio, two "words" separated by ~150 ms of silence.
+    const double sr = 48000.0;
+    const std::size_t n = 24000;  // 0.5 s
+    std::vector<float> samples(n, 0.0f);
+    // word 0: 0..9000 (sine), 9000..16200 silence, word 1: 16200..24000.
+    for (std::size_t i = 0; i < 9000; ++i)
+        samples[i] = (float) std::sin(2.0 * 3.14159 * 250.0 * i / sr) * 0.3f;
+    for (std::size_t i = 16200; i < n; ++i)
+        samples[i] = (float) std::sin(2.0 * 3.14159 * 250.0 * i / sr) * 0.3f;
+
+    std::vector<std::string> words           = { "hel-lo", "world" };
+    std::vector<std::string> hyphenatedForms = { "hel-lo", "world" };
+    // Strip hyphens for the unhyphenated form expected by WordAligner.
+    std::vector<std::string> unhyphenated    = { "hello", "world" };
+
+    auto syls = guitar_dsp::audio::WordAligner::alignSyllables(
+        samples, unhyphenated, hyphenatedForms, sr);
+    REQUIRE_FALSE(syls.empty());
+    // "hel-lo" → 2 syls, "world" → 1 syl = 3 total.
+    REQUIRE(syls.size() == 3);
+    // Monotonic + cover the buffer.
+    for (std::size_t i = 0; i + 1 < syls.size(); ++i)
+        CHECK(syls[i].endSample <= syls[i + 1].startSample);
+    CHECK(syls.front().startSample == 0);
+    CHECK(syls.back().endSample == n);
 }

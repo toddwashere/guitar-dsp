@@ -47,13 +47,25 @@ public:
 private:
     void timerCallback() override;
 
-    juce::TextButton saveButton_   {"Save"};
-    juce::TextButton loadButton_   {"Load"};
-    juce::TextButton importButton_ {"Import"};
+    juce::TextButton saveButton_      {"Save"};
+    juce::TextButton loadButton_      {"Load"};
+    juce::TextButton importButton_    {"Import"};
+    juce::TextButton autoSliceButton_ {"Auto-slice"};
 
     void onSavePressed_();
     void onLoadPressed_();
     void onImportPressed_();
+    void onAutoSlicePressed_();
+
+    // Splits SayPanel text into (unhyphenated words, hyphenated words)
+    // pairs for WordAligner::alignSyllables. Whitespace-split; ASCII
+    // punctuation stripped from token ends; interior hyphens preserved
+    // in `hyphenatedWords`. Same size on success.
+    struct ParsedTranscript {
+        std::vector<std::string> words;
+        std::vector<std::string> hyphenatedWords;
+    };
+    static ParsedTranscript parseTranscript_(const juce::String& text);
 
     // Helpers for boundary editing.
     // Returns the interior boundary index (1 .. syls.size()-1) nearest

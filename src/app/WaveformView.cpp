@@ -5,6 +5,7 @@
 #include "audio/GspeakBundle.h"
 #include "audio/Syllabifier.h"
 #include "audio/V1BoundaryEdits.h"
+#include "audio/WordAligner.h"
 #include "AssetLocator.h"
 
 #include <algorithm>
@@ -35,9 +36,11 @@ WaveformView::WaveformView(PluginProcessor& p) : processor_(p) {
     saveButton_.onClick   = [this] { onSavePressed_(); };
     loadButton_.onClick   = [this] { onLoadPressed_(); };
     importButton_.onClick = [this] { onImportPressed_(); };
+    autoSliceButton_.onClick = [this] { onAutoSlicePressed_(); };
     addAndMakeVisible(saveButton_);
     addAndMakeVisible(loadButton_);
     addAndMakeVisible(importButton_);
+    addAndMakeVisible(autoSliceButton_);
 }
 
 WaveformView::~WaveformView() { stopTimer(); }
@@ -47,6 +50,8 @@ void WaveformView::resized() {
     saveButton_.setBounds(top.removeFromRight(56));
     top.removeFromRight(4);
     loadButton_.setBounds(top.removeFromRight(56));
+    top.removeFromRight(4);
+    autoSliceButton_.setBounds(top.removeFromRight(80));
     top.removeFromRight(4);
     importButton_.setBounds(top.removeFromRight(64));
 }
@@ -71,9 +76,11 @@ void WaveformView::timerCallback() {
 
     const bool haveClip = clip_ && !clip_->samples.empty();
     const bool havePath = processor_.activeSceneGspeakPath().isNotEmpty();
+    const bool haveText = processor_.currentSayText().isNotEmpty();
     saveButton_.setEnabled(haveClip && havePath);
     loadButton_.setEnabled(havePath);
     importButton_.setEnabled(!importInFlight_.load());
+    autoSliceButton_.setEnabled(haveClip && haveText);
 }
 
 void WaveformView::paint(juce::Graphics& g) {
@@ -416,6 +423,89 @@ void WaveformView::onLoadPressed_() {
     }
     processor_.setSayPanelText(juce::String(loaded->text));
     processor_.flashStatusMessage("Loaded " + rel, 1500);
+}
+
+void WaveformView::onAutoSlicePressed_() {
+    if (!clip_ || clip_->samples.empty()) return;
+    const auto text = processor_.currentSayText();
+    if (text.isEmpty()) {
+        processor_.flashStatusMessage("Auto-slice failed: no text", 3000);
+        return;
+    }
+
+    const auto parsed = parseTranscript_(text);
+    if (parsed.words.empty()) {
+        processor_.flashStatusMessage("Auto-slice failed: no words", 3000);
+        return;
+    }
+
+    auto syls = audio::WordAligner::alignSyllables(
+        clip_->samples, parsed.words, parsed.hyphenatedWords, clip_->sampleRate);
+    if (syls.empty()) {
+        processor_.flashStatusMessage(
+            "Auto-slice failed: aligner returned empty", 3000);
+        return;
+    }
+
+    auto fresh = std::make_shared<audio::TTSClip>();
+    fresh->name       = clip_->name;
+    fresh->sampleRate = clip_->sampleRate;
+    fresh->samples    = clip_->samples;
+    fresh->syllables  = syls;
+
+    // Build per-word spans by consuming N syllables per word, where N is
+    // hyphen-bounded fragment count (= hyphens + 1) — matches
+    // WordAligner::alignSyllables's emission order.
+    std::size_t sylCursor = 0;
+    for (std::size_t w = 0; w < parsed.words.size(); ++w) {
+        const auto& hw = parsed.hyphenatedWords[w];
+        const std::size_t fragments =
+            (std::size_t) std::count(hw.begin(), hw.end(), '-') + 1;
+        if (sylCursor + fragments > syls.size()) break;
+        const auto start = syls[sylCursor].startSample;
+        const auto end   = syls[sylCursor + fragments - 1].endSample;
+        fresh->words.push_back({parsed.words[w], start, end});
+        sylCursor += fragments;
+    }
+
+    processor_.installImportedClip(fresh);
+    processor_.flashStatusMessage(
+        juce::String("Auto-sliced ") + juce::String((int) parsed.words.size())
+            + " words / " + juce::String((int) syls.size()) + " syls",
+        1500);
+}
+
+WaveformView::ParsedTranscript
+WaveformView::parseTranscript_(const juce::String& text) {
+    ParsedTranscript out;
+    const auto std = text.toStdString();
+    std::string cur;
+    auto flush = [&] {
+        if (cur.empty()) return;
+        // Strip leading + trailing ASCII punctuation (but preserve interior).
+        std::size_t a = 0, b = cur.size();
+        auto isPunct = [](char c) {
+            return c == '.' || c == ',' || c == '!' || c == '?' || c == ';'
+                || c == ':' || c == '"' || c == '\'' || c == '(' || c == ')';
+        };
+        while (a < b && isPunct(cur[a])) ++a;
+        while (b > a && isPunct(cur[b - 1])) --b;
+        if (b > a) {
+            std::string hyphenated = cur.substr(a, b - a);
+            std::string unhyphenated;
+            unhyphenated.reserve(hyphenated.size());
+            for (char c : hyphenated) if (c != '-') unhyphenated.push_back(c);
+            out.hyphenatedWords.push_back(std::move(hyphenated));
+            out.words.push_back(std::move(unhyphenated));
+        }
+        cur.clear();
+    };
+    for (char c : std) {
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') flush();
+        else cur += c;
+    }
+    flush();
+    return out;
 }
 
 void WaveformView::onImportPressed_() {
