@@ -227,6 +227,20 @@ void PluginProcessor::installEditedV1Clip(audio::TTSClipPtr clip) {
     graph_.noteSteppedPlayer().setClip(clip);
 }
 
+void PluginProcessor::installImportedClip(audio::TTSClipPtr clip) {
+    if (!clip || clip->samples.empty()) return;
+
+    // Match the v1 branch of tryAutoLoadGspeak_ (see PluginProcessor.cpp:297-305).
+    graph_.clipBankPlayer().setBank({});
+    graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
+    graph_.setActiveSpeechPlayer(audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+    graph_.ttsClipPlayer().setClip(nullptr);
+    graph_.phonemeSteppedPlayer().setClip(nullptr);
+    lastPhonemeClip_.reset();
+    installEditedV1Clip(clip);
+    graph_.noteSteppedPlayer().setLoop(true);
+}
+
 juce::String PluginProcessor::activeSceneGspeakPath() const {
     return juce::String(sceneEngine_.getActiveScene().gspeakPath);
 }

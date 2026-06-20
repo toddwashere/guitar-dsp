@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <atomic>
 #include <memory>
 
 #include "audio/TTSClip.h"
@@ -46,11 +47,13 @@ public:
 private:
     void timerCallback() override;
 
-    juce::TextButton saveButton_ {"Save"};
-    juce::TextButton loadButton_ {"Load"};
+    juce::TextButton saveButton_   {"Save"};
+    juce::TextButton loadButton_   {"Load"};
+    juce::TextButton importButton_ {"Import"};
 
     void onSavePressed_();
     void onLoadPressed_();
+    void onImportPressed_();
 
     // Helpers for boundary editing.
     // Returns the interior boundary index (1 .. syls.size()-1) nearest
@@ -67,6 +70,10 @@ private:
     audio::TTSClipPtr clip_;       // shared_ptr; cheap to compare/assign
     int activeSylIdx_  = -1;
     int playSample_    = -1;
+
+    // True while a file decode is running off the message thread.
+    // Re-clicks are ignored; button is disabled in the meantime.
+    std::atomic<bool> importInFlight_ { false };
 
     // Drag state.
     int dragBoundaryIndex_ = -1;  // -1 = not dragging

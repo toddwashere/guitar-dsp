@@ -338,6 +338,13 @@ public:
     // Message thread only.
     void installEditedV1Clip(audio::TTSClipPtr clip);
 
+    // Installs a freshly built v1 clip (from Import or Auto-slice) into the
+    // wet path with the same player / modulator wiring tryAutoLoadGspeak_
+    // uses for v1: modulator = NoteStepped, clip-bank cleared,
+    // noteSteppedPlayer.setLoop(true), active speech player = NoteStepped.
+    // Message thread only.
+    void installImportedClip(audio::TTSClipPtr clip);
+
     // The editor registers itself here so the processor can flash status
     // messages and update the Say input field from non-UI code paths
     // (e.g., scene-activation auto-load of a .gspeak clip).

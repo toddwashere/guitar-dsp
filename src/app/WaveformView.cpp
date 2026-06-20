@@ -1,6 +1,7 @@
 #include "WaveformView.h"
 
 #include "PluginProcessor.h"
+#include "audio/AudioFileDecoder.h"
 #include "audio/GspeakBundle.h"
 #include "audio/Syllabifier.h"
 #include "audio/V1BoundaryEdits.h"
@@ -8,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <thread>
 
 namespace guitar_dsp {
 
@@ -30,10 +32,12 @@ WaveformView::WaveformView(PluginProcessor& p) : processor_(p) {
     setOpaque(true);
     startTimerHz(kTimerHz);
 
-    saveButton_.onClick = [this] { onSavePressed_(); };
-    loadButton_.onClick = [this] { onLoadPressed_(); };
+    saveButton_.onClick   = [this] { onSavePressed_(); };
+    loadButton_.onClick   = [this] { onLoadPressed_(); };
+    importButton_.onClick = [this] { onImportPressed_(); };
     addAndMakeVisible(saveButton_);
     addAndMakeVisible(loadButton_);
+    addAndMakeVisible(importButton_);
 }
 
 WaveformView::~WaveformView() { stopTimer(); }
@@ -43,6 +47,8 @@ void WaveformView::resized() {
     saveButton_.setBounds(top.removeFromRight(56));
     top.removeFromRight(4);
     loadButton_.setBounds(top.removeFromRight(56));
+    top.removeFromRight(4);
+    importButton_.setBounds(top.removeFromRight(64));
 }
 
 void WaveformView::timerCallback() {
@@ -67,6 +73,7 @@ void WaveformView::timerCallback() {
     const bool havePath = processor_.activeSceneGspeakPath().isNotEmpty();
     saveButton_.setEnabled(haveClip && havePath);
     loadButton_.setEnabled(havePath);
+    importButton_.setEnabled(!importInFlight_.load());
 }
 
 void WaveformView::paint(juce::Graphics& g) {
@@ -409,6 +416,56 @@ void WaveformView::onLoadPressed_() {
     }
     processor_.setSayPanelText(juce::String(loaded->text));
     processor_.flashStatusMessage("Loaded " + rel, 1500);
+}
+
+void WaveformView::onImportPressed_() {
+    if (importInFlight_.load()) return;
+
+    importInFlight_.store(true);
+    importButton_.setEnabled(false);
+
+    // FileChooser must stay alive until the async callback fires;
+    // capture it in a shared_ptr so it outlives this stack frame.
+    auto chooser = std::make_shared<juce::FileChooser>(
+        "Import audio file", juce::File{}, "*.mp3;*.wav;*.aif;*.aiff;*.flac");
+
+    const auto sr = processor_.currentSampleRate();
+    chooser->launchAsync(
+        juce::FileBrowserComponent::openMode |
+        juce::FileBrowserComponent::canSelectFiles,
+        [this, chooser, sr](const juce::FileChooser& fc) {
+            const auto results = fc.getResults();
+            if (results.isEmpty()) {
+                // User cancelled — re-enable without decoding.
+                importInFlight_.store(false);
+                return;
+            }
+            const auto picked = results[0];
+
+            // Off-thread decode; install + status flash on the message thread.
+            std::thread([this, picked, sr]() {
+                auto decoded = audio::AudioFileDecoder::decodeMono(picked, sr);
+                juce::MessageManager::callAsync([this, picked, decoded = std::move(decoded)]() mutable {
+                    importInFlight_.store(false);
+                    if (!decoded.has_value()) {
+                        processor_.flashStatusMessage(
+                            "Import failed: " + picked.getFileName(), 3000);
+                        return;
+                    }
+                    auto clip = std::make_shared<audio::TTSClip>();
+                    clip->name       = picked.getFileNameWithoutExtension().toStdString();
+                    clip->sampleRate = decoded->sampleRate;
+                    clip->samples    = std::move(decoded->samples);
+                    const audio::WordSegment full{
+                        "imported", 0, clip->samples.size()};
+                    clip->words.push_back(full);
+                    clip->syllables.push_back(full);
+                    processor_.installImportedClip(clip);
+                    processor_.flashStatusMessage(
+                        "Imported " + picked.getFileName(), 1500);
+                });
+            }).detach();
+        });
 }
 
 } // namespace guitar_dsp
