@@ -89,9 +89,10 @@ TEST_CASE("resolveForRead returns source path when source file exists",
           "[unit][asset-locator]") {
     namespace fs = std::filesystem;
     const auto src = guitar_dsp::AssetLocator::resolveSourceRelativePath(kRel);
-    if (src.empty())
-        SUCCEED("no source-tree dev build detected; skipping");
-    REQUIRE_FALSE(src.empty());
+    if (src.empty()) {
+        WARN("no source-tree dev build detected; skipping");
+        return;
+    }
 
     fs::create_directories(fs::path(src).parent_path());
     { std::ofstream out(src); out << "sentinel"; }
@@ -106,9 +107,10 @@ TEST_CASE("resolveForRead falls back to runtime when source file is absent",
           "[unit][asset-locator]") {
     namespace fs = std::filesystem;
     const auto src = guitar_dsp::AssetLocator::resolveSourceRelativePath(kRel);
-    if (src.empty())
-        SUCCEED("no source-tree dev build detected; skipping");
-    REQUIRE_FALSE(src.empty());
+    if (src.empty()) {
+        WARN("no source-tree dev build detected; skipping");
+        return;
+    }
 
     // Make sure the source file is NOT present.
     fs::remove(src);
@@ -240,9 +242,10 @@ TEST_CASE("Save then Load in same session returns saved samples",
           "[integration][gspeak]") {
     namespace fs = std::filesystem;
     const auto src = guitar_dsp::AssetLocator::resolveSourceRelativePath(kRel);
-    if (src.empty())
-        SUCCEED("no source-tree dev build detected; skipping");
-    REQUIRE_FALSE(src.empty());
+    if (src.empty()) {
+        WARN("no source-tree dev build detected; skipping");
+        return;
+    }
 
     // Save a marker clip to the source path (what onSavePressed_ does).
     fs::create_directories(fs::path(src).parent_path());
