@@ -905,9 +905,9 @@ Expected: import contract test passes; all gspeak tests still pass.
 Also build the standalone app to confirm the WaveformView changes compile in the editor target:
 
 ```bash
-cmake --build build --target GuitarDSPApp -j
+cmake --build build --target guitar_dsp_app -j
 ```
-Expected: successful build (or the editor target name from `src/app/CMakeLists.txt` — check there if `GuitarDSPApp` is wrong).
+Expected: successful build.
 
 - [ ] **Step 9: Commit**
 
@@ -1160,9 +1160,9 @@ cmake --build build --target guitar_dsp_tests -j
 Expected: all pass.
 
 ```bash
-cmake --build build --target GuitarDSPApp -j
+cmake --build build --target guitar_dsp_app -j
 ```
-Expected: successful build (substitute the standalone app target name if different).
+Expected: successful build.
 
 - [ ] **Step 6: Commit**
 
