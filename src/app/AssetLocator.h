@@ -53,6 +53,15 @@ public:
     // each build, so saving INTO the bundle is wiped on next build.
     static std::string resolveSourceRelativePath(const std::string& relPath);
 
+    // Read-side resolver: prefer the source assets dir when the source file
+    // exists, else fall back to the runtime/bundle dir. This is what
+    // dev-build read paths use so saves done in the current session are
+    // visible on the very next read without waiting for a rebuild's
+    // POST_BUILD asset copy. Installed AU / standalone .app builds have no
+    // source-tree sibling, so this transparently equals resolveRelativePath
+    // for them.
+    static std::string resolveForRead(const std::string& relPath);
+
 private:
     static std::string assetsRoot();
     static std::string sourceAssetsRoot();
