@@ -389,7 +389,7 @@ void WaveformView::onSavePressed_() {
 void WaveformView::onLoadPressed_() {
     const auto rel = processor_.activeSceneGspeakPath();
     if (rel.isEmpty()) return;
-    const auto resolved = AssetLocator::resolveRelativePath(rel.toStdString());
+    const auto resolved = AssetLocator::resolveForRead(rel.toStdString());
     if (resolved.empty()) {
         processor_.flashStatusMessage("Load failed: can't resolve " + rel, 3000);
         return;

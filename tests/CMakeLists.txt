@@ -95,6 +95,7 @@ add_executable(guitar_dsp_tests
     integration/test_headless_safety_ai.cpp
     integration/test_speak_v2_scene.cpp
     integration/test_gspeak_autoload.cpp
+    integration/test_gspeak_save_then_load.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AssetLocator.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp

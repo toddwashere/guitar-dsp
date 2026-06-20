@@ -250,7 +250,7 @@ double PluginProcessor::currentSampleRate() const noexcept {
 bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     if (scene.gspeakPath.empty() || !scene.gspeakAutoLoad) return false;
 
-    const auto path = AssetLocator::resolveRelativePath(scene.gspeakPath);
+    const auto path = AssetLocator::resolveForRead(scene.gspeakPath);
     if (path.empty()) {
         if (ttsStatusBar_)
             ttsStatusBar_->flashMessage(
