@@ -57,6 +57,7 @@ add_executable(guitar_dsp_tests
     unit/midi/test_fcb1010_mapping.cpp
     unit/midi/test_fcb1010_mapping_ai.cpp
     unit/midi/test_host_midi_scene_router.cpp
+    unit/midi/test_midi_router_selection.cpp
     unit/ai/test_conversation_buffer.cpp
     unit/ai/test_persona_registry.cpp
     unit/ai/test_app_preferences.cpp

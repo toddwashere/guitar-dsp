@@ -1,6 +1,8 @@
 #include "MidiRouter.h"
 
 #include <algorithm>
+#include <cstdio>
+#include <string>
 
 namespace guitar_dsp::midi {
 
@@ -35,23 +37,33 @@ std::vector<juce::MidiDeviceInfo> MidiRouter::availableDevices() {
     return {infos.begin(), infos.end()};
 }
 
-void MidiRouter::refresh() {
-    const auto infos = juce::MidiInput::getAvailableDevices();
-
-    // Decide which devices SHOULD be open.
+std::vector<juce::MidiDeviceInfo>
+MidiRouter::selectWantedDevices(const std::vector<juce::MidiDeviceInfo>& available,
+                                const juce::String& preferredName) {
     std::vector<juce::MidiDeviceInfo> wanted;
-    if (preferredName_.isNotEmpty()) {
-        for (const auto& info : infos) {
-            if (info.name.containsIgnoreCase(preferredName_)) wanted.push_back(info);
+    const juce::String match =
+        preferredName.isNotEmpty() ? preferredName : juce::String("FCB1010");
+    for (const auto& info : available) {
+        if (info.name.containsIgnoreCase(match)) wanted.push_back(info);
+    }
+    return wanted;
+}
+
+void MidiRouter::refresh() {
+    const auto juceInfos = juce::MidiInput::getAvailableDevices();
+    const std::vector<juce::MidiDeviceInfo> infos(juceInfos.begin(), juceInfos.end());
+    auto wanted = selectWantedDevices(infos, preferredName_);
+
+    // One-line stderr log of what we ended up opening so we can diagnose
+    // the next "Logic ate my audio" report without guessing.
+    {
+        std::string names;
+        for (const auto& w : wanted) {
+            if (!names.empty()) names += ", ";
+            names += w.name.toStdString();
         }
-    } else {
-        // No explicit preference: prefer FCB1010 if present, else all.
-        for (const auto& info : infos) {
-            if (info.name.containsIgnoreCase("FCB1010")) wanted.push_back(info);
-        }
-        if (wanted.empty()) {
-            for (const auto& info : infos) wanted.push_back(info);
-        }
+        std::fprintf(stderr, "[MidiRouter] wanted=[%s] (of %d available)\n",
+                     names.c_str(), (int)infos.size());
     }
 
     // Close any open inputs that aren't in `wanted`.

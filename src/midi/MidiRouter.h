@@ -15,8 +15,10 @@ namespace guitar_dsp::midi {
 // Device selection: if a preferred device name has been set (via
 // setPreferredDeviceName), only the device whose name contains that
 // substring (case-insensitive) is opened. With no preference set, the
-// default is to prefer "FCB1010" if any device matches, otherwise open
-// every available input.
+// default is to open "FCB1010" if any device matches, otherwise NOTHING.
+// (Previously the no-preference fallback opened every available input —
+// which grabbed IAC Bus / network MIDI and broke Logic's Audio/MIDI sync
+// when running as an AU. See selectWantedDevices.)
 //
 // Hot-plug: an internal Timer re-scans `juce::MidiInput::getAvailableDevices`
 // every 2 seconds. If the current open set diverges from what the current
@@ -40,6 +42,16 @@ public:
 
     // Names of currently-open MIDI input devices (for the diagnostic UI).
     std::vector<juce::String> openDeviceNames() const;
+
+    // Pure device-selection function. Given the set of devices currently
+    // visible to the OS and the user's preferredName, returns the subset
+    // we should have open. Extracted from refresh() so the selection
+    // policy is unit-testable without touching CoreMIDI.
+    //   - preferredName non-empty: substring match (case-insensitive)
+    //   - preferredName empty:     match "FCB1010" or nothing
+    static std::vector<juce::MidiDeviceInfo>
+    selectWantedDevices(const std::vector<juce::MidiDeviceInfo>& available,
+                        const juce::String& preferredName);
 
 private:
     // Re-scan available devices and (re)open the matching ones.

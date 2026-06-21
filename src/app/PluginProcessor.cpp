@@ -46,20 +46,17 @@ private:
 
 PluginProcessor::PluginProcessor()
     : juce::AudioProcessor(BusesProperties()
-        // Input bus default depends on the build target:
-        //   Standalone: stereo, so the JUCE standalone wrapper exposes 2
-        //     channels when the user enables a stereo input device (e.g.
-        //     Scarlett "Input 1+2"). In standalone, ch 0 = guitar, ch 1 = mic.
-        //   AU (Logic):  mono, because Logic's aumf negotiation gets confused
-        //     by a non-mono main input default and silently drops the playback
-        //     audio (live-monitoring works, recorded playback does not).
-        // isBusesLayoutSupported accepts both for either target, so each
-        // wrapper can still negotiate up to stereo if it wants.
-#if JucePlugin_Build_Standalone
+        // Input bus default = stereo for both targets:
+        //   Standalone: the JUCE wrapper exposes 2 channels when the user
+        //     enables a stereo input device (e.g. Scarlett "Input 1+2").
+        //     ch 0 = guitar, ch 1 = mic.
+        //   AU (Logic): stereo aligns with how Logic creates audio tracks.
+        //     With a mono default + stereo audio track, Logic's aufx
+        //     negotiation can silently drop region playback while live input
+        //     monitoring still works. Stereo default avoids that path.
+        // isBusesLayoutSupported accepts mono OR stereo for either target,
+        // so either wrapper can still negotiate down to mono if it wants.
         .withInput ("Input",  juce::AudioChannelSet::stereo(), true)
-#else
-        .withInput ("Input",  juce::AudioChannelSet::mono(),   true)
-#endif
         .withInput ("Mic",    juce::AudioChannelSet::mono(),   false)  // sidechain, disabled by default
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
     // When stderr is redirected to a file (e.g. `open --stderr foo.log`),
@@ -153,6 +150,14 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         auto scenes = scenes::SceneLibrary::loadDirectory(dir);
         if (scenes.empty()) scenes.push_back(scenes::Scene::defaults(0));
         sceneEngine_.loadScenes(std::move(scenes));
+        // Default to Bypass (id 11, dryWet=0) on first load so a freshly
+        // inserted AU passes audio through. The live demo scenes are 85-95%
+        // wet and silence any source that doesn't trigger guitar onsets
+        // (recorded clips, other tracks). setStateInformation (called next
+        // by the host for saved projects) will override this with the saved
+        // sceneId — fresh insertion lands on Bypass; reopened projects
+        // restore whatever scene was active when saved.
+        sceneEngine_.activateScene(11);
     }
 
     prebakedTtsSource_ = std::make_unique<audio::PrebakedTTSSource>(
