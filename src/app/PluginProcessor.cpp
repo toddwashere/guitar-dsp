@@ -127,6 +127,8 @@ PluginProcessor::PluginProcessor()
 
     rebuildLlmClient();
 
+    personas_.setSessionQaDoc(&sessionQaDoc_);
+
     engine_ = std::make_unique<ai::ConversationEngine>(
         *whisper_, llm_, micCapture_, convBuf_, personas_,
         [this](std::string text){ onLlmResponse(text); });

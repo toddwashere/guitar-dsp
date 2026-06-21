@@ -25,9 +25,11 @@
 #include "scenes/SceneEngine.h"
 
 #include "ai/AppPreferences.h"
+#include "ai/KnowledgeDoc.h"
 #include "ai/PersonaRegistry.h"
 #include "ai/ConversationBuffer.h"
 #include "ai/ConversationEngine.h"
+#include "app/AssetLocator.h"
 #include "app/SongStore.h"
 
 #include <functional>
@@ -459,6 +461,12 @@ private:
 
     // Conversational AI subsystem.
     std::unique_ptr<ai::AppPreferences>     prefs_;
+    // Lives next to personas_; KnowledgeDoc is mtime-cached so the
+    // running app picks up edits to the source .md without a rebuild.
+    ai::KnowledgeDoc sessionQaDoc_ {
+        juce::File(juce::String(AssetLocator::resolveForRead(
+            "personas/session_qa.md")))
+    };
     ai::PersonaRegistry                     personas_;
     ai::ConversationBuffer                  convBuf_;
     ai::JuceHttpTransport                   http_;
