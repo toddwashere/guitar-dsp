@@ -15,6 +15,7 @@ constexpr PersonaEntry kPersonas[] = {
     {ai::PersonaId::StudioEngineer,    "Studio engineer"},
     {ai::PersonaId::CuriousAi,         "Curious AI"},
     {ai::PersonaId::PlainAssistant,    "Plain assistant"},
+    {ai::PersonaId::SessionQa,         "Session Q&A"},
 };
 }
 
