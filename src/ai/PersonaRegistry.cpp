@@ -1,4 +1,5 @@
 #include "ai/PersonaRegistry.h"
+#include "ai/KnowledgeDoc.h"
 
 namespace guitar_dsp::ai {
 
@@ -133,7 +134,17 @@ void PersonaRegistry::resetToDefault(PersonaId id) {
 std::vector<Message> PersonaRegistry::buildMessages(
     const ConversationBuffer& buf, PersonaId id) const {
     std::vector<Message> out;
-    out.push_back({Message::Role::System, promptFor(id)});
+    std::string system = promptFor(id);
+
+    if (id == PersonaId::SessionQa) {
+        std::string doc = sessionQaDoc_ ? sessionQaDoc_->contents()
+                                        : std::string{};
+        if (doc.empty()) doc = "REFERENCE DOCUMENT NOT LOADED.";
+        system += "\n\n# Reference document (the source of truth about yourself)\n\n";
+        system += doc;
+    }
+
+    out.push_back({Message::Role::System, std::move(system)});
     for (auto& m : buf.snapshot()) out.push_back(m);
     return out;
 }
