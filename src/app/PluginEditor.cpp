@@ -106,7 +106,12 @@ PluginEditor::~PluginEditor() {
 }
 
 void PluginEditor::timerCallback() {
-    const bool inQa = processor_.currentPersonaId() == ai::PersonaId::SessionQa;
+    const auto persona = processor_.currentPersonaId();
+    const bool inQa = persona == ai::PersonaId::SessionQa;
+    // Track the most recent non-Q&A persona so the toggle-off path restores
+    // whatever the user was actually using, regardless of whether they
+    // entered Q&A via the button or the dropdown.
+    if (!inQa) previousPersona_ = persona;
     if (qaButton_.getToggleState() != inQa) {
         qaButton_.setToggleState(inQa, juce::dontSendNotification);
     }

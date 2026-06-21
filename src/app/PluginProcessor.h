@@ -461,6 +461,10 @@ private:
 
     // Conversational AI subsystem.
     std::unique_ptr<ai::AppPreferences>     prefs_;
+    // MUST stay declared above personas_: PersonaRegistry holds a raw
+    // KnowledgeDoc* and members destruct in reverse declaration order, so
+    // personas_ tears down (dropping the pointer) before sessionQaDoc_ is
+    // destroyed.
     // Lives next to personas_; KnowledgeDoc is mtime-cached so the
     // running app picks up edits to the source .md without a rebuild.
     ai::KnowledgeDoc sessionQaDoc_ {

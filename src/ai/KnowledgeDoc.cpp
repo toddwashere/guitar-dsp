@@ -11,14 +11,16 @@ std::string KnowledgeDoc::contents() {
     if (!path_.existsAsFile()) {
         cached_.clear();
         lastMtime_ = juce::Time{};
+        loaded_    = false;
         return {};
     }
 
     const auto mtime = path_.getLastModificationTime();
-    if (mtime == lastMtime_ && !cached_.empty()) return cached_;
+    if (loaded_ && mtime == lastMtime_) return cached_;
 
     cached_     = path_.loadFileAsString().toStdString();
     lastMtime_  = mtime;
+    loaded_     = true;
     return cached_;
 }
 

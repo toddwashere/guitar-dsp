@@ -20,6 +20,7 @@ private:
     juce::File         path_;
     juce::Time         lastMtime_;
     std::string        cached_;
+    bool               loaded_ = false;
     mutable std::mutex m_;
 };
 

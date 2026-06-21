@@ -52,6 +52,18 @@ TEST_CASE("KnowledgeDoc: cached when mtime unchanged",
     f.deleteFile();
 }
 
+TEST_CASE("KnowledgeDoc: cached when file legitimately empty",
+          "[ai][knowledge_doc]") {
+    auto f = makeTempDocWith("");
+    KnowledgeDoc doc(f);
+    REQUIRE(doc.contents() == "");
+    // A truly cached load returns the same empty string without re-reading.
+    // We can't easily prove no I/O happened, but we can verify the value
+    // sticks and isn't replaced by something different on a subsequent call.
+    REQUIRE(doc.contents() == "");
+    f.deleteFile();
+}
+
 TEST_CASE("KnowledgeDoc: safe under concurrent contents() calls",
           "[ai][knowledge_doc]") {
     auto f = makeTempDocWith("concurrent body");
