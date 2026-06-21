@@ -37,10 +37,12 @@ WaveformView::WaveformView(PluginProcessor& p) : processor_(p) {
     loadButton_.onClick   = [this] { onLoadPressed_(); };
     importButton_.onClick = [this] { onImportPressed_(); };
     autoSliceButton_.onClick = [this] { onAutoSlicePressed_(); };
+    snapButton_.onClick   = [this] { onSnapPressed_(); };
     addAndMakeVisible(saveButton_);
     addAndMakeVisible(loadButton_);
     addAndMakeVisible(importButton_);
     addAndMakeVisible(autoSliceButton_);
+    addAndMakeVisible(snapButton_);
 }
 
 WaveformView::~WaveformView() { stopTimer(); }
@@ -50,6 +52,8 @@ void WaveformView::resized() {
     saveButton_.setBounds(top.removeFromRight(56));
     top.removeFromRight(4);
     loadButton_.setBounds(top.removeFromRight(56));
+    top.removeFromRight(4);
+    snapButton_.setBounds(top.removeFromRight(56));
     top.removeFromRight(4);
     autoSliceButton_.setBounds(top.removeFromRight(80));
     top.removeFromRight(4);
@@ -81,6 +85,11 @@ void WaveformView::timerCallback() {
     loadButton_.setEnabled(havePath);
     importButton_.setEnabled(!importInFlight_.load());
     autoSliceButton_.setEnabled(haveClip && haveText);
+    // Snap only matters when there is at least one interior boundary to
+    // nudge — either in v1 syllables or v1 words.
+    const bool haveBoundary = haveClip
+        && (clip_->syllables.size() >= 2 || clip_->words.size() >= 2);
+    snapButton_.setEnabled(haveBoundary);
 }
 
 void WaveformView::paint(juce::Graphics& g) {
@@ -567,6 +576,34 @@ void WaveformView::onImportPressed_() {
                     });
             }).detach();
         });
+}
+
+void WaveformView::onSnapPressed_() {
+    if (!clip_ || clip_->samples.empty()) return;
+    const bool hasSyls  = clip_->syllables.size() >= 2;
+    const bool hasWords = clip_->words.size()     >= 2;
+    if (!hasSyls && !hasWords) {
+        processor_.flashStatusMessage("Snap: no interior boundary to nudge",
+                                      3000);
+        return;
+    }
+
+    auto fresh = std::make_shared<audio::TTSClip>();
+    fresh->name       = clip_->name;
+    fresh->sampleRate = clip_->sampleRate;
+    fresh->samples    = clip_->samples;
+    fresh->words      = clip_->words;
+    fresh->syllables  = clip_->syllables;
+
+    if (hasSyls)
+        audio::snapBoundariesToEnergyValleysV1(
+            fresh->syllables, fresh->samples, fresh->sampleRate);
+    if (hasWords)
+        audio::snapBoundariesToEnergyValleysV1(
+            fresh->words, fresh->samples, fresh->sampleRate);
+
+    processor_.installImportedClip(fresh);
+    processor_.flashStatusMessage("Snapped boundaries to RMS valleys", 1500);
 }
 
 } // namespace guitar_dsp

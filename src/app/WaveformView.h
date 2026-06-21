@@ -51,11 +51,13 @@ private:
     juce::TextButton loadButton_      {"Load"};
     juce::TextButton importButton_    {"Import"};
     juce::TextButton autoSliceButton_ {"Auto-slice"};
+    juce::TextButton snapButton_      {"Snap"};
 
     void onSavePressed_();
     void onLoadPressed_();
     void onImportPressed_();
     void onAutoSlicePressed_();
+    void onSnapPressed_();
 
     // Splits SayPanel text into (unhyphenated words, hyphenated words)
     // pairs for WordAligner::alignSyllables. Whitespace-split; ASCII

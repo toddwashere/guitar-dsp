@@ -39,4 +39,18 @@ bool addBoundaryV1(std::vector<WordSegment>& segs,
 bool removeBoundaryV1(std::vector<WordSegment>& segs,
                       std::size_t boundaryIndex);
 
+// Nudges each interior boundary in `segs` to the local minimum of the
+// audio's 5 ms RMS envelope within a search window centred on the
+// current boundary. Search radius = 30 % of the smaller neighbour, so
+// no boundary can cross past the midpoint of its neighbour. Boundaries
+// that already sit on the minimum stay put. No-op when `segs.size() < 2`.
+//
+// Use this as a post-process on whatever boundary set is in place — the
+// equal-duration output of WordAligner::alignSyllables, hand-drag edits,
+// boundaries loaded from a `.gspeak` bundle — to land each cut on a real
+// quiet spot instead of an arbitrary mid-sample.
+void snapBoundariesToEnergyValleysV1(std::vector<WordSegment>& segs,
+                                     const std::vector<float>& audio,
+                                     double sampleRate);
+
 } // namespace guitar_dsp::audio
