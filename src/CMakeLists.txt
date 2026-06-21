@@ -70,6 +70,7 @@ target_link_libraries(guitar_dsp_scenes PUBLIC juce::juce_core)
 add_library(guitar_dsp_ai STATIC
     ai/ConversationBuffer.cpp
     ai/PersonaRegistry.cpp
+    ai/KnowledgeDoc.cpp
     ai/AppPreferences.cpp
     ai/JuceHttpTransport.cpp
     ai/AnthropicClient.cpp

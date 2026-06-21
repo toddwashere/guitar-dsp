@@ -60,6 +60,7 @@ add_executable(guitar_dsp_tests
     unit/midi/test_midi_router_selection.cpp
     unit/ai/test_conversation_buffer.cpp
     unit/ai/test_persona_registry.cpp
+    unit/ai/test_knowledge_doc.cpp
     unit/ai/test_app_preferences.cpp
     unit/ai/test_http_transport_smoke.cpp
     unit/ai/test_cancellation_token.cpp
