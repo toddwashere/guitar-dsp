@@ -3,9 +3,9 @@
 namespace guitar_dsp::app {
 
 // Helpers for PersonaId <-> int conversion with range checking.
-// Valid range: Interviewer (0) .. PlainAssistant (5).
+// Valid range: Interviewer (0) .. SongRockingGuitar (7).
 static constexpr int kPersonaMin = static_cast<int>(ai::PersonaId::Interviewer);
-static constexpr int kPersonaMax = static_cast<int>(ai::PersonaId::PlainAssistant);
+static constexpr int kPersonaMax = static_cast<int>(ai::PersonaId::SongRockingGuitar);
 
 static ai::PersonaId personaFromInt(int v) {
     if (v < kPersonaMin || v > kPersonaMax)

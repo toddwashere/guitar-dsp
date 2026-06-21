@@ -28,6 +28,9 @@
 #include "ai/PersonaRegistry.h"
 #include "ai/ConversationBuffer.h"
 #include "ai/ConversationEngine.h"
+#include "app/SongStore.h"
+
+#include <functional>
 #include "ai/JuceHttpTransport.h"
 #include "ai/WhisperTranscriber.h"
 #include "ai/AnthropicClient.h"
@@ -106,6 +109,18 @@ public:
     // Called from AiSettingsPanel when user picks a persona.
     void          setCurrentPersona(ai::PersonaId p, std::string customPrompt = "");
     ai::PersonaId currentPersonaId() const noexcept { return currentPersonaId_; }
+
+    // One-shot song generation. Spawns a background thread, calls the
+    // current LLM client with [system: persona prompt, user: "Write the
+    // song now."] (no conversation buffer), and posts the result back
+    // to onDone on the message thread. On error, onDone fires with an
+    // empty text and a non-empty error string.
+    void generateSong(ai::PersonaId p,
+                      std::function<void(std::string text, std::string error)> onDone);
+
+    // Persistent named-lyric store under ~/Library/Application Support/
+    // Guitar Speak/songs. Used by the Save/Load UI in SayPanel.
+    app::SongStore& songStore() noexcept { return songStore_; }
 
     int getLastMidiSummary() const noexcept { return lastMidiSummary_.load(std::memory_order_relaxed); }
 
@@ -456,6 +471,13 @@ private:
     std::string                             selectedModelId_ {"claude-haiku-4-5"};
     ai::PersonaId                           currentPersonaId_ {ai::PersonaId::Interviewer};
     std::unique_ptr<ai::ConversationEngine> engine_;
+
+    // Persistent named-lyric store. Lives under
+    // ~/Library/Application Support/Guitar Speak/songs/<name>.txt.
+    app::SongStore                          songStore_ {
+        juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+            .getChildFile("Guitar Speak").getChildFile("songs")
+    };
 
     void rebuildLlmClient();   // re-create llm_ based on selectedModelId_
 

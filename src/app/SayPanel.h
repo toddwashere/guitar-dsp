@@ -4,6 +4,8 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ai/PersonaRegistry.h"
+
 namespace guitar_dsp {
 
 class PluginProcessor;
@@ -39,10 +41,26 @@ private:
     void timerCallback() override;
     void finishPending(bool succeeded);
 
+    // Song-generation row helpers.
+    void generateSong(ai::PersonaId);
+    void onSongResponse(const juce::String& text, const juce::String& error);
+    void saveCurrentSong();
+    void refreshSavedSongList();
+    void loadSelectedSong();
+
     PluginProcessor& processor_;
 
     juce::TextEditor input_;
-    juce::TextButton sayButton_ {"Say"};
+    juce::TextButton sayButton_   {"Say"};
+
+    // Song-generation controls.
+    juce::TextButton genOldBtn_   {"Gen: Old Guitar"};
+    juce::TextButton genRockBtn_  {"Gen: Rocking"};
+    juce::TextButton saveBtn_     {"Save…"};
+    juce::ComboBox   loadCombo_;
+    juce::Label      statusLabel_;
+
+    bool             songGenerating_ = false;
 
     // Currently-pending synthesis (empty when idle).
     std::string  pendingText_;

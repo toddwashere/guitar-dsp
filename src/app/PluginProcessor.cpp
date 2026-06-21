@@ -355,6 +355,40 @@ void PluginProcessor::setCurrentPersona(ai::PersonaId p, std::string custom) {
     if (engine_) engine_->setPersona(p, "");
 }
 
+void PluginProcessor::generateSong(
+        ai::PersonaId p,
+        std::function<void(std::string, std::string)> onDone) {
+    if (!llm_) {
+        if (onDone) onDone({}, "LLM client not initialised");
+        return;
+    }
+    // Snapshot what the background thread needs. NOTE we capture llm_ by
+    // shared_ptr so a model swap mid-flight doesn't invalidate the pointer.
+    auto llm    = llm_;
+    auto prompt = personas_.promptFor(p);
+    auto weak   = std::weak_ptr<std::atomic<bool>>(alive_);
+
+    juce::Thread::launch([llm, prompt, onDone = std::move(onDone), weak]() {
+        ai::LlmRequest req;
+        req.messages = {
+            {ai::Message::Role::System, prompt},
+            {ai::Message::Role::User,   "Write the song now."},
+        };
+        // Songs are ~80-150 syllables of structured verse; the 80-token
+        // conversational default truncates them mid-chorus. Bump generously.
+        req.maxTokens = 800;
+        // LLM round-trips for ~800 tokens routinely take 5-15s; the
+        // conversational 10s default sometimes truncates mid-song.
+        req.timeout = std::chrono::milliseconds(30000);
+        const auto reply = llm->generate(req);
+        juce::MessageManager::callAsync([reply, onDone, weak]() {
+            auto alive = weak.lock();
+            if (!alive || !alive->load(std::memory_order_acquire)) return;
+            if (onDone) onDone(reply.text, reply.error);
+        });
+    });
+}
+
 bool PluginProcessor::piperReady() const noexcept {
     return piperTtsSource_ && piperTtsSource_->isReady();
 }
@@ -1078,6 +1112,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
         ai::PersonaId::Interviewer, ai::PersonaId::Snarky,
         ai::PersonaId::WeatheredGuitar, ai::PersonaId::StudioEngineer,
         ai::PersonaId::CuriousAi, ai::PersonaId::PlainAssistant,
+        ai::PersonaId::SongOldGuitar, ai::PersonaId::SongRockingGuitar,
     };
     for (auto id : kAllPersonas) {
         auto current = personas_.promptFor(id);

@@ -14,6 +14,8 @@ enum class PersonaId {
     StudioEngineer,
     CuriousAi,
     PlainAssistant,
+    SongOldGuitar,        // "Song: I'm an old guitar" — wistful autobiographical lyrics
+    SongRockingGuitar,    // "Song: Rocking guitar"     — cocky/swagger lyrics
 };
 
 class PersonaRegistry {

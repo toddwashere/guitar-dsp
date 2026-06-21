@@ -73,10 +73,12 @@ add_executable(guitar_dsp_tests
     unit/app/test_word_readout.cpp
     unit/app/test_asset_locator.cpp
     unit/app/test_ai_settings_panel.cpp
+    unit/app/test_song_store.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
     ${CMAKE_SOURCE_DIR}/src/app/StatePill.cpp
     ${CMAKE_SOURCE_DIR}/src/app/ConversationPanel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AiSettingsPanel.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/SongStore.cpp
     integration/test_passthrough_golden.cpp
     integration/test_realtime_safety.cpp
     integration/test_scene_switch.cpp

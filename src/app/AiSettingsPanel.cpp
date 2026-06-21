@@ -7,12 +7,14 @@ namespace guitar_dsp {
 namespace {
 struct PersonaEntry { ai::PersonaId id; const char* label; };
 constexpr PersonaEntry kPersonas[] = {
-    {ai::PersonaId::Interviewer,     "Interviewer"},
-    {ai::PersonaId::Snarky,          "Snarky"},
-    {ai::PersonaId::WeatheredGuitar, "Weathered session player"},
-    {ai::PersonaId::StudioEngineer,  "Studio engineer"},
-    {ai::PersonaId::CuriousAi,       "Curious AI"},
-    {ai::PersonaId::PlainAssistant,  "Plain assistant"},
+    {ai::PersonaId::SongOldGuitar,     "Song: I'm an old guitar"},
+    {ai::PersonaId::SongRockingGuitar, "Song: Rocking guitar"},
+    {ai::PersonaId::Interviewer,       "Interviewer"},
+    {ai::PersonaId::Snarky,            "Snarky"},
+    {ai::PersonaId::WeatheredGuitar,   "Weathered session player"},
+    {ai::PersonaId::StudioEngineer,    "Studio engineer"},
+    {ai::PersonaId::CuriousAi,         "Curious AI"},
+    {ai::PersonaId::PlainAssistant,    "Plain assistant"},
 };
 }
 

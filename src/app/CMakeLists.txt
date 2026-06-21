@@ -56,6 +56,7 @@ target_sources(guitar_dsp_app PRIVATE
     StatePill.cpp
     ConversationPanel.cpp
     AiSettingsPanel.cpp
+    SongStore.cpp
 )
 
 target_compile_definitions(guitar_dsp_app PRIVATE
