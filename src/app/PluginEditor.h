@@ -60,6 +60,11 @@ private:
     std::unique_ptr<ConversationPanel> conversationPanel_;
     std::unique_ptr<AiSettingsPanel>   aiSettingsPanel_;
     juce::TextButton                   toggleAiSettingsBtn_ {"Settings"};
+    juce::TextButton                   qaButton_ {"Q&A"};
+
+    // Persona to restore when the Q&A toggle is turned off. Captured at the
+    // moment the toggle is engaged; reflects whatever was active before.
+    ai::PersonaId                      previousPersona_ {ai::PersonaId::Interviewer};
 };
 
 } // namespace guitar_dsp

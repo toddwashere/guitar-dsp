@@ -64,6 +64,18 @@ PluginEditor::PluginEditor(PluginProcessor& p)
         resized();
     };
 
+    addAndMakeVisible(qaButton_);
+    qaButton_.setClickingTogglesState(true);
+    qaButton_.onClick = [this] {
+        const bool wantsQa = qaButton_.getToggleState();
+        if (wantsQa) {
+            previousPersona_ = processor_.currentPersonaId();
+            processor_.setCurrentPersona(ai::PersonaId::SessionQa);
+        } else {
+            processor_.setCurrentPersona(previousPersona_);
+        }
+    };
+
     // Close button + ESC key both route through this — keeps the
     // toggle button state in sync with the overlay's visibility.
     aiSettingsPanel_->onClose = [this] {
@@ -94,6 +106,11 @@ PluginEditor::~PluginEditor() {
 }
 
 void PluginEditor::timerCallback() {
+    const bool inQa = processor_.currentPersonaId() == ai::PersonaId::SessionQa;
+    if (qaButton_.getToggleState() != inQa) {
+        qaButton_.setToggleState(inQa, juce::dontSendNotification);
+    }
+
     const int id = processor_.sceneEngine().getActiveSceneId();
     if (id != lastObservedSceneId_) {
         lastObservedSceneId_ = id;
@@ -180,10 +197,13 @@ void PluginEditor::resized() {
     if (midiDevicePicker_.isVisible()) {
         auto controlsRow = bounds.removeFromTop(28);
         toggleAiSettingsBtn_.setBounds(controlsRow.removeFromRight(100));
+        controlsRow.removeFromRight(4);
+        qaButton_.setBounds(controlsRow.removeFromRight(80));
         controlsRow.removeFromRight(6);  // gap
         midiDevicePicker_.setBounds(controlsRow);
     } else {
         toggleAiSettingsBtn_.setBounds(bounds.removeFromTop(24));
+        qaButton_.setBounds(bounds.removeFromTop(24));
     }
 
     if (showSay) sayPanel_.setBounds(bounds.removeFromTop(40));
