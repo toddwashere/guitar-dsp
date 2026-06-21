@@ -18,18 +18,24 @@ editor: false
 
 # While My Guitar Gently Speaks
 
-<div class="grid grid-cols-[1fr_auto] gap-12 pt-12 items-center max-w-3xl mx-auto">
+<div class="flex gap-8 pt-12 items-center max-w-3xl mx-auto">
 
-<div class="text-left">
-  <div class="text-2xl font-semibold">Todd Fisher</div>
-  <div class="text-lg opacity-75 pt-1">Head of Engineering · Philo Ventures</div>
-  <div class="pt-8 opacity-50 text-sm">
-    AI Engineering Conference · San Francisco · 2026
+<div class="text-right w-full max-w-[457px]">
+  <div class="text-4xl font-semibold">Todd Fisher</div>
+  <div class="text-2xl opacity-75 pt-1">Head of Engineering · Philo Ventures</div>
+  <div class="flex items-center justify-end gap-2 pt-3 text-lg opacity-80">
+    <span>todd-b-fisher</span>
+    <svg viewBox="0 0 24 24" class="w-5 h-5" fill="#4DA8F0"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
   </div>
 </div>
 
-<img src="/todd.jpg" class="w-48 h-48 rounded-full object-cover" />
+<div class="pl-5">
+<img src="/todd.jpg" class="w-48 h-48 rounded-full object-cover border-2" />
+</div>
+</div>
 
+<div class="flex justify-center pt-12">
+  <img src="/ai-worldsfair-logo.svg" class="h-12 opacity-90" />
 </div>
 
 <!--
@@ -161,7 +167,7 @@ This is the setup for the demo.
 transition: fade-out
 ---
 
-# Tools to use
+# Tools for the job
 
 - **JUCE has the most production miles in live audio.** 
   "No allocations on the audio thread" is built into its idioms. C++ FTW!
@@ -170,18 +176,300 @@ transition: fade-out
 - **DSP** — 24-band channel vocoder, YIN pitch detection, PolyBLEP saw.
 
 ---
+layout: center
+---
 
-# Working together
+# Goal: Guitar triggers saying a word
 
-insert diagram of current iteration here.
+<div class="flex flex-col items-center gap-3 pt-6">
+
+<div class="relative border border-gray-600 rounded-xl px-10 pt-7 pb-6">
+  <div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">Offline / bake this once</div>
+  <div class="flex items-center gap-3">
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#e0f2fe;color:#0c4a6e">Raw text</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#cffafe;color:#164e63">TTS</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#ccfbf1;color:#134e4a">Audio clip</div>
+  </div>
+</div>
+
+<div class="flex flex-col items-center gap-1" style="transform: translateX(80px)">
+  <div class="text-2xl opacity-40 leading-none self-start pl-8">↓</div>
+</div>
+
+<div class="relative border border-gray-600 rounded-xl px-10 pt-7 pb-6">
+  <div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">Live / repeat per pluck</div>
+  <div class="flex items-center gap-3">
+    <div class="rounded-full px-5 py-3 font-medium" style="background:#fef9c3;color:#713f12">Guitar pluck</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#ffedd5;color:#7c2d12">Play audio clip</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-full w-12 h-12 flex items-center justify-center text-xl" style="background:#fee2e2;color:#7f1d1d">🔊</div>
+  </div>
+</div>
+
+</div>
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">Scene 1</div>
+
+---
+layout: center
+---
+
+# Goal: Say multiple words {.text-center}
+
+<div class="flex flex-col items-center gap-3 pt-6">
+
+<div class="relative border border-gray-600 rounded-xl px-10 pt-7 pb-6">
+  <div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">Offline / bake this once</div>
+  <div class="flex items-center gap-3">
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#e0f2fe;color:#0c4a6e">Raw text</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#cffafe;color:#164e63">TTS</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#ccfbf1;color:#134e4a">Audio clip</div>
+  </div>
+</div>
+
+<div class="flex flex-col items-center gap-1" style="transform: translateX(80px)">
+  <div class="text-2xl opacity-40 leading-none self-end pr-9">↓</div>
+  <div class="rounded-md px-5 py-3 font-medium" style="background:#dcfce7;color:#14532d">Slice per word</div>
+  <div class="text-2xl opacity-40 leading-none self-start pl-8">↓</div>
+</div>
+
+<div class="relative border border-gray-600 rounded-xl px-10 pt-7 pb-6">
+  <div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">Live / repeat per pluck</div>
+  <div class="flex items-center gap-3">
+    <div class="rounded-full px-5 py-3 font-medium" style="background:#fef9c3;color:#713f12">Guitar pluck</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-md px-5 py-3 font-medium" style="background:#ffedd5;color:#7c2d12">Play next word</div>
+    <div class="text-2xl opacity-40">→</div>
+    <div class="rounded-full w-12 h-12 flex items-center justify-center text-xl" style="background:#fee2e2;color:#7f1d1d">🔊</div>
+  </div>
+</div>
+
+</div>
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">Scene 2</div>
+
+---
+
+# Auto slice the audio clip
+
+We get one blob of PCM back from TTS — no timestamps. To play one word per pluck, we have to find the cuts ourselves. (`Enter: WordAligner`)
+
+```mermaid {scale: 0.8}
+flowchart LR
+  PCM["TTS PCM<br/>(one blob)"] --> Env["Peak envelope<br/>30 ms release"]
+  Env --> Gaps["Find silences<br/>env < 15% peak"]
+  Gaps --> Cut["Keep N-1 longest<br/>→ cut points"]
+  Cut --> Words["N word segments"]
+```
+
+<v-click>
+
+**Energy-gap segmentation, not engine timestamps.** Build a peak envelope, find the longest silences between words, cut there. `N` words → `N-1` cuts.
+
+</v-click>
+
+<v-click>
+
+**The release time is the trick.** A 30 ms envelope release rides over the tiny gaps *inside* a word (s**t**op, **th**ink) but still drops on real ~80 ms inter-word silences. No false cuts mid-word.
+
+</v-click>
+
+<v-click>
+
+**Same algorithm for every backend.** Piper, Apple, prebaked WAV — it only needs the samples + word list. Not enough silences? Fall back to evenly spaced cuts.
+
+</v-click>
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">Scene 0</div>
+
+
+<!--
+The TTS engines hand back raw PCM with no word boundaries. Rather
+than ask each engine for timing (Apple won't, Piper won't, the
+prebaked WAV can't), I slice uniformly off the audio itself in
+WordAligner::align. Build a smoothed peak envelope (instant attack,
+~30 ms exponential release), threshold at 15% of the clip peak,
+collect the silence runs, keep the N-1 longest as boundaries, and
+cut. The 30 ms release is deliberately longer than stop-consonant
+gaps inside a word so those don't register as boundaries. Because
+it only touches the PCM + the word list, the exact same code works
+for all three TTS sources — that's the whole point.
+-->
 
 ---
 
 # Syllables are tricky!
 
 - **Phoneme alignment** — espeak-ng labels + sonority-peak syllabifier
+- espeak gives the **sounds**, but not the **when** — uniform fake durations, so we still have to guess each syllable's position from the audio
 
-This really sucks n stuff.
+<div class="flex justify-center pt-4">
+  <img src="/sonority-sequencing-cats-run-fast.png" class="max-h-80 rounded-lg" />
+</div>
+
+---
+
+# Manually slice n dice
+
+- Pre baking ensures the best quality.
+- First pass: auto-slice
+- Visually edit the wave forms.
+
+---
+layout: section
+---
+
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+  <div class="text-5xl">What if my guitar could</div>
+  <div class="text-9xl font-bold pt-6 pb-10">sing?</div>
+  <div class="text-2xl">
+Next Stop: Pitch detection.
+</div>
+</div>
+
+
+
+
+---
+
+<div class="absolute inset-0 flex items-center justify-center p-6">
+  <img src="/frequencies-f0.png" class="max-h-full max-w-full object-contain rounded-lg" />
+</div>
+
+---
+layout: center
+class: text-center
+---
+
+<!-- # Finding the fundamental -->
+
+<!-- <div class="grid grid-cols-[1.05fr_1fr] gap-8 pt-2 text-sm"> -->
+
+<!-- <div>
+
+A guitar note is **rich and harmonic** — naive autocorrelation keeps locking onto the wrong octave. **YIN** (de Cheveigné & Kawahara, 2002) fixes that in four steps:
+
+1. **Difference function** — slide the signal against a delayed copy of itself: `d(τ) = Σ (x[j] − x[j+τ])²`. It dips toward zero when the lag `τ` matches the period.
+2. **Cumulative mean normalize (CMNDF)** — divide by the running average so tiny lags stop always winning. This is the step that kills octave errors.
+3. **Absolute threshold** — take the *first* dip below `0.15`, not the global minimum. That lag is the period `τ`.
+4. **Parabolic interpolation** — refine `τ` between samples for sub-Hz precision.
+
+<div class="pt-2 opacity-75">
+
+`f₀ = sampleRate / τ` — clamped to 40–2000 Hz. Nothing below threshold ⇒ **unvoiced**.
+
+</div>
+
+</div> -->
+
+<div class="flex items-center justify-center pt-4">
+  <img src="/yin-simple-diagram.png" class="max-h-[72vh] max-w-full rounded-lg" />
+</div>
+
+<!-- </div> -->
+
+<!-- <div class="absolute bottom-4 left-6 right-6 text-xs opacity-50">
+
+**Why YIN over a plain FFT?** It runs sample-by-sample with no block latency, stays allocation-free on the audio thread, and the CMNDF step makes it far more robust to octave errors on a harmonically-rich guitar than peak-picking an FFT or raw autocorrelation.
+
+</div> -->
+
+<!--
+This is the "how do we know what note you're playing" slide.
+Key intuition for steps 1-2: the difference function finds repeats,
+but it trivially dips at tiny lags too — the cumulative-mean
+normalization is what stops it from snapping an octave (or two) high.
+Threshold + parabolic interp are just "pick the right dip" and
+"get the decimal places." The output f0 drives the pitched saw
+carrier the vocoder shapes — that's how a spoken word comes out *sung*.
+Real params live in PitchTrackedCarrier: 2048-sample window,
+256-sample hop, threshold 0.15, 40-2000 Hz range.
+-->
+
+---
+layout: center
+---
+
+# The vocoder marries pitch + voice
+
+<div class="flex items-center justify-center gap-4 pt-6 text-sm">
+<div class="flex flex-col gap-5">
+<div class="relative border border-gray-600 rounded-xl px-6 pt-6 pb-4">
+<div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">Carrier = pitch</div>
+<div class="flex items-center gap-2">
+<div class="rounded-full px-3 py-2 font-medium" style="background:#fef9c3;color:#713f12">🎸 Guitar</div>
+<div class="text-lg opacity-40">→</div>
+<div class="rounded-md px-3 py-2 font-medium" style="background:#dbeafe;color:#1e3a8a">YIN&nbsp;f₀</div>
+<div class="text-lg opacity-40">→</div>
+<div class="rounded-md px-3 py-2 font-medium" style="background:#ccfbf1;color:#134e4a">Pitched saw</div>
+</div>
+</div>
+<div class="relative border border-gray-600 rounded-xl px-6 pt-6 pb-4">
+<div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">Modulator = words</div>
+<div class="flex items-center gap-2">
+<div class="rounded-md px-3 py-2 font-medium" style="background:#ffedd5;color:#7c2d12">🗣 Voice clip</div>
+<div class="text-xs opacity-60">one spoken word</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col justify-between self-stretch py-5 text-3xl opacity-40"><div>→</div><div>→</div></div>
+<div class="rounded-xl px-6 py-5 text-center" style="background:#ede9fe;color:#5b21b6">
+<div class="font-semibold text-base">24-band vocoder</div>
+<div class="flex items-end justify-center gap-1 h-12 py-2">
+<div class="w-1.5 rounded-t" style="height:40%;background:#7c3aed"></div>
+<div class="w-1.5 rounded-t" style="height:75%;background:#7c3aed"></div>
+<div class="w-1.5 rounded-t" style="height:55%;background:#7c3aed"></div>
+<div class="w-1.5 rounded-t" style="height:95%;background:#7c3aed"></div>
+<div class="w-1.5 rounded-t" style="height:60%;background:#7c3aed"></div>
+<div class="w-1.5 rounded-t" style="height:80%;background:#7c3aed"></div>
+<div class="w-1.5 rounded-t" style="height:45%;background:#7c3aed"></div>
+<div class="w-1.5 rounded-t" style="height:70%;background:#7c3aed"></div>
+</div>
+<div class="text-xs opacity-80">carrier bands × voice envelopes</div>
+</div>
+<div class="text-3xl opacity-40">→</div>
+<div class="rounded-xl px-5 py-4 text-center font-medium" style="background:#fee2e2;color:#7f1d1d">🔊<br/>word, <i>sung</i><br/>at your pitch</div>
+</div>
+
+<div class="text-center text-xl pt-6">It's not a blender — it's a <b>stencil</b>. The voice is the <b>shape</b>; your guitar is the <b>paint</b>.</div>
+
+<v-click>
+<div class="flex flex-col items-center pt-6">
+<div class="text-xs opacity-60 pb-2">…or: the voice works a 24-band EQ on your guitar, hundreds of times a second</div>
+<div class="flex items-end gap-2 px-4 py-3 rounded-lg border border-gray-700">
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:62%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:30%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:48%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:12%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:35%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:55%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:25%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:42%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:68%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:38%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:58%"></div></div>
+<div class="relative w-4 h-16"><div class="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600"></div><div class="absolute left-0 right-0 h-1.5 rounded bg-sky-400" style="top:78%"></div></div>
+</div>
+</div>
+</v-click>
+
+<!-- Pitched saw = a synthetic sawtooth oscillator we generate at the guitar's detected pitch. We keep the pitch of your note and throw away its sound, replacing it with a clean, harmonically-rich tone — the perfect raw material for the vocoder to shape into words.
+
+So when you talk to it: it's "YIN tells us what note you played; we rebuild that note as a clean synthesized sawtooth — all harmonics, perfectly in tune — and that's what the vocoder turns into speech." -->
+
+---
+layout: center
+class: text-center
+---
+
+# Time to jam ... {.text-9xl}
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">Scene 10</div>
 
 ---
 
@@ -190,7 +478,123 @@ This really sucks n stuff.
 - **STT** — whisper.cpp (local, ~150 MB model, runs on CPU)
 - **LLM** — Ollama (local models)
 
-Insert diagram here 
+<div class="flex flex-col items-center gap-2 pt-4 text-sm">
+
+<div class="relative border border-gray-600 rounded-xl px-8 pt-6 pb-5">
+  <div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">You speak</div>
+  <div class="flex items-center gap-3">
+    <div class="rounded-full w-11 h-11 flex items-center justify-center text-lg" style="background:#e0f2fe;color:#0c4a6e">🎤</div>
+    <div class="text-xl opacity-40">→</div>
+    <div class="rounded-md px-4 py-2 font-medium" style="background:#dbeafe;color:#1e3a8a">STT</div>
+    <div class="text-xl opacity-40">→</div>
+    <div class="rounded-md px-4 py-2 font-medium" style="background:#e0f2fe;color:#0c4a6e">Raw text</div>
+  </div>
+</div>
+
+<div class="text-xl opacity-40 leading-none">↓</div>
+
+<div class="relative border border-gray-600 rounded-xl px-8 pt-6 pb-5">
+  <div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">It thinks</div>
+  <div class="flex items-center gap-3">
+    <div class="rounded-md px-4 py-2 font-medium" style="background:#ede9fe;color:#5b21b6">Local LLM</div>
+    <div class="text-xl opacity-40">→</div>
+    <div class="rounded-md px-4 py-2 font-medium" style="background:#f3e8ff;color:#6b21a8">Response text</div>
+  </div>
+</div>
+
+<div class="text-xl opacity-40 leading-none">↓</div>
+
+<div class="relative border border-gray-600 rounded-xl px-8 pt-6 pb-5">
+  <div class="absolute -top-3 left-5 px-2 text-xs tracking-wide opacity-60 bg-black">It speaks</div>
+  <div class="flex items-center gap-3">
+    <div class="rounded-md px-4 py-2 font-medium" style="background:#cffafe;color:#164e63">TTS</div>
+    <div class="text-xl opacity-40">→</div>
+    <div class="rounded-md px-4 py-2 font-medium" style="background:#dcfce7;color:#14532d">Slice per word</div>
+    <div class="text-xl opacity-40">→</div>
+    <div class="rounded-full px-4 py-2 font-medium" style="background:#fef9c3;color:#713f12">Guitar pluck</div>
+    <div class="text-xl opacity-40">→</div>
+    <div class="rounded-full w-11 h-11 flex items-center justify-center text-lg" style="background:#fee2e2;color:#7f1d1d">🔊</div>
+  </div>
+</div>
+
+<div class="text-xs opacity-60 pt-1">↺ your reply starts the next turn</div>
+
+</div>
+
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">Scene 4</div>
+
+---
+
+# Where to go from here?
+
+<div class="text-sm opacity-70 -mt-2 pb-3">Pick one. Build it. Put it on a stage. 👇</div>
+
+<div class="grid grid-cols-2 gap-x-8 gap-y-4 text-xs">
+
+<div>
+  <div class="text-sm font-semibold pb-1" style="color:#7dd3fc">🎤 Listen &amp; respond</div>
+  <ul class="space-y-1 opacity-90">
+    <li><b>Heckle responder</b> — STT catches a shout, the guitar sings back a comeback</li>
+    <li><b>Live lyric co-pilot</b> — LLM feeds the next line; you freestyle it</li>
+    <li><b>Crowd-sourced verse</b> — audience texts a word, it lands in the song</li>
+    <li><b>Real-time stage translator</b> — sing in English, the room hears your cloned voice in their language</li>
+    <li><b>Sign-language avatar</b> — STT drives a signing avatar for Deaf audiences</li>
+  </ul>
+</div>
+
+<div>
+  <div class="text-sm font-semibold pb-1" style="color:#fbbf24">🎸 Play with you</div>
+  <ul class="space-y-1 opacity-90">
+    <li><b>AI bandmate</b> — low-latency model fills the missing instrument, locked to tempo</li>
+    <li><b>Adaptive harmonizer</b> — harmony voices that track your live key changes</li>
+    <li><b>Smart loop station</b> — lay one loop, it generates a bass/drum part that fits</li>
+    <li><b>Style-cloned soloist</b> — learns your licks, solos in your voice on cue</li>
+    <li><b>Expressive auto-tune</b> — ML phrasing instead of robotic pitch-snap</li>
+  </ul>
+</div>
+
+<div>
+  <div class="text-sm font-semibold pb-1" style="color:#c4b5fd">🚀 New interfaces</div>
+  <ul class="space-y-1 opacity-90">
+    <li><b>Talking anything</b> — the vocoder trick on sax, violin, drums</li>
+    <li><b>Gesture-to-DSP</b> — pose/webcam tracking maps movement to effects</li>
+    <li><b>Biometric soundscapes</b> — heart rate / EEG drive a generative score</li>
+    <li><b>Spoken scene control</b> — "make it darker" reconfigures the rig by voice</li>
+    <li><b>Spatial audio theater</b> — LLM places voices in 3D, reacting to actors</li>
+  </ul>
+</div>
+
+<div>
+  <div class="text-sm font-semibold pb-1" style="color:#86efac">🛠️ Solve real problems</div>
+  <ul class="space-y-1 opacity-90">
+    <li><b>On-device latency toolkit</b> — open-source low-latency STT/TTS for live use</li>
+    <li><b>Offline-first rig</b> — everything local; works in a dead-internet venue</li>
+    <li><b>Natural-language setlist</b> — describe a show, get scenes &amp; patches</li>
+    <li><b>In-ear practice coach</b> — real-time pitch/timing whispered into your IEM</li>
+    <li><b>Lyric-aware visuals</b> — projection imagery generated from what you sing</li>
+  </ul>
+</div>
+
+</div>
+
+---
+layout: center
+class: text-center
+---
+
+
+<div class="text-8xl pt-6 ">Thank you!</div>
+
+<div class="flex justify-center pt-12">
+  <a href="https://www.linkedin.com/in/todd-b-fisher" target="_blank"
+     class="flex items-center gap-4 px-8 py-4 rounded-2xl border border-gray-600 hover:border-sky-400 transition-colors !no-underline"
+     style="color:inherit">
+    <svg viewBox="0 0 24 24" class="w-10 h-10" fill="#4DA8F0"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+    <span class="text-2xl tracking-wide">todd-b-fisher</span>
+  </a>
+</div>
+
 
 ---
 layout: section
@@ -294,68 +698,7 @@ We pay fidelity to get latency, allocation-safety, and debuggability.<br/>
 
 </div>
 
----
-layout: section
----
 
-# Can we make it sing?
-
-## Next Stop: Pitch detection.
-
----
-
-<div class="absolute inset-0 flex items-center justify-center p-6">
-  <img src="/frequencies-f0.png" class="max-h-full max-w-full object-contain rounded-lg" />
-</div>
-
----
-
-# YIN FTW: finding the fundamental
-
-<div class="grid grid-cols-[1.05fr_1fr] gap-8 pt-2 text-sm">
-
-<div>
-
-A guitar note is **rich and harmonic** — naive autocorrelation keeps locking onto the wrong octave. **YIN** (de Cheveigné & Kawahara, 2002) fixes that in four steps:
-
-1. **Difference function** — slide the signal against a delayed copy of itself: `d(τ) = Σ (x[j] − x[j+τ])²`. It dips toward zero when the lag `τ` matches the period.
-2. **Cumulative mean normalize (CMNDF)** — divide by the running average so tiny lags stop always winning. This is the step that kills octave errors.
-3. **Absolute threshold** — take the *first* dip below `0.15`, not the global minimum. That lag is the period `τ`.
-4. **Parabolic interpolation** — refine `τ` between samples for sub-Hz precision.
-
-<div class="pt-2 opacity-75">
-
-`f₀ = sampleRate / τ` — clamped to 40–2000 Hz. Nothing below threshold ⇒ **unvoiced**.
-
-</div>
-
-</div>
-
-<div class="flex items-center justify-center">
-  <img src="/yin-simple-diagram.png" class="w-full max-w-md rounded-lg" />
-</div>
-
-</div>
-
-<div class="absolute bottom-4 left-6 right-6 text-xs opacity-50">
-
-**Why YIN over a plain FFT?** It runs sample-by-sample with no block latency, stays allocation-free on the audio thread, and the CMNDF step makes it far more robust to octave errors on a harmonically-rich guitar than peak-picking an FFT or raw autocorrelation.
-
-</div>
-
-<!--
-This is the "how do we know what note you're playing" slide.
-Key intuition for steps 1-2: the difference function finds repeats,
-but it trivially dips at tiny lags too — the cumulative-mean
-normalization is what stops it from snapping an octave (or two) high.
-Threshold + parabolic interp are just "pick the right dip" and
-"get the decimal places." The output f0 drives the pitched saw
-carrier the vocoder shapes — that's how a spoken word comes out *sung*.
-Real params live in PitchTrackedCarrier: 2048-sample window,
-256-sample hop, threshold 0.15, 40-2000 Hz range.
--->
-
----
 
 # Three TTS sources behind one interface
 
