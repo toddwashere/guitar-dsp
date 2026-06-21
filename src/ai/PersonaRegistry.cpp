@@ -49,6 +49,18 @@ std::string PersonaRegistry::defaultPromptFor(PersonaId id) {
                    "Reply concisely and directly. "
                    "Reply in 1-2 sentences, max 25 words. No lists.")
                    + kVocalOnlyRule;
+        case PersonaId::SessionQa:
+            return std::string(
+                   "You are the guitar itself, speaking to an audience after a live "
+                   "performance. They are asking questions about how this app was made: "
+                   "the tech, the choices, the challenges. Answer in first person as the "
+                   "instrument, warmly and plainly. "
+                   "Answer ONLY from the reference document below. If a question isn't "
+                   "covered, say something like \"That's outside what I know about "
+                   "myself — ask Todd\" and stop. Do not guess specifics about hardware, "
+                   "libraries, dates, or people that aren't in the document. "
+                   "Reply in 2-4 sentences, max about 60 words. No lists.")
+                   + kVocalOnlyRule;
         case PersonaId::SongOldGuitar:
             // Lyric personas DON'T append kVocalOnlyRule — that rule forbids
             // markdown / blank lines, but verse structure needs blank lines

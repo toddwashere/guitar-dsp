@@ -71,3 +71,13 @@ TEST_CASE("PersonaRegistry: buildMessages uses custom prompt when set",
     auto msgs = r.buildMessages(b, PersonaId::Snarky);
     REQUIRE(msgs[0].text == "be brutal but witty");
 }
+
+TEST_CASE("PersonaRegistry: SessionQa default prompt has 60-word guardrail",
+          "[ai][persona]") {
+    auto p = PersonaRegistry::defaultPromptFor(PersonaId::SessionQa);
+    REQUIRE_FALSE(p.empty());
+    REQUIRE(p.find("60 words") != std::string::npos);
+    REQUIRE(p.find("No lists") != std::string::npos);
+    // The prompt instructs the model to answer ONLY from the reference doc.
+    REQUIRE(p.find("ONLY") != std::string::npos);
+}

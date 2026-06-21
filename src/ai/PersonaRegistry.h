@@ -16,6 +16,7 @@ enum class PersonaId {
     PlainAssistant,
     SongOldGuitar,        // "Song: I'm an old guitar" — wistful autobiographical lyrics
     SongRockingGuitar,    // "Song: Rocking guitar"     — cocky/swagger lyrics
+    SessionQa,            // audience Q&A grounded in a knowledge doc
 };
 
 class PersonaRegistry {
