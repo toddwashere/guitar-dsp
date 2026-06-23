@@ -249,6 +249,15 @@ public:
     void setSungDirectPortamentoMs(float ms) noexcept {
         graph_.sungDirectPath().setPortamentoMs(ms);
     }
+    // Background pre-render status for the SungDirect UI.
+    enum class SungDirectLoadState { Idle, Loading, Ready };
+    SungDirectLoadState sungDirectLoadState() const noexcept {
+        return static_cast<SungDirectLoadState>(
+            static_cast<int>(graph_.sungDirectPath().loadState()));
+    }
+    int sungDirectLoadProgressPercent() const noexcept {
+        return graph_.sungDirectPath().loadProgressPercent();
+    }
 
     // The currently active scene's declared clarity (0..1), for the visibility
     // readout — so the operator can see when the live slider has drifted from

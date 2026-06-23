@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include "audio/SungDirectPath.h"
 #include "audio/TTSClip.h"
+#include <chrono>
 #include <cmath>
+#include <thread>
 #include <vector>
 
 using guitar_dsp::audio::SungDirectPath;
@@ -22,6 +24,16 @@ TEST_CASE("SungDirectPath produces non-silent output after an onset",
     c->bankKey       = "sung_ah";
     c->anchorPitchHz = 220.0f;
     p.setGrainsForBank({ std::const_pointer_cast<const TTSClip>(c) });
+
+    // setGrainsForBank now runs WORLD analysis + pre-render on a
+    // background thread. Wait for it to finish before driving audio
+    // through process() (the audio thread emits silence while loading).
+    const auto deadline = std::chrono::steady_clock::now()
+                        + std::chrono::seconds(60);
+    while (p.loadState() != SungDirectPath::LoadState::Ready) {
+        REQUIRE(std::chrono::steady_clock::now() < deadline);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
 
     // Drain bank-swap, then strike.
     std::vector<float> in(256, 0.0f), out(256, 0.0f);

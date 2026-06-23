@@ -49,7 +49,8 @@ public:
     const ClipBankPlayer& clipBankPlayer() const { return clipBankPlayer_; }
     ChannelVocoder& vocoder() { return vocoder_; }
     Carousel& carousel() { return carousel_; }
-    SungDirectPath& sungDirectPath() { return sungDirectPath_; }
+    SungDirectPath&       sungDirectPath()       { return sungDirectPath_; }
+    const SungDirectPath& sungDirectPath() const { return sungDirectPath_; }
 
     enum class WetSource { Vocoder, Carousel, SungDirect };
     // Message-thread: choose which branch feeds the Mixer's wet input.

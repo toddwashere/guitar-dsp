@@ -23,6 +23,12 @@ public:
         const std::vector<std::pair<std::string, std::string>>& packs,
         int activeIdx);
 
+    // Update the load-status label. Driven by PluginEditor::timerCallback
+    // from SungDirectPath's atomic state. `progressPercent` is ignored
+    // unless `loading` is true.
+    enum class LoadStatus { Idle, Loading, Ready };
+    void setLoadStatus(LoadStatus status, int progressPercent);
+
     std::function<void(int)>   onVoicePackChange;
     std::function<void(float)> onFormantTintChange;   // semitones
     std::function<void(float)> onPortamentoMsChange;
@@ -37,6 +43,9 @@ private:
     juce::Slider    portamento_;
     juce::Slider    scoopIn_;
     juce::Label     formantLabel_, portamentoLabel_, scoopLabel_;
+    juce::Label     loadStatusLabel_;
+    LoadStatus      lastLoadStatus_   = LoadStatus::Idle;
+    int             lastLoadProgress_ = -1;
 };
 
 } // namespace guitar_dsp::app

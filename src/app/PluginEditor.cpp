@@ -117,6 +117,25 @@ void PluginEditor::timerCallback() {
         qaButton_.setToggleState(inQa, juce::dontSendNotification);
     }
 
+    // Push SungDirect background-load status into the panel every tick
+    // (cheap — the panel ignores no-op updates). Visible only when the
+    // panel itself is visible (scene 12), so this is a small per-tick
+    // atomic read on other scenes.
+    {
+        const auto raw = processor_.sungDirectLoadState();
+        guitar_dsp::app::SungDirectPanel::LoadStatus uiStatus = guitar_dsp::app::SungDirectPanel::LoadStatus::Idle;
+        switch (raw) {
+            case PluginProcessor::SungDirectLoadState::Loading:
+                uiStatus = guitar_dsp::app::SungDirectPanel::LoadStatus::Loading; break;
+            case PluginProcessor::SungDirectLoadState::Ready:
+                uiStatus = guitar_dsp::app::SungDirectPanel::LoadStatus::Ready;   break;
+            case PluginProcessor::SungDirectLoadState::Idle:
+            default: break;
+        }
+        sungDirectPanel_.setLoadStatus(uiStatus,
+                                       processor_.sungDirectLoadProgressPercent());
+    }
+
     const int id = processor_.sceneEngine().getActiveSceneId();
     if (id != lastObservedSceneId_) {
         lastObservedSceneId_ = id;
