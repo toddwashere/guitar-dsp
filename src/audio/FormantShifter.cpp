@@ -166,9 +166,17 @@ void FormantShifter::process(float* out, int n) noexcept {
         return;
     }
 
-    // Copy samples from the pre-rendered buffer, looping at the end.
+    // One-shot per source set: play through the pre-rendered grain once,
+    // then output silence. Each new note attack triggers a fresh
+    // setSource() upstream, which resets localPlayPos_ to 0 — so notes
+    // re-trigger naturally without the previous bug where the grain
+    // looped forever and produced endless audio after the host stopped
+    // sending input.
     for (int i = 0; i < n; ++i) {
-        if (localPlayPos_ >= bufLen) localPlayPos_ = 0;  // loop
+        if (localPlayPos_ >= bufLen) {
+            for (; i < n; ++i) out[i] = 0.0f;
+            return;
+        }
         out[i] = buf[localPlayPos_++];
     }
 }

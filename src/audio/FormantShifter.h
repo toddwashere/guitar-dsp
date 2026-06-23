@@ -80,8 +80,14 @@ public:
     int latencySamples() const noexcept;
 
     // Number of semitones pre-rendered on each side of 1.0 (unity).
-    static constexpr int kSemitoneRange = 6;
-    // Total discrete ratios = 2*kSemitoneRange + 1 (i.e. -6 to +6 inclusive).
+    // 3 → 7 discrete ratios (-3..+3) which covers ±a minor third per grain.
+    // ClipBankPlayer picks the nearest-anchor grain on each onset so the
+    // shifter only has to span a small range around each anchor; with 3
+    // anchors per vowel this gives ~1.5 octaves of coverage per voice.
+    // Smaller numbers here = faster scene-12 activation (WORLD Synthesis
+    // is the expensive offline step).
+    static constexpr int kSemitoneRange = 3;
+    // Total discrete ratios = 2*kSemitoneRange + 1 (i.e. -3 to +3 inclusive).
     static constexpr int kNumRatios = 2 * kSemitoneRange + 1;
 
 private:

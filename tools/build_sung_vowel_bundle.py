@@ -35,7 +35,10 @@ VOWEL_TO_BANK_KEY = {
 }
 PAD_MS         = 200
 TARGET_SR      = 48000
-LONG_TONE_SEC  = 3.0  # central window from each long_tones/straight clip
+LONG_TONE_SEC  = 0.8  # central window from each long_tones/straight clip
+                       # Short enough that each guitar attack triggers a
+                       # crisp single vowel; the carrier/shifter pre-render
+                       # cost also scales with grain length.
 ANCHOR_SLICES_PER_VOWEL = 3  # from scales/slow_piano — low/mid/high
 
 
@@ -142,21 +145,26 @@ def slice_scale_into_anchors(samples, sr, num_slices):
             in_note = True
         elif in_note and r < threshold * 0.5:
             in_note = False
-    # Pick evenly spaced onsets across the detected list.
+    # Pick evenly spaced onsets across the detected list. If the singer
+    # is sung legato (common with slow_piano scales — RMS never drops
+    # below the silence threshold between notes), the detector finds
+    # only one or two onsets and we fall back to even N-way split.
     if len(onsets) < num_slices:
-        # fallback: split file into N equal pieces
         step = n // num_slices
-        return [(i * step, (i + 1) * step) for i in range(num_slices)]
-    pick_idx = [int(i * (len(onsets) - 1) / (num_slices - 1)) for i in range(num_slices)]
-    grains = []
-    for k in pick_idx:
-        start = onsets[k]
-        end = onsets[k + 1] if k + 1 < len(onsets) else n
-        # Cap each grain at ~1.5 s to keep grains short.
-        max_len = int(sr * 1.5)
-        if end - start > max_len:
-            end = start + max_len
-        grains.append((start, end))
+        grains = [(i * step, (i + 1) * step) for i in range(num_slices)]
+    else:
+        pick_idx = [int(i * (len(onsets) - 1) / (num_slices - 1))
+                    for i in range(num_slices)]
+        grains = []
+        for k in pick_idx:
+            start = onsets[k]
+            end = onsets[k + 1] if k + 1 < len(onsets) else n
+            grains.append((start, end))
+    # Universal cap: every grain ≤ ~0.8 s, regardless of which slicer
+    # path produced it. Short enough for crisp per-strike playback;
+    # also keeps the WORLD pre-render time bounded (scene 12 activation).
+    max_len = int(sr * 0.8)
+    grains = [(s, min(e, s + max_len)) for (s, e) in grains]
     return grains
 
 
