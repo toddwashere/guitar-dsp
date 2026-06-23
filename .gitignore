@@ -57,3 +57,4 @@ assets/piper/espeak-ng-data/
 assets/piper/voices/*.onnx
 assets/piper/voices/*.onnx.json
 build-tests/
+VocalSetRaw/
