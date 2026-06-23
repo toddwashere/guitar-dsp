@@ -1,3 +1,18 @@
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Synthetic test bundle for sung-vowels tests. Re-built whenever the
+# builder script changes.
+set(SUNG_VOWELS_TEST_BUNDLE
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/sung_vowels_test.gspeak)
+add_custom_command(
+    OUTPUT ${SUNG_VOWELS_TEST_BUNDLE}
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_sung_vowels_test_bundle.py
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_sung_vowels_test_bundle.py
+    COMMENT "Building sung_vowels_test.gspeak fixture"
+    VERBATIM)
+add_custom_target(sung_vowels_test_bundle ALL DEPENDS ${SUNG_VOWELS_TEST_BUNDLE})
+
 add_executable(guitar_dsp_tests
     unit/test_smoke.cpp
     unit/test_realtime_sentinel.cpp
@@ -109,6 +124,8 @@ add_executable(guitar_dsp_tests
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
 )
+
+add_dependencies(guitar_dsp_tests sung_vowels_test_bundle)
 
 target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio

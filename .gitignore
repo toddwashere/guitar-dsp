@@ -25,6 +25,7 @@ tests/output/
 *.junit.xml
 Testing/
 tests/fixtures/tts/*/audio.wav
+tests/fixtures/sung_vowels_test.gspeak
 
 # Ballmer chant — user-generated, not redistributed (see scripts/build_developers_clip.py)
 assets/tts/01_developers/audio.wav
