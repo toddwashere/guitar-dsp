@@ -68,6 +68,9 @@ if(GUITAR_DSP_AUTO_FETCH_ASSETS)
     endif()
 endif()
 
+# Pull in FetchContent-managed externals (WORLD, etc.)
+add_subdirectory(external)
+
 # Pull in JUCE
 add_subdirectory(external/JUCE)
 
