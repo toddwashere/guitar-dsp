@@ -38,6 +38,7 @@ add_library(guitar_dsp_audio STATIC
     audio/AudioFileDecoder.cpp
     audio/FormantShifter.cpp
     audio/GrainAnalyser.cpp
+    audio/SungDirectPath.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC

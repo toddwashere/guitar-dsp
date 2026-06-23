@@ -56,6 +56,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_vowel_grain_loop.cpp
     unit/audio/test_phoneme_stepped_player.cpp
     unit/audio/test_formant_shifter.cpp
+    unit/audio/test_sung_direct_path.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
