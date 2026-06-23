@@ -517,7 +517,11 @@ private:
     // 50 ms output fade armed by voice-pack swaps.
     std::atomic<int>  voicePackSwapFadeSamples_ {0};
     std::atomic<bool> voicePackSwapFadeArmed_   {false};
+    // AUDIO THREAD ONLY: written only inside processBlock after the
+    // armed-flag is consumed. Not atomic.
     int               voicePackSwapFadeCounter_ = 0;
+    // AUDIO THREAD ONLY: written only inside processBlock after the
+    // armed-flag is consumed. Not atomic.
     int               voicePackSwapFadeTotal_   = 0;  // captured once at arm-time
 
     // Attempts to load scene.gspeakPath via GspeakBundle and install the
