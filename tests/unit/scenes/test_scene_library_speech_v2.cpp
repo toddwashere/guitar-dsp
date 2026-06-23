@@ -40,3 +40,19 @@ TEST_CASE("SceneLibrary: speech defaults to NoteStepped for scenes without speec
     REQUIRE(s->speech.maxSustainMs == 1500.0);
     REQUIRE(s->speech.attackInterrupt == Scene::Speech::AttackInterrupt::Finish);
 }
+
+TEST_CASE("Scene 13 is Bypass; scene 11 is Sung Vowels", "[scene-library][slots]") {
+    auto scenes = SceneLibrary::loadDirectory(sceneAssetsDir());
+    const auto byId = [&](int id) -> const Scene* {
+        for (const auto& s : scenes) if (s.id == id) return &s;
+        return nullptr;
+    };
+    REQUIRE(byId(11) != nullptr);
+    CHECK(byId(11)->name == "Sung Vowels");
+    REQUIRE(byId(13) != nullptr);
+    CHECK(byId(13)->name == "Bypass");
+    // Ensure no leftover scene at slot 11 named "Bypass".
+    for (auto& s : scenes) {
+        if (s.id == 11) CHECK(s.name != "Bypass");
+    }
+}

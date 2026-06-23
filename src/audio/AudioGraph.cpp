@@ -26,6 +26,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     vocoder_.setOutputGain(4.0f);     // ~ +12 dB, tanh-limited downstream
     vocoder_.setCarrierNoise(0.30f);
     carousel_.prepare(sampleRate, blockSize);
+    sungDirectPath_.prepare(sampleRate, blockSize);
 
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     wetBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
@@ -62,6 +63,7 @@ void AudioGraph::reset() {
     std::fill(pitchCarrierBuffer_.begin(), pitchCarrierBuffer_.end(), 0.0f);
     wetLpfState_ = 0.0f;
     carousel_.reset();
+    sungDirectPath_.reset();
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
     std::fill(wetBuffer_.begin(), wetBuffer_.end(), 0.0f);
     std::fill(carrierBuffer_.begin(), carrierBuffer_.end(), 0.0f);
@@ -76,7 +78,28 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
 
     inputStage_.process(in, postInputBuffer_.data(), numSamples);
 
+    // Pitch tracking ALWAYS runs, regardless of wet source. The UI
+    // readout, ClipBankPlayer anchor selection, and SungDirectPath ratio
+    // computation all read from these atomics — previously the carrier
+    // only ran inside the Vocoder branch, so scene 12 (SungDirect) saw
+    // stale detectedHz and the shifter never tracked the guitar.
+    {
+        const auto pitchState = pitchCarrier_.process(
+            postInputBuffer_.data(), pitchCarrierBuffer_.data(), numSamples);
+        detectedNoteMidi_.store(pitchState.midiNote, std::memory_order_relaxed);
+        detectedCents_.store(pitchState.cents,       std::memory_order_relaxed);
+        detectedHz_.store(pitchState.freqHz,         std::memory_order_relaxed);
+        clipBankPlayer_.setDetectedPitchHz(pitchState.freqHz);
+    }
+
     if (wetSource_.load(std::memory_order_relaxed)
+            == static_cast<int>(WetSource::SungDirect)) {
+        // SungDirect branch: pitch-shift and formant-preserve the sung vowel
+        // grains directly to the wet buffer, driven by the detected guitar pitch.
+        sungDirectPath_.process(postInputBuffer_.data(),
+                                detectedHz_.load(std::memory_order_relaxed),
+                                wetBuffer_.data(), numSamples);
+    } else if (wetSource_.load(std::memory_order_relaxed)
             == static_cast<int>(WetSource::Carousel)) {
         // Carousel branch: transform the guitar directly into the wet buffer.
         carousel_.process(postInputBuffer_.data(), wetBuffer_.data(), numSamples);
@@ -123,14 +146,8 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
                           drySpeechBuffer_.begin());
             }
 
-            // Pitch-tracked carrier always runs so the UI readout is live whether
-            // the toggle is on or off; its output is only routed when the toggle is on.
-            const auto pitchState = pitchCarrier_.process(
-                postInputBuffer_.data(), pitchCarrierBuffer_.data(), numSamples);
-            detectedNoteMidi_.store(pitchState.midiNote, std::memory_order_relaxed);
-            detectedCents_.store(pitchState.cents,       std::memory_order_relaxed);
-            detectedHz_.store(pitchState.freqHz,         std::memory_order_relaxed);
-
+            // Pitch tracking already ran at the top of process(); the saw
+            // carrier buffer is populated and atomics published. Read here.
             const bool pitchSinging = pitchSinging_.load(std::memory_order_relaxed);
 
             // Carrier = guitar (default), or (diagnostic) broadband white noise, or

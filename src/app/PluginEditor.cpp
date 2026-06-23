@@ -31,6 +31,7 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(wordReadout_);
     addAndMakeVisible(diagToggleBar_);
     addAndMakeVisible(vocoderPanel_);
+    addAndMakeVisible(sungDirectPanel_);
     addAndMakeVisible(ttsStatusBar_);
     if (processor_.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
         addAndMakeVisible(midiDevicePicker_);
@@ -116,9 +117,68 @@ void PluginEditor::timerCallback() {
         qaButton_.setToggleState(inQa, juce::dontSendNotification);
     }
 
+    // Push SungDirect background-load status into the panel every tick
+    // (cheap — the panel ignores no-op updates). Visible only when the
+    // panel itself is visible (scene 12), so this is a small per-tick
+    // atomic read on other scenes.
+    {
+        const auto raw = processor_.sungDirectLoadState();
+        guitar_dsp::app::SungDirectPanel::LoadStatus uiStatus = guitar_dsp::app::SungDirectPanel::LoadStatus::Idle;
+        switch (raw) {
+            case PluginProcessor::SungDirectLoadState::Loading:
+                uiStatus = guitar_dsp::app::SungDirectPanel::LoadStatus::Loading; break;
+            case PluginProcessor::SungDirectLoadState::Ready:
+                uiStatus = guitar_dsp::app::SungDirectPanel::LoadStatus::Ready;   break;
+            case PluginProcessor::SungDirectLoadState::Idle:
+            default: break;
+        }
+        sungDirectPanel_.setLoadStatus(uiStatus,
+                                       processor_.sungDirectLoadProgressPercent());
+        // Mirror the carrier's YIN-detected pitch into the panel's
+        // readout so operators have a visual confirmation that the path
+        // is hearing them on scene 12. Same atomic the SungDirectPath
+        // uses for its ratio computation.
+        sungDirectPanel_.setDetectedPitch(processor_.detectedNoteMidi(),
+                                          processor_.detectedHz());
+    }
+
     const int id = processor_.sceneEngine().getActiveSceneId();
     if (id != lastObservedSceneId_) {
         lastObservedSceneId_ = id;
+
+        // Wire voice-pack pickers once per scene change (not every resized()).
+        // setVoicePacks internally hides the picker for scenes with no voicePacks.
+        const auto& s = processor_.sceneEngine().getActiveScene();
+        {
+            std::vector<std::pair<std::string, std::string>> packs;
+            packs.reserve(s.voicePacks.size());
+            for (const auto& vp : s.voicePacks)
+                packs.emplace_back(vp.label, vp.path);
+            if (s.showVoicePackPicker) {
+                vocoderPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
+                vocoderPanel_.setOnVoicePackChange(
+                    [this](int idx) { processor_.setActiveVoiceIndex(idx); });
+            } else {
+                vocoderPanel_.setVoicePacks({}, 0);
+            }
+
+            if (s.showSungDirectPanel) {
+                sungDirectPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
+                sungDirectPanel_.onVoicePackChange = [this](int idx) {
+                    processor_.setActiveVoiceIndex(idx);
+                };
+                sungDirectPanel_.onFormantTintChange = [this](float n) {
+                    processor_.setSungDirectFormantTintSemitones(n);
+                };
+                sungDirectPanel_.onPortamentoMsChange = [this](float ms) {
+                    processor_.setSungDirectPortamentoMs(ms);
+                };
+                sungDirectPanel_.onScoopInMsChange = [](float ms) {
+                    /* scoop-in hookup is a future task */ (void)ms;
+                };
+            }
+        }
+
         resized();
     }
 }
@@ -163,6 +223,10 @@ void PluginEditor::resized() {
     wordReadout_   .setVisible(showWordReadout);
     vocoderPanel_  .setVisible(showKnobs);
     ttsStatusBar_  .setVisible(false);  // TTS source pills are dev-only; off in stage UI
+
+    // SungDirectPanel: shown only when the active scene requests it (scene 12).
+    // Callback wiring is done once per scene change in timerCallback(), not here.
+    sungDirectPanel_.setVisible(processor_.sceneEngine().getActiveScene().showSungDirectPanel);
     sayPanel_      .setVisible(showSay);
     oscilloscope_     .setVisible(showScope);
     spectrumAnalyzer_ .setVisible(showScope);
@@ -176,6 +240,7 @@ void PluginEditor::resized() {
     if (showWordReadout) wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     if (showKnobs) vocoderPanel_.setBounds(bounds.removeFromTop(170));
+    if (sungDirectPanel_.isVisible()) sungDirectPanel_.setBounds(bounds.removeFromTop(108));
 
     // Waveform + slice overlay sits BETWEEN the knobs and the scope so
     // when v2 is active the boundary lines are the most prominent thing

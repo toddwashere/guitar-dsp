@@ -32,6 +32,12 @@ struct TTSClip {
     std::vector<Phoneme>       phonemes;
     std::vector<SyllableSpan>  sylsV2;
 
+    // Optional grain-metadata. Populated when this TTSClip is one grain
+    // sliced from a sung-vowel bundle. Empty/zero for all legacy clips.
+    std::string bankKey;             // e.g. "sung_ah" — joins to Scene::tts.bank entries.
+    float       anchorPitchHz = 0.0f; // 0 = legacy clip (no anchor pitch known).
+    std::string variantTag;          // e.g. "straight", "forte" — informational.
+
     bool empty() const noexcept { return samples.empty(); }
     std::size_t lengthSamples() const noexcept { return samples.size(); }
     double durationSeconds() const noexcept {

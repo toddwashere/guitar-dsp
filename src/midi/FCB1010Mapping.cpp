@@ -6,7 +6,7 @@ namespace guitar_dsp::midi {
 
 FCB1010Mapping FCB1010Mapping::stockDefaults() {
     FCB1010Mapping m;
-    for (int i = 0; i < 10; ++i) m.programChangeToScene_[i] = i;
+    for (int i = 0; i < 14; ++i) m.programChangeToScene_[i] = i;
     m.wetDryCc_     = 27;
     m.masterGainCc_ = 7;
     m.pitchSingingToggleCc_ = 80;

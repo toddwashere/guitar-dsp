@@ -33,6 +33,14 @@ juce::String PluginState::toJson(const PluginStateData& d) {
     o->setProperty("sttModelId",      juce::String(d.sttModelId));
     o->setProperty("pttPedalId",      d.pttPedalId);
     o->setProperty("clearChatPedalId", d.clearChatPedalId);
+    // activeVoiceIndexByScene — omit if empty
+    if (!d.activeVoiceIndexByScene.empty()) {
+        auto* voicesObj = new juce::DynamicObject();
+        for (const auto& kv : d.activeVoiceIndexByScene) {
+            voicesObj->setProperty(juce::String(kv.first), kv.second);
+        }
+        o->setProperty("activeVoiceIndexByScene", juce::var(voicesObj));
+    }
     // customPromptByPersona — omit entirely if empty
     if (!d.customPromptByPersona.empty()) {
         juce::DynamicObject::Ptr prompts = new juce::DynamicObject();
@@ -79,6 +87,16 @@ PluginStateData PluginState::fromJson(const juce::String& json) {
             d.pttPedalId = (int) o->getProperty("pttPedalId");
         if (o->hasProperty("clearChatPedalId"))
             d.clearChatPedalId = (int) o->getProperty("clearChatPedalId");
+        // activeVoiceIndexByScene sub-object
+        if (o->hasProperty("activeVoiceIndexByScene")) {
+            if (auto* vo = o->getProperty("activeVoiceIndexByScene").getDynamicObject()) {
+                for (const auto& kv : vo->getProperties()) {
+                    const int sceneId = kv.name.toString().getIntValue();
+                    const int idx     = static_cast<int>(kv.value);
+                    d.activeVoiceIndexByScene[sceneId] = idx;
+                }
+            }
+        }
         // customPromptByPersona sub-object — explicit per-known-id lookup
         // to avoid getIntValue() silently returning 0 for non-numeric keys.
         if (o->hasProperty("customPromptByPersona")) {

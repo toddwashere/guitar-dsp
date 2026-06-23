@@ -1,7 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 #include "OnsetDetector.h"
@@ -29,6 +31,13 @@ public:
     // plays clip 0. RT-safe via pending flag.
     void rewind() noexcept;
 
+    // Message or audio thread. Latest YIN-detected pitch in Hz, used by
+    // anchor-aware selection. 0 means "unknown" — selection falls back to
+    // the first grain of the current bank key.
+    void setDetectedPitchHz(float hz) noexcept {
+        detectedPitchHz_.store(hz, std::memory_order_relaxed);
+    }
+
     // Audio thread.
     //   onsetSrc = clean guitar (drives OnsetDetector)
     //   modOut   = vocoder modulator output for this block
@@ -40,6 +49,23 @@ public:
     }
     int bankSize() const noexcept {
         return bankSize_.load(std::memory_order_relaxed);
+    }
+
+    // Audio thread. Returns the clip at `idx` in the active bank, or nullptr
+    // if idx is out of range. Used by SungDirectPath to mirror source changes
+    // into the FormantShifter without touching the pending bank.
+    TTSClipPtr activeBankAt(int idx) const noexcept {
+        if (idx < 0 || idx >= static_cast<int>(activeBank_.size())) return {};
+        return activeBank_[static_cast<std::size_t>(idx)];
+    }
+
+    // Audio thread (same thread as process). Returns the current note-off
+    // gate gain: 1.0 while a grain is sounding, ramps down during the
+    // 10 ms fade triggered by guitar going silent, 0.0 once gated off.
+    // SungDirectPath uses this to gate FormantShifter output in lockstep.
+    float currentGateGain() const noexcept {
+        if (!playing_) return 0.0f;
+        return gateFadingOut_ ? std::max(0.0f, gateFadeGain_) : 1.0f;
     }
 
 private:
@@ -56,6 +82,43 @@ private:
     std::atomic<int>  currentClipIndex_ {-1};
     std::atomic<int>  bankSize_         {0};
     std::atomic<bool> pendingRewind_    {false};
+
+    std::atomic<float> detectedPitchHz_ {0.0f};
+
+    // Anchor mode state. Engaged when activeBank_'s first clip has bankKey != "".
+    bool                     anchorMode_   = false;
+    std::vector<std::string> uniqueKeys_;     // ordered, first-appearance
+    int                      keyCursor_    = -1;
+
+    // ---- Note-off gate: stop the current grain shortly after the guitar
+    // goes silent, so a held grain doesn't keep playing into a quiet
+    // passage. Works alongside the onset-triggered restart — a new pluck
+    // cancels any in-progress fade and starts a fresh grain.
+    //
+    // Audio-thread state only — never touched from message thread.
+    float gateEnv_              = 0.0f;   // peak-follower amplitude
+    float gateReleaseCoef_      = 0.0f;   // 1-pole release; set in prepare()
+    int   gateSilenceCounter_   = 0;      // samples spent below threshold
+    int   gateHangoverSamples_  = 0;      // grace period before fade starts
+    float gateFadeGain_         = 1.0f;   // current fade multiplier during stop
+    float gateFadeStep_         = 0.0f;   // per-sample decrement; set in prepare()
+    bool  gateFadingOut_        = false;
+    static constexpr float kGateSilenceThreshold = 0.060f;  // ≈ −24 dBFS — catches
+                                                            // typical guitar decay
+                                                            // before the natural ring
+                                                            // overwhelms the gate.
+
+public:
+    // Message thread. Enabled-keys bitmask for anchor-mode rotation. Bit i
+    // corresponds to uniqueKeys_[i] (first-appearance order). If a key is
+    // disabled, anchor-mode cycling skips it. Default 0xFFFFFFFF — all keys
+    // enabled. Has no effect in legacy round-robin mode.
+    void setEnabledKeysMask(std::uint32_t mask) noexcept {
+        enabledKeysMask_.store(mask, std::memory_order_relaxed);
+    }
+
+private:
+    std::atomic<std::uint32_t> enabledKeysMask_ {0xFFFFFFFFu};
 };
 
 } // namespace guitar_dsp::audio

@@ -152,14 +152,15 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         auto scenes = scenes::SceneLibrary::loadDirectory(dir);
         if (scenes.empty()) scenes.push_back(scenes::Scene::defaults(0));
         sceneEngine_.loadScenes(std::move(scenes));
-        // Default to Bypass (id 11, dryWet=0) on first load so a freshly
+        // Default to Bypass (id 13, dryWet=0) on first load so a freshly
         // inserted AU passes audio through. The live demo scenes are 85-95%
         // wet and silence any source that doesn't trigger guitar onsets
         // (recorded clips, other tracks). setStateInformation (called next
         // by the host for saved projects) will override this with the saved
         // sceneId — fresh insertion lands on Bypass; reopened projects
         // restore whatever scene was active when saved.
-        sceneEngine_.activateScene(11);
+        // Bypass scene is now at slot 13 (was 11 before sung-vowels landed).
+        sceneEngine_.activateScene(13);
     }
 
     prebakedTtsSource_ = std::make_unique<audio::PrebakedTTSSource>(
@@ -269,13 +270,16 @@ double PluginProcessor::currentSampleRate() const noexcept {
 }
 
 bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
-    if (scene.gspeakPath.empty() || !scene.gspeakAutoLoad) return false;
+    // Use voice-pack-aware resolved path when set.
+    const int idx = activeVoiceIndex();
+    const auto resolved = scene.resolvedGspeakPath(idx);
+    if (resolved.empty() || !scene.gspeakAutoLoad) return false;
 
-    const auto path = AssetLocator::resolveForRead(scene.gspeakPath);
+    const auto path = AssetLocator::resolveForRead(resolved);
     if (path.empty()) {
         if (ttsStatusBar_)
             ttsStatusBar_->flashMessage(
-                juce::String(scene.gspeakPath) + " missing — using fallback", 5000);
+                juce::String(resolved) + " missing — using fallback", 5000);
         return false;
     }
     juce::File file(path);
@@ -283,7 +287,7 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     if (!loaded.has_value()) {
         if (ttsStatusBar_)
             ttsStatusBar_->flashMessage(
-                juce::String(scene.gspeakPath) + " missing — using fallback", 5000);
+                juce::String(resolved) + " missing — using fallback", 5000);
         return false;
     }
 
@@ -295,6 +299,39 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
         graph_.setWordSyncMode(audio::WordSyncMode::Advance);
     else if (scene.tts.wordSync == "syllable")
         graph_.setWordSyncMode(audio::WordSyncMode::Syllable);
+
+    // SungDirect branch (scene 12): directShift.enabled drives routing to the
+    // new SungDirectPath wet-bus. Split the master clip into per-grain sub-clips
+    // keyed by bankKey and feed them to SungDirectPath. The vocoder + clip-bank
+    // player are cleared so they don't bleed into this scene's output.
+    if (scene.directShift.enabled) {
+        auto bank = splitMasterClipIntoBank_(loaded->clip);
+        // Push the bank into SungDirectPath (pre-analyses WORLD params per grain).
+        graph_.sungDirectPath().setGrainsForBank(bank);
+        graph_.sungDirectPath().setPortamentoMs(scene.directShift.portamentoMs);
+        graph_.sungDirectPath().setFormantTintSemitones(
+            scene.directShift.formantTintSemitones);
+        graph_.setWetSource(audio::AudioGraph::WetSource::SungDirect);
+
+        // Clear vocoder + bank players so a prior scene doesn't bleed in.
+        graph_.clipBankPlayer().setBank({});
+        graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
+        graph_.setActiveSpeechPlayer(
+            audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+        graph_.ttsClipPlayer().setClip(nullptr);
+        graph_.noteSteppedPlayer().setClip(nullptr);
+        graph_.phonemeSteppedPlayer().setClip(nullptr);
+        lastPhonemeClip_.reset();
+
+        if (sayPanel_) sayPanel_->setText(juce::String(loaded->text));
+        currentTtsClipKey_ = std::string("gspeak:") + resolved;
+        return true;
+    }
+
+    // I7: Reset WetSource to Vocoder when leaving a directShift scene (or when
+    // landing on a non-directShift scene that skipped the directShift branch above).
+    // Without this, scene 12 → scene 11 transitions leave the wet bus on SungDirect.
+    graph_.setWetSource(audio::AudioGraph::WetSource::Vocoder);
 
     // Clear any leftover clip-bank state from a previous scene (e.g. scene 2
     // Vocal-Guitar). The normal scene-activation paths do this branch-by-branch;
@@ -330,8 +367,90 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     // Mark the clip-key as "consumed" so the normal-path early-return
     // (`if (key == currentTtsClipKey_) return;`) fires if this scene is
     // re-activated without changing the bundle.
-    currentTtsClipKey_ = std::string("gspeak:") + scene.gspeakPath;
+    currentTtsClipKey_ = std::string("gspeak:") + resolved;
     return true;
+}
+
+std::vector<audio::TTSClipPtr>
+PluginProcessor::splitMasterClipIntoBank_(audio::TTSClipPtr master) {
+    std::vector<audio::TTSClipPtr> out;
+    if (!master) return out;
+    const std::size_t totalSamples = master->samples.size();
+    for (const auto& p : master->phonemes) {
+        // Guard against out-of-range phoneme boundaries (can happen if the
+        // resample scale nudged an endSample past the real end).
+        const std::size_t start = std::min(p.startSample, totalSamples);
+        const std::size_t end   = std::min(p.endSample,   totalSamples);
+        if (end <= start) continue;  // skip zero-length grains
+
+        auto sub = std::make_shared<audio::TTSClip>();
+        sub->sampleRate = master->sampleRate;
+        sub->samples.assign(master->samples.begin() + static_cast<std::ptrdiff_t>(start),
+                            master->samples.begin() + static_cast<std::ptrdiff_t>(end));
+
+        // Prefer per-phoneme bankKey (populated by GspeakBundle::read for v2
+        // multi-grain bundles). Fall back to a vowel-label heuristic for older
+        // bundles that don't carry per-phoneme bankKey.
+        if (!p.bankKey.empty()) {
+            sub->bankKey       = p.bankKey;
+            sub->anchorPitchHz = p.anchorPitchHz;
+        } else {
+            // Heuristic: map vowel label → bankKey.
+            //
+            // Convention (I6): bundles built by tools/build_sung_vowel_bundle.py
+            // write single-character IPA labels ("a","e","i","o","u"). This
+            // heuristic matches that convention only. Legacy v2 bundles produced
+            // by espeak-ng use multi-character labels (e.g. "AE", "IH", "OW")
+            // which will fall through to the "sung_ah" default here — acceptable
+            // because those bundles do not carry anchorPitchHz metadata either,
+            // so the per-grain anchor path (I1) would have fallen back to 220 Hz
+            // regardless. Do not change the single-char mapping without updating
+            // tools/build_sung_vowel_bundle.py to match.
+            if      (p.label == "a")  sub->bankKey = "sung_ah";
+            else if (p.label == "e")  sub->bankKey = "sung_eh";
+            else if (p.label == "i")  sub->bankKey = "sung_ee";
+            else if (p.label == "o")  sub->bankKey = "sung_oh";
+            else if (p.label == "u")  sub->bankKey = "sung_oo";
+            else                       sub->bankKey = "sung_ah";  // safe default for unknown labels
+            sub->anchorPitchHz = 0.0f;  // unknown in legacy bundles
+        }
+        sub->variantTag = master->variantTag;
+
+        out.push_back(std::const_pointer_cast<const audio::TTSClip>(sub));
+    }
+    return out;
+}
+
+int PluginProcessor::activeVoiceIndex() const noexcept {
+    const int id = sceneEngine_.getActiveSceneId();
+    auto it = stateData_.activeVoiceIndexByScene.find(id);
+    if (it != stateData_.activeVoiceIndexByScene.end()) return it->second;
+    const auto& s = sceneEngine_.getActiveScene();
+    return s.defaultVoiceIndex;
+}
+
+void PluginProcessor::setActiveVoiceIndex(int idx) {
+    const auto& scene = sceneEngine_.getActiveScene();
+    if (scene.voicePacks.empty()) return;
+    if (idx < 0) idx = 0;
+    if (idx >= static_cast<int>(scene.voicePacks.size()))
+        idx = static_cast<int>(scene.voicePacks.size()) - 1;
+    const int id = scene.id;
+    stateData_.activeVoiceIndexByScene[id] = idx;
+
+    // Arm the 50 ms output fade BEFORE the bundle reload so the audio
+    // thread starts ramping immediately.
+    voicePackSwapFadeSamples_.store(
+        static_cast<int>(0.050 * getSampleRate()),
+        std::memory_order_relaxed);
+    voicePackSwapFadeArmed_.store(true, std::memory_order_release);
+
+    // Re-use the existing auto-load path. tryAutoLoadGspeak_ reads
+    // scene.gspeakPath; temporarily swap in the resolved path.
+    auto sceneCopy        = scene;
+    sceneCopy.gspeakPath  = scene.resolvedGspeakPath(idx);
+    sceneCopy.gspeakAutoLoad = true;
+    (void) tryAutoLoadGspeak_(sceneCopy);
 }
 
 void PluginProcessor::rebuildLlmClient() {
@@ -1066,6 +1185,32 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     }
     audioRingWriteIdx_.store(idx & mask, std::memory_order_release);
 
+    // Voice-pack swap fade: triangular dip across 50 ms masks the bundle
+    // handover transient. Runs on monoScratch_ before fan-out to channels.
+    if (voicePackSwapFadeArmed_.exchange(false, std::memory_order_acquire)) {
+        voicePackSwapFadeCounter_ =
+            voicePackSwapFadeSamples_.load(std::memory_order_relaxed);
+        voicePackSwapFadeTotal_ = voicePackSwapFadeCounter_;  // captured once
+    }
+    if (voicePackSwapFadeCounter_ > 0) {
+        const int n = numSamples;
+        // Use the total captured at arm-time so the gain denominator is stable
+        // across block boundaries — produces a true triangle 1→0→1 over the
+        // full 50 ms window rather than a per-block sawtooth.
+        const int total = std::max(1, voicePackSwapFadeTotal_);
+        auto* w = monoScratch_.data();
+        for (int i = 0; i < n && voicePackSwapFadeCounter_ > 0; ++i) {
+            // Symmetric: ramp DOWN for the first half, UP for the second.
+            const float halfPos = (total - voicePackSwapFadeCounter_)
+                                / static_cast<float>(total);
+            const float gain = halfPos < 0.5f
+                ? 1.0f - 2.0f * halfPos
+                : 2.0f * (halfPos - 0.5f);
+            w[i] *= gain;
+            --voicePackSwapFadeCounter_;
+        }
+    }
+
     // Fan the mono graph output to all output channels.
     for (int ch = 0; ch < totalOut; ++ch) {
         float* out = buffer.getWritePointer(ch);
@@ -1109,6 +1254,8 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.selectedModelId = selectedModelId_;
     d.personaId       = currentPersonaId_;
 
+    d.activeVoiceIndexByScene = stateData_.activeVoiceIndexByScene;
+
     // Snapshot only custom prompts that differ from defaults.
     static constexpr ai::PersonaId kAllPersonas[] = {
         ai::PersonaId::Interviewer, ai::PersonaId::Snarky,
@@ -1129,6 +1276,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
 void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     const juce::String json = juce::String::fromUTF8(static_cast<const char*>(data), sizeInBytes);
     const auto d = app::PluginState::fromJson(json);
+    stateData_.activeVoiceIndexByScene = d.activeVoiceIndexByScene;
     graph_.setVocoderMakeup(d.makeup);
     graph_.setVocoderCarrierNoise(d.carrierNoise);
     graph_.setVocoderSibilance(d.sibilance);

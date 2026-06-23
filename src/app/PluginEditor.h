@@ -12,6 +12,7 @@
 #include "SayPanel.h"
 #include "SceneIndicator.h"
 #include "SpectrumAnalyzer.h"
+#include "SungDirectPanel.h"
 #include "TtsStatusBar.h"
 #include "VocoderPanel.h"
 #include "MicScopeView.h"
@@ -44,12 +45,13 @@ private:
 
     PluginProcessor& processor_;
 
-    DiagnosticPanel    diagnosticPanel_;
-    SceneIndicator     sceneIndicator_;
-    WordReadout        wordReadout_;
-    DiagToggleBar      diagToggleBar_;
-    VocoderPanel       vocoderPanel_;
-    TtsStatusBar       ttsStatusBar_;
+    DiagnosticPanel        diagnosticPanel_;
+    SceneIndicator         sceneIndicator_;
+    WordReadout            wordReadout_;
+    DiagToggleBar          diagToggleBar_;
+    VocoderPanel           vocoderPanel_;
+    app::SungDirectPanel   sungDirectPanel_;
+    TtsStatusBar           ttsStatusBar_;
     MidiDevicePicker   midiDevicePicker_;
     SayPanel           sayPanel_;
     Oscilloscope       oscilloscope_;

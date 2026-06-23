@@ -24,7 +24,7 @@ Per user direction (2026-06-23):
 
 Push the talking-guitar pipeline past "TTS triggered word-by-word" into
 something an audience hears as actual *singing*. Two new scenes,
-sharing one curated VocalSet source bundle, each demonstrating a
+sharing a 4-voice curated VocalSet bundle set, each demonstrating a
 different point on the quality-vs-complexity curve:
 
 - **Scene 11 — "Sung Vowels" (vocoded).** Drop-in upgrade to scene
@@ -48,16 +48,26 @@ implementation. Shipping both:
   if scene 12's DSP work slips.
 - Creates a built-in A/B comparison that tells a story on stage
   ("here's the vocoder approach, here's the real-voice approach").
-- Re-uses the same source bundle, the same pitch-aware grain
-  selection, the same `VowelGrainLoop`, the same YIN.
+- Re-uses the same 4-voice bundle set, the same pitch-aware grain
+  selection, the same `VowelGrainLoop`, the same YIN, and the same
+  runtime voice-pack picker.
 
-## 3. Source material — curated VocalSet subset
+## 3. Source material — curated VocalSet subset (4 voices)
 
 VocalSet (Wilkins et al., ISMIR 2018) is CC-BY-4.0, 8 GB total, 20
 professional singers, organised by vowel and technique.
 
-The repo carries a 22 MB curated subset under
-[assets/vocalset/male1/](../../../assets/vocalset/male1/):
+The repo carries a ~80 MB curated four-voice subset under
+[assets/vocalset/](../../../assets/vocalset/):
+
+| Folder | VocalSet singer | Runtime label | Notes |
+|---|---|---|---|
+| `m1/`  | male1   | **"Male 1"**     | Default voice; warm tenor reference. |
+| `m10/` | male10  | **"Mighty Man"** | User-named; held-out test singer. |
+| `f2/`  | female2 | **"Female 2"**   | Held-out test singer. |
+| `f8/`  | female8 | **"Female 8"**   | Held-out test singer. |
+
+Each folder mirrors the same internal layout (20 files):
 
 | Subfolder | Files | Purpose |
 |---|---|---|
@@ -65,36 +75,49 @@ The repo carries a 22 MB curated subset under
 | `long_tones/forte/` | 5 (a/e/i/o/u) | Louder/edgier alternative for character. |
 | `scales/slow_piano/` | 10 (C+F keys × 5 vowels) | Slow ascending+descending scales — sliced for anchor-pitch grains. |
 
-All files: 44.1 kHz mono int16 WAV (matches `.gspeak` format exactly).
-Attribution and citation in [assets/vocalset/ATTRIBUTION.md](../../../assets/vocalset/ATTRIBUTION.md).
+All files: 44.1 kHz mono int16 WAV (matches `.gspeak` format
+exactly). Attribution and citation in
+[assets/vocalset/ATTRIBUTION.md](../../../assets/vocalset/ATTRIBUTION.md).
 
-**Singer choice:** `male1` is the primary voice. `female2`, `male3`,
-`male5`, `male10`, `female8` are documented in VocalSet's official
-test-singers split as held-out, polished recordings — swap candidates
-if `male1`'s timbre doesn't fit.
+Three of the four singers (`m10`, `f2`, `f8`) come from VocalSet's
+official held-out test set, which is generally the polished
+"presentation" voice pool.
 
-**Anchor pitches** (male1):
-- Low anchor: ~G2 (98 Hz) — covers low-E2..B3 with ±a fourth of shift.
-- Mid anchor: ~D3 (147 Hz) — covers G2..A4.
-- High anchor: ~A3 (220 Hz) — covers D3..E5.
+**Anchor pitches** are per-voice — `m1`/`m10` anchor low/mid/high
+~G2/D3/A3, while `f2`/`f8` anchor up an octave at ~G3/D4/A4 to
+match their native register. The bundle build script (Section 4)
+detects the natural pitch of each source clip and labels the
+anchors accordingly; downstream consumers (`ClipBankPlayer`,
+`FormantShifter`) read the labels rather than assuming a fixed
+anchor grid.
 
-Three anchors with overlap blanket the guitar's full range while
-keeping per-grain shift distance small enough that formants stay
-believable (Arch B is more forgiving here than Arch A).
+Three anchors per vowel with overlap blanket the guitar's full
+range while keeping per-grain shift distance small enough that
+formants stay believable.
 
 ## 4. Bundle build process
 
 A new offline script `tools/build_sung_vowel_bundle.py` (one-shot,
-re-run only when source changes) produces
-`assets/clips/gspeak/scene11_sung_vowels.gspeak`.
+re-run only when source changes) iterates over the four singer
+folders and produces **one `.gspeak` bundle per voice** in
+`assets/clips/gspeak/`:
 
-**M1 source inputs:** `long_tones/straight/*.wav` (5 files, ~3 s
-usable region each) + `scales/slow_piano/*.wav` (10 files, sliced
-into 3 anchor grains per vowel). `long_tones/forte/*.wav` is
-committed to the repo but reserved for a future "loud personality"
-variant — *not* included in the M1 bundle.
+- `scene11_sung_m1.gspeak`   ("Male 1")
+- `scene11_sung_m10.gspeak`  ("Mighty Man")
+- `scene11_sung_f2.gspeak`   ("Female 2")
+- `scene11_sung_f8.gspeak`   ("Female 8")
 
-Steps:
+Each bundle is built identically — the same script run per singer
+ID. Expected size: ~3–4 MB each → ~14 MB total committed to the
+repo. Scenes 11 and 12 share the same bundle set.
+
+**M1 source inputs (per singer):** `long_tones/straight/*.wav` (5
+files, ~3 s usable region each) + `scales/slow_piano/*.wav` (10
+files, sliced into 3 anchor grains per vowel). `long_tones/forte/*.wav`
+is committed to the repo but reserved for a future "loud
+personality" variant — *not* included in the M1 bundles.
+
+Steps (per voice):
 
 1. For each long_tone WAV: trim leading/trailing silence to ≤200 ms,
    normalise peak to −3 dBFS, take the central ~3 s stable region.
@@ -158,10 +181,23 @@ The bundle's expected size is ≤ 4 MB compressed.
     "attackInterruptPolicy": "interrupt"
   },
   "showVocoder": true, "showSay": false, "showWordReadout": false,
-  "gspeakPath": "assets/clips/gspeak/scene11_sung_vowels.gspeak",
+  "showVoicePackPicker": true,
+  "voicePacks": [
+    { "label": "Male 1",     "path": "assets/clips/gspeak/scene11_sung_m1.gspeak"  },
+    { "label": "Mighty Man", "path": "assets/clips/gspeak/scene11_sung_m10.gspeak" },
+    { "label": "Female 2",   "path": "assets/clips/gspeak/scene11_sung_f2.gspeak"  },
+    { "label": "Female 8",   "path": "assets/clips/gspeak/scene11_sung_f8.gspeak"  }
+  ],
+  "defaultVoiceIndex": 0,
   "gspeakAutoLoad": true
 }
 ```
+
+Note: `gspeakPath` is gone — when `voicePacks` is present, the
+active bundle path is resolved from `voicePacks[activeVoiceIndex].path`.
+Existing scenes that use a single `gspeakPath` (scene 0, scene 10)
+are unaffected — they don't carry `voicePacks` so the path
+resolution falls through to the existing single-path code.
 
 ### 5.2 New code
 
@@ -172,19 +208,36 @@ The bundle's expected size is ≤ 4 MB compressed.
   round-robin (existing behavior) if anchors are missing or the
   bundle pre-dates the schema. Back-compat preserved for scenes 9
   and 10.
-- **`SceneLibrary` JSON loader** — accept anchor-aware bundles
-  transparently (no code change — fields already pass through
-  `GspeakBundle::read`).
+- **`SceneLibrary` JSON loader** — parses the new `voicePacks` and
+  `defaultVoiceIndex` fields into `Scene::voicePacks` (a
+  `std::vector<VoicePack>`) and `Scene::defaultVoiceIndex`. When
+  `voicePacks` is absent, both fields are empty/zero (back-compat).
 - **`GspeakBundle` manifest reader** — parse the new optional
   fields into the existing phoneme/syllable structs (additive
   fields only).
+- **`PluginProcessor::setActiveVoiceIndex(int)`** — message-thread
+  entry point that resolves `scene.voicePacks[i].path`, calls
+  the existing `tryAutoLoadGspeak_` with that path, and persists
+  the selection in `PluginState` under
+  `scene[id].activeVoiceIndex` so it survives reloads. Mid-note
+  swaps fade output for 50 ms across the bundle handover (zero
+  crossings on the wet bus).
+- **`Scene::resolvedGspeakPath()`** — small helper: returns
+  `voicePacks[activeVoiceIndex].path` if non-empty, else
+  `gspeakPath`. Single call site in `tryAutoLoadGspeak_`.
 
-No DSP changes. No new audio routing. Carrier + vocoder already do
-their job.
+No new audio-thread DSP. The voice swap routes through the
+existing scene-activation lock pattern.
 
 ### 5.3 UI
 
-Existing VocoderPanel applies as-is. No new panel needed for M1.
+`VocoderPanel` gets a small `VoicePackPicker` widget (~80 lines):
+a JUCE `ComboBox` listing the labels from `Scene::voicePacks`. On
+selection change it calls `PluginProcessor::setActiveVoiceIndex`.
+Hidden when `voicePacks` is empty (existing scenes unaffected).
+
+Scene 12's `SungDirectPanel` (Section 6.5) embeds the same widget
+so both scenes share voice state per the user's expectation.
 
 ### 5.4 Success criteria
 
@@ -246,13 +299,22 @@ carousel↔vocoder pattern.
   },
   "showVocoder": false, "showSay": false, "showWordReadout": false,
   "showSungDirectPanel": true,
-  "gspeakPath": "assets/clips/gspeak/scene11_sung_vowels.gspeak",
+  "showVoicePackPicker": true,
+  "voicePacks": [
+    { "label": "Male 1",     "path": "assets/clips/gspeak/scene11_sung_m1.gspeak"  },
+    { "label": "Mighty Man", "path": "assets/clips/gspeak/scene11_sung_m10.gspeak" },
+    { "label": "Female 2",   "path": "assets/clips/gspeak/scene11_sung_f2.gspeak"  },
+    { "label": "Female 8",   "path": "assets/clips/gspeak/scene11_sung_f8.gspeak"  }
+  ],
+  "defaultVoiceIndex": 0,
   "gspeakAutoLoad": true
 }
 ```
 
-Same bundle as scene 11. Scene-12-only `directShift` block carries the
-shifter's parameters.
+Same four bundles as scene 11. The `voicePacks` array is duplicated
+across scene JSONs intentionally so each scene can pin a different
+default (or, later, a different bundle set entirely). Scene-12-only
+`directShift` block carries the shifter's parameters.
 
 ### 6.3 New code
 
@@ -309,6 +371,8 @@ floor.
 
 New small JUCE panel, ~150 lines, modeled on VocoderPanel:
 
+- **Voice pack picker** — same `VoicePackPicker` widget used on
+  scene 11's VocoderPanel. Reads `Scene::voicePacks`.
 - **Formant tint** — semitones (−6..+6) to push formants up/down
   independently of pitch (lets the singer sound "smaller"/"larger").
 - **Portamento** — ms (0..200) for pitch glide between consecutive notes.
@@ -348,6 +412,12 @@ guarantees:
   `variant`, `bankKey` are new optional fields. Existing `.gspeak`
   bundles (scene0, scene10) load unchanged. Reader ignores unknown
   fields today, so v3 manifests in v2 readers degrade cleanly.
+- **Voice-pack fields are scene-additive.** `voicePacks`,
+  `defaultVoiceIndex`, `showVoicePackPicker` are new optional
+  scene fields. Existing scenes (0..10) don't carry them, so
+  `Scene::resolvedGspeakPath()` falls through to the existing
+  single-path `gspeakPath`. No existing scene's bundle resolution
+  changes.
 - **No edits to existing scene JSONs except the bypass slot move.**
   Scenes 0..10 untouched. `11_bypass.json` is renamed to
   `13_bypass.json` with content identical apart from the `id` field
@@ -381,9 +451,11 @@ suite to still pass.
 |---|---|---|
 | `tests/unit/audio/test_clip_bank_player.cpp` (extend) | M1 | `selectByPitchAndKey`: filters by `bankKey`, picks nearest `anchorPitchHz`; fallback to round-robin when anchors absent; deterministic on tie; out-of-range pitches clamp to nearest. |
 | `tests/unit/audio/test_gspeak_bundle.cpp` (extend) | M1 | Round-trips new optional fields (`anchorPitchHz`, `label`, `variant`, `bankKey`); v2 bundle reads cleanly with v3 reader (back-compat); v3 bundle reads cleanly with old fields populated only. |
-| `tests/unit/scenes/test_scene_library_sung_vowels.cpp` (new) | M1 | Loads `11_sung_vowels.json`; `directShift` absent → default-disabled; `gspeakAutoLoad == true`; vocoder enabled. |
-| `tests/unit/scenes/test_scene_library_sung_direct.cpp` (new) | M2 | Loads `12_sung_direct.json`; `directShift.enabled == true`; engine/portamento/tint fields parsed; vocoder disabled. |
-| `tests/unit/scenes/test_scene_library.cpp` (extend) | M1 | Bypass relocated from slot 11 → slot 13; slot 11 is now Sung Vowels. |
+| `tests/unit/scenes/test_scene_library_sung_vowels.cpp` (new) | M1 | Loads `11_sung_vowels.json`; `directShift` absent → default-disabled; `gspeakAutoLoad == true`; vocoder enabled; parses 4 `voicePacks` entries with correct labels and paths; `defaultVoiceIndex == 0`. |
+| `tests/unit/scenes/test_scene_library_sung_direct.cpp` (new) | M2 | Loads `12_sung_direct.json`; `directShift.enabled == true`; engine/portamento/tint fields parsed; vocoder disabled; same 4 voicePacks present. |
+| `tests/unit/scenes/test_scene_library.cpp` (extend) | M1 | Bypass relocated from slot 11 → slot 13; slot 11 is now Sung Vowels; existing single-path scenes (0, 10) still parse without `voicePacks` and resolve via `gspeakPath`. |
+| `tests/unit/scenes/test_scene_resolved_gspeak_path.cpp` (new) | M1 | `Scene::resolvedGspeakPath()`: returns `voicePacks[i].path` when `voicePacks` non-empty; returns `gspeakPath` when empty; clamps `activeVoiceIndex` out-of-range to 0. |
+| `tests/unit/app/test_plugin_state.cpp` (extend) | M1 | `scene[id].activeVoiceIndex` round-trips through save/load; default is `defaultVoiceIndex` from the scene JSON. |
 | `tests/unit/audio/test_formant_shifter.cpp` (new) | M2 | `prepare/reset` allocate-free; `setRatio` clamps to [0.25, 4.0]; `latencySamples()` returns finite int; processing silence yields silence after settling; ratio = 1.0 preserves input within < −60 dB error. |
 | `tests/unit/audio/test_sung_direct_path.cpp` (new) | M2 | Wires ClipBank + FormantShifter + VowelGrainLoop; mutes when no note attack pending; ratio updates follow injected pitch envelope; no allocations in `process()`. |
 
@@ -393,6 +465,7 @@ suite to still pass.
 |---|---|---|
 | `tests/integration/test_scene_switch.cpp` (extend) | M1 | Existing test extended to cycle PC 0..13. All scenes activate without throwing; mixer params update correctly. Catches accidental scene-ID gaps from the bypass move. |
 | `tests/integration/test_sung_vowels_scene.cpp` (new) | M1 | Load scene 11 + its bundle; feed synthetic guitar (sustained sine at A2, then chord-attack burst); assert wet bus produces non-zero output of expected energy; assert no NaN/Inf; assert RT-safety sentinel. |
+| `tests/integration/test_voice_pack_swap.cpp` (new) | M1 | Cycle through all 4 voice packs on scene 11; assert each `tryAutoLoadGspeak_` call succeeds and the resolved bundle's first grain identity changes; assert no allocations on the audio thread during the 50 ms swap fade; assert `PluginState` persists the new index. |
 | `tests/integration/test_sung_direct_scene.cpp` (new) | M2 | Same shape as above for scene 12; additionally assert the formant-shifter ratio tracks YIN output within 2 cents over a 4-second envelope. |
 | `tests/integration/test_realtime_safety.cpp` (extend) | M1, M2 | Add scenes 11 + 12 to the no-allocation-in-process audit. |
 | `tests/integration/test_scene_hot_reload.cpp` (extend) | M1 | Add the new scene JSONs to the hot-reload sweep. |
@@ -425,31 +498,50 @@ Per [verification-before-completion](../../../.claude/plugins/cache/claude-plugi
 
 ## 9. Milestone breakdown
 
-### Milestone 1 — Scene 11 ships
+### Milestone 1 — Scene 11 ships (with voice-pack dropdown)
 
 1. **Tests first** — add `test_sung_vowels_test.gspeak` fixture +
    skeleton unit tests for `selectByPitchAndKey`,
-   `GspeakBundle` schema additions, scene 11 JSON loader. These
-   start as red.
+   `GspeakBundle` schema additions, scene 11 JSON loader,
+   `Scene::resolvedGspeakPath()`, and `PluginState`
+   `activeVoiceIndex` persistence. Start red.
 2. Extend `GspeakBundle` manifest schema with `anchorPitchHz`,
    `label`, `variant`, `bankKey` (additive; back-compat). Tests
    for `test_gspeak_bundle.cpp` go green.
 3. Add `ClipBankPlayer::selectByPitchAndKey()`. Tests for
    `test_clip_bank_player.cpp` go green.
-4. Write `tools/build_sung_vowel_bundle.py` and produce
-   `assets/clips/gspeak/scene11_sung_vowels.gspeak` from the
-   curated `assets/vocalset/male1/` subset.
-5. Author `assets/scenes/11_sung_vowels.json`. Tests for
+4. Extend `Scene` struct with `voicePacks`, `defaultVoiceIndex`,
+   `showVoicePackPicker`, plus the `resolvedGspeakPath()` helper.
+   Extend `SceneLibrary` JSON loader for the new fields. Tests
+   for `test_scene_resolved_gspeak_path.cpp` go green.
+5. Extend `PluginState` with `scene[id].activeVoiceIndex`
+   (default-initialised to `defaultVoiceIndex`). Add
+   `PluginProcessor::setActiveVoiceIndex(int)`. Tests for
+   `test_plugin_state.cpp` extension go green.
+6. Write `tools/build_sung_vowel_bundle.py` and produce **all
+   four bundles** in one run:
+   `scene11_sung_m1.gspeak`, `scene11_sung_m10.gspeak`,
+   `scene11_sung_f2.gspeak`, `scene11_sung_f8.gspeak`.
+7. Author `assets/scenes/11_sung_vowels.json` with the 4-entry
+   `voicePacks` array. Tests for
    `test_scene_library_sung_vowels.cpp` go green.
-6. Move `11_bypass.json` → `13_bypass.json` (rename + change `id`
-   field 11 → 13). Update `test_scene_library.cpp` expectations.
-7. Update FCB1010 stock defaults to map slot 11 → Sung Vowels,
+8. Move `11_bypass.json` → `13_bypass.json` (rename + change
+   `id` field 11 → 13). Update `test_scene_library.cpp`
+   expectations.
+9. Update FCB1010 stock defaults to map slot 11 → Sung Vowels,
    slot 13 → Bypass.
-8. Add `test_sung_vowels_scene.cpp` integration test.
-9. Extend `test_scene_switch.cpp` to cycle PC 0..13.
-10. Extend `test_realtime_safety.cpp` to include scene 11.
-11. **Verify:** full suite green, no new warnings, RT-safety
-    sentinel passes for scene 11.
+10. Add `VoicePackPicker` JUCE widget and embed it in
+    `VocoderPanel`, gated by `showVoicePackPicker`. UI smoke
+    test on the standalone build.
+11. Add integration tests: `test_sung_vowels_scene.cpp`,
+    `test_voice_pack_swap.cpp`.
+12. Extend `test_scene_switch.cpp` to cycle PC 0..13.
+13. Extend `test_realtime_safety.cpp` to include scene 11 and
+    a mid-test voice swap.
+14. **Verify:** full suite green, no new warnings, RT-safety
+    sentinel passes for scene 11 (including voice swap), all
+    4 bundles load cleanly, manual smoke through the ComboBox
+    confirms audible voice change.
 
 ### Milestone 1.5 — Shifter validation
 
@@ -509,14 +601,17 @@ path.
 | Audience hears scene 11 as worse after scene 12 | Demo ordering: vocoded → direct, with verbal framing. |
 | Licensing slip with Rubber Band in AU plugin | Decision committed in M1.5 — either pay for commercial license or drop to WORLD/in-house *before* writing call-site code. |
 | FCB1010 footswitch mapping breaks on scene renumber | Single config edit, smoke-test on the FCB1010 before next show. |
+| Mid-note voice swap clicks or stutters | 50 ms output fade across the bundle handover; tested by `test_voice_pack_swap.cpp`. Worst case is one truncated note. |
+| Voice swap while audio-thread is reading the bundle | Use the existing scene-activation message/audio lock pattern (already proven for scene transitions); audio thread holds a reference until the swap completes. |
 
 ## 11. Out of scope (for these milestones)
 
 - DDSP / RAVE / RTNeural — neural timbre transfer. Documented in the
   prior chat thread as the long-term direction; explicitly *not* the
   next step.
-- Multi-voice (male+female) bundles. Defer until M2 ships and male1
-  is validated on stage.
+- More than 4 voices, or runtime voice search/filtering. Four voices
+  is the M1 scope; expansion (5+ singers, hybrid pop/contemporary
+  samples) is a later asset/UI iteration.
 - Consonant-onset bank (la/da/na syllables) — vowels-only for v1.
 - Lyric-driven phoneme sequencing — keep this scene non-lyrical.
 - Personal recordings — VocalSet is the source for v1; user

@@ -241,6 +241,24 @@ public:
     void  setNoiseGateThresholdDb(float dB) noexcept { graph_.setNoiseGateThresholdDb(dB); }
     float noiseGateThresholdDb() const noexcept      { return graph_.noiseGateThresholdDb(); }
 
+    // --- SungDirect live controls (message thread) -------------------------
+    // Forwarded to AudioGraph::sungDirectPath() for scene-12 UI sliders.
+    void setSungDirectFormantTintSemitones(float n) noexcept {
+        graph_.sungDirectPath().setFormantTintSemitones(n);
+    }
+    void setSungDirectPortamentoMs(float ms) noexcept {
+        graph_.sungDirectPath().setPortamentoMs(ms);
+    }
+    // Background pre-render status for the SungDirect UI.
+    enum class SungDirectLoadState { Idle, Loading, Ready };
+    SungDirectLoadState sungDirectLoadState() const noexcept {
+        return static_cast<SungDirectLoadState>(
+            static_cast<int>(graph_.sungDirectPath().loadState()));
+    }
+    int sungDirectLoadProgressPercent() const noexcept {
+        return graph_.sungDirectPath().loadProgressPercent();
+    }
+
     // The currently active scene's declared clarity (0..1), for the visibility
     // readout — so the operator can see when the live slider has drifted from
     // the scene's authored default.
@@ -375,7 +393,16 @@ public:
     void         flashStatusMessage(juce::String msg, int durationMs);  // forwards to TtsStatusBar
     double       currentSampleRate() const noexcept;
 
+    // Message thread. Switch the active voice for the current scene by index
+    // into Scene::voicePacks. No-op if the scene has no voicePacks. Triggers
+    // a bundle reload and a brief output fade across the handover.
+    void setActiveVoiceIndex(int idx);
+    int  activeVoiceIndex() const noexcept;
+
 private:
+    // Persisted plugin state (scene id, vocoder params, per-scene voice index, etc.).
+    app::PluginStateData stateData_;
+
     audio::AudioGraph graph_;
     audio::MicCapture micCapture_;
     std::vector<float> monoScratch_;
@@ -496,12 +523,30 @@ private:
     TtsStatusBar* ttsStatusBar_ = nullptr;
     SayPanel*     sayPanel_     = nullptr;
 
+    // 50 ms output fade armed by voice-pack swaps.
+    std::atomic<int>  voicePackSwapFadeSamples_ {0};
+    std::atomic<bool> voicePackSwapFadeArmed_   {false};
+    // AUDIO THREAD ONLY: written only inside processBlock after the
+    // armed-flag is consumed. Not atomic.
+    int               voicePackSwapFadeCounter_ = 0;
+    // AUDIO THREAD ONLY: written only inside processBlock after the
+    // armed-flag is consumed. Not atomic.
+    int               voicePackSwapFadeTotal_   = 0;  // captured once at arm-time
+
     // Attempts to load scene.gspeakPath via GspeakBundle and install the
     // resulting clip. Returns true if the bundle loaded successfully and
     // the scene-activation path should skip the normal TTS dispatch.
     // Used only when scene.gspeakAutoLoad is true; the manual Load
     // button (WaveformView) calls into the bundle reader directly.
     bool tryAutoLoadGspeak_(const scenes::Scene& scene);
+
+    // Splits a master TTSClip (containing multiple phoneme entries) into a
+    // vector of per-grain TTSClipPtrs, one per phoneme. Each sub-clip carries
+    // the phoneme's bankKey + anchorPitchHz (populated by GspeakBundle::read
+    // per-phoneme). Empty bankKey falls back to a vowel-label heuristic.
+    // Used by tryAutoLoadGspeak_ when scene.directShift.enabled == true.
+    std::vector<audio::TTSClipPtr>
+    splitMasterClipIntoBank_(audio::TTSClipPtr master);
 };
 
 } // namespace guitar_dsp

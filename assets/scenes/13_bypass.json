@@ -1,0 +1,6 @@
+{
+  "id": 13,
+  "name": "Bypass",
+  "color": "#cccccc",
+  "mixer": { "masterGainDb": 0.0, "dryWet": 0.0, "transitionMs": 20 }
+}

@@ -36,6 +36,9 @@ add_library(guitar_dsp_audio STATIC
     audio/VowelGrainLoop.cpp
     audio/PhonemeSteppedTTSPlayer.cpp
     audio/AudioFileDecoder.cpp
+    audio/FormantShifter.cpp
+    audio/GrainAnalyser.cpp
+    audio/SungDirectPath.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
@@ -49,6 +52,7 @@ target_link_libraries(guitar_dsp_audio
         juce::juce_audio_formats
         juce::juce_dsp
     PRIVATE
+        world
         "-framework AVFoundation"
         "-framework Foundation"
 )

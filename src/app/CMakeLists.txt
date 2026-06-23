@@ -47,6 +47,8 @@ target_sources(guitar_dsp_app PRIVATE
     SceneIndicator.cpp
     SpectrumAnalyzer.cpp
     VocoderPanel.cpp
+    VoicePackPicker.cpp
+    SungDirectPanel.cpp
     SayPanel.cpp
     MidiDevicePicker.cpp
     NoteReadout.cpp

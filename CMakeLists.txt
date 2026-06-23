@@ -68,6 +68,9 @@ if(GUITAR_DSP_AUTO_FETCH_ASSETS)
     endif()
 endif()
 
+# Pull in FetchContent-managed externals (WORLD, etc.)
+add_subdirectory(external)
+
 # Pull in JUCE
 add_subdirectory(external/JUCE)
 
@@ -91,8 +94,8 @@ add_subdirectory(external/whisper.cpp)
 # Application source tree
 add_subdirectory(src)
 
-# Fixture generator tools
-add_subdirectory(tools/fixtures)
+# Tools (fixture generators, offline test harnesses)
+add_subdirectory(tools)
 
 # Test tree
 enable_testing()

@@ -1,3 +1,18 @@
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# Synthetic test bundle for sung-vowels tests. Re-built whenever the
+# builder script changes.
+set(SUNG_VOWELS_TEST_BUNDLE
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/sung_vowels_test.gspeak)
+add_custom_command(
+    OUTPUT ${SUNG_VOWELS_TEST_BUNDLE}
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_sung_vowels_test_bundle.py
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_sung_vowels_test_bundle.py
+    COMMENT "Building sung_vowels_test.gspeak fixture"
+    VERBATIM)
+add_custom_target(sung_vowels_test_bundle ALL DEPENDS ${SUNG_VOWELS_TEST_BUNDLE})
+
 add_executable(guitar_dsp_tests
     unit/test_smoke.cpp
     unit/test_realtime_sentinel.cpp
@@ -40,6 +55,8 @@ add_executable(guitar_dsp_tests
     unit/audio/test_v1_boundary_edits.cpp
     unit/audio/test_vowel_grain_loop.cpp
     unit/audio/test_phoneme_stepped_player.cpp
+    unit/audio/test_formant_shifter.cpp
+    unit/audio/test_sung_direct_path.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
@@ -47,11 +64,14 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_tts_bank.cpp
     unit/scenes/test_scene_library_tts_fallback.cpp
     unit/scenes/test_scene_library_tts_trigger.cpp
+    unit/scenes/test_scene_library_sung_vowels.cpp
+    unit/scenes/test_scene_library_sung_direct.cpp
     unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_library_carousel_pitch.cpp
     unit/scenes/test_scene_library_carousel_formant.cpp
     unit/scenes/test_scene_library_speech_v2.cpp
     unit/scenes/test_scene_library_developers.cpp
+    unit/scenes/test_scene_resolved_gspeak_path.cpp
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
     unit/midi/test_fcb1010_mapping.cpp
@@ -102,11 +122,16 @@ add_executable(guitar_dsp_tests
     integration/test_gspeak_autoload.cpp
     integration/test_gspeak_save_then_load.cpp
     integration/test_mp3_import_flow.cpp
+    integration/test_voice_pack_swap.cpp
+    integration/test_sung_vowels_scene.cpp
+    integration/test_sung_direct_scene.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AssetLocator.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
     harness/GoldenFile.cpp
 )
+
+add_dependencies(guitar_dsp_tests sung_vowels_test_bundle)
 
 target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio
