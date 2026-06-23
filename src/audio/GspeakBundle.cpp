@@ -54,6 +54,11 @@ juce::var buildManifest(const TTSClip& clip, const std::string& text,
             po->setProperty("type",        phonemeTypeToString(p.type));
             po->setProperty("startSample", (juce::int64) p.startSample);
             po->setProperty("endSample",   (juce::int64) p.endSample);
+            if (! clip.bankKey.empty()) {
+                po->setProperty("bankKey",       juce::String(clip.bankKey));
+                po->setProperty("anchorPitchHz", clip.anchorPitchHz);
+                po->setProperty("variantTag",    juce::String(clip.variantTag));
+            }
             phonemes.add(juce::var(po));
         }
         obj->setProperty("phonemes", phonemes);
@@ -283,6 +288,16 @@ GspeakBundle::read(const juce::File& inFile, double engineSampleRate) {
             p.type        = phonemeTypeFromString(po->getProperty("type").toString());
             p.startSample = clampIdx((std::size_t)(juce::int64) po->getProperty("startSample"));
             p.endSample   = clampIdx((std::size_t)(juce::int64) po->getProperty("endSample"));
+            // Optional grain-metadata fields (back-compat: missing → defaults).
+            if (po->hasProperty("anchorPitchHz") && i == 0) {
+                clip->anchorPitchHz = (float)(double) po->getProperty("anchorPitchHz");
+            }
+            if (po->hasProperty("bankKey") && i == 0) {
+                clip->bankKey = po->getProperty("bankKey").toString().toStdString();
+            }
+            if (po->hasProperty("variantTag") && i == 0) {
+                clip->variantTag = po->getProperty("variantTag").toString().toStdString();
+            }
             clip->phonemes.push_back(p);
         }
         std::size_t prevEnd = 0;

@@ -175,3 +175,71 @@ TEST_CASE("TTSClip default grain-metadata fields are empty/zero",
     REQUIRE(c.anchorPitchHz == 0.0f);
     REQUIRE(c.variantTag.empty());
 }
+
+TEST_CASE("GspeakBundle round-trips grain metadata fields",
+          "[gspeak][bundle][grain-meta]") {
+    using guitar_dsp::audio::GspeakBundle;
+    using guitar_dsp::audio::TTSClip;
+    using guitar_dsp::audio::Phoneme;
+
+    juce::File tmp =
+        juce::File::createTempFile(".gspeak_grain_meta_roundtrip.gspeak");
+
+    TTSClip clip;
+    clip.sampleRate = 48000.0;
+    clip.samples.assign(48000, 0.0f);  // 1 s silence
+    // v2 path requires sylsV2 populated; minimum is one syllable.
+    guitar_dsp::audio::SyllableSpan syl;
+    syl.startSample = 0;
+    syl.endSample   = 48000;
+    syl.vowelNucleusSample = 24000;
+    syl.attackEndSample    = 0;
+    syl.codaStartSample    = 48000;
+    syl.phonemeIndices = {0};
+    clip.sylsV2.push_back(syl);
+
+    Phoneme p;
+    p.label       = "ah";
+    p.type        = Phoneme::Type::Vowel;
+    p.startSample = 0;
+    p.endSample   = 48000;
+    clip.phonemes.push_back(p);
+
+    clip.bankKey       = "sung_ah";
+    clip.anchorPitchHz = 147.5f;
+    clip.variantTag    = "straight";
+
+    REQUIRE(GspeakBundle::write(tmp, clip, "test"));
+
+    auto loaded = GspeakBundle::read(tmp, 48000.0);
+    REQUIRE(loaded.has_value());
+    REQUIRE(loaded->clip);
+    CHECK(loaded->clip->bankKey       == "sung_ah");
+    CHECK(loaded->clip->anchorPitchHz == Catch::Approx(147.5f));
+    CHECK(loaded->clip->variantTag    == "straight");
+
+    tmp.deleteFile();
+}
+
+TEST_CASE("GspeakBundle reads legacy manifest with no grain metadata",
+          "[gspeak][bundle][grain-meta][backcompat]") {
+    using guitar_dsp::audio::GspeakBundle;
+
+    // Use an existing scene0 bundle as our legacy fixture.
+    juce::File legacy(
+        juce::File::getCurrentWorkingDirectory()
+            .getChildFile("../assets/clips/gspeak/scene0.gspeak"));
+    if (! legacy.existsAsFile()) {
+        // Some CTest runs use a different cwd; try repo root.
+        legacy = juce::File(
+            "/Users/user/GIT/guitar-dsp/assets/clips/gspeak/scene0.gspeak");
+    }
+    REQUIRE(legacy.existsAsFile());
+
+    auto loaded = GspeakBundle::read(legacy, 48000.0);
+    REQUIRE(loaded.has_value());
+    REQUIRE(loaded->clip);
+    CHECK(loaded->clip->bankKey.empty());
+    CHECK(loaded->clip->anchorPitchHz == 0.0f);
+    CHECK(loaded->clip->variantTag.empty());
+}
