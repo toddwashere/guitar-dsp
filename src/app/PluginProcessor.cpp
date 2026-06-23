@@ -1107,22 +1107,22 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     if (voicePackSwapFadeArmed_.exchange(false, std::memory_order_acquire)) {
         voicePackSwapFadeCounter_ =
             voicePackSwapFadeSamples_.load(std::memory_order_relaxed);
+        voicePackSwapFadeTotal_ = voicePackSwapFadeCounter_;  // captured once
     }
     if (voicePackSwapFadeCounter_ > 0) {
         const int n = numSamples;
-        const int total = std::max(1, voicePackSwapFadeCounter_);
+        // Use the total captured at arm-time so the gain denominator is stable
+        // across block boundaries — produces a true triangle 1→0→1 over the
+        // full 50 ms window rather than a per-block sawtooth.
+        const int total = std::max(1, voicePackSwapFadeTotal_);
         auto* w = monoScratch_.data();
         for (int i = 0; i < n && voicePackSwapFadeCounter_ > 0; ++i) {
-            const float g =
-                static_cast<float>(total - voicePackSwapFadeCounter_)
-                    / static_cast<float>(total);
             // Symmetric: ramp DOWN for the first half, UP for the second.
             const float halfPos = (total - voicePackSwapFadeCounter_)
                                 / static_cast<float>(total);
             const float gain = halfPos < 0.5f
                 ? 1.0f - 2.0f * halfPos
                 : 2.0f * (halfPos - 0.5f);
-            (void) g;  // unused — we use gain.
             w[i] *= gain;
             --voicePackSwapFadeCounter_;
         }
@@ -1171,6 +1171,8 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.selectedModelId = selectedModelId_;
     d.personaId       = currentPersonaId_;
 
+    d.activeVoiceIndexByScene = stateData_.activeVoiceIndexByScene;
+
     // Snapshot only custom prompts that differ from defaults.
     static constexpr ai::PersonaId kAllPersonas[] = {
         ai::PersonaId::Interviewer, ai::PersonaId::Snarky,
@@ -1191,6 +1193,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
 void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     const juce::String json = juce::String::fromUTF8(static_cast<const char*>(data), sizeInBytes);
     const auto d = app::PluginState::fromJson(json);
+    stateData_.activeVoiceIndexByScene = d.activeVoiceIndexByScene;
     graph_.setVocoderMakeup(d.makeup);
     graph_.setVocoderCarrierNoise(d.carrierNoise);
     graph_.setVocoderSibilance(d.sibilance);

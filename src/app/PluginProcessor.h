@@ -509,6 +509,7 @@ private:
     std::atomic<int>  voicePackSwapFadeSamples_ {0};
     std::atomic<bool> voicePackSwapFadeArmed_   {false};
     int               voicePackSwapFadeCounter_ = 0;
+    int               voicePackSwapFadeTotal_   = 0;  // captured once at arm-time
 
     // Attempts to load scene.gspeakPath via GspeakBundle and install the
     // resulting clip. Returns true if the bundle loaded successfully and
