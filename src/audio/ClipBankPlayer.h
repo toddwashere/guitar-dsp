@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 #include "OnsetDetector.h"
@@ -28,6 +29,13 @@ public:
     // Message thread. Reset cursor to "before the first clip"; next onset
     // plays clip 0. RT-safe via pending flag.
     void rewind() noexcept;
+
+    // Message or audio thread. Latest YIN-detected pitch in Hz, used by
+    // anchor-aware selection. 0 means "unknown" — selection falls back to
+    // the first grain of the current bank key.
+    void setDetectedPitchHz(float hz) noexcept {
+        detectedPitchHz_.store(hz, std::memory_order_relaxed);
+    }
 
     // Audio thread.
     //   onsetSrc = clean guitar (drives OnsetDetector)
@@ -56,6 +64,13 @@ private:
     std::atomic<int>  currentClipIndex_ {-1};
     std::atomic<int>  bankSize_         {0};
     std::atomic<bool> pendingRewind_    {false};
+
+    std::atomic<float> detectedPitchHz_ {0.0f};
+
+    // Anchor mode state. Engaged when activeBank_'s first clip has bankKey != "".
+    bool                     anchorMode_   = false;
+    std::vector<std::string> uniqueKeys_;     // ordered, first-appearance
+    int                      keyCursor_    = -1;
 };
 
 } // namespace guitar_dsp::audio

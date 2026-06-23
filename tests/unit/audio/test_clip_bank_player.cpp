@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include "audio/ClipBankPlayer.h"
 #include "audio/TTSClip.h"
@@ -162,6 +163,111 @@ TEST_CASE("ClipBankPlayer: rewind() resets cursor; next onset plays clip 0",
         if (i > 2000) break;
     }
     REQUIRE(p.currentClipIndex() == 0);
+}
+
+TEST_CASE("ClipBankPlayer anchor mode picks closest pitch within bankKey",
+          "[clipbank][anchor]") {
+    using guitar_dsp::audio::ClipBankPlayer;
+    using guitar_dsp::audio::TTSClip;
+
+    auto makeGrain = [](const std::string& key, float anchor, float fillValue,
+                        std::size_t lenSamples) {
+        auto c = std::make_shared<TTSClip>();
+        c->sampleRate    = 48000.0;
+        c->samples.assign(lenSamples, fillValue);
+        c->bankKey       = key;
+        c->anchorPitchHz = anchor;
+        return std::const_pointer_cast<const TTSClip>(c);
+    };
+
+    ClipBankPlayer p;
+    p.prepare(48000.0, 64);
+    // 3 ah grains at G2/D3/A3, 3 eh grains at the same anchors.
+    std::vector<TTSClipPtr> bank = {
+        makeGrain("sung_ah",  98.0f, 0.11f, 96),
+        makeGrain("sung_ah", 147.0f, 0.12f, 96),
+        makeGrain("sung_ah", 220.0f, 0.13f, 96),
+        makeGrain("sung_eh",  98.0f, 0.21f, 96),
+        makeGrain("sung_eh", 147.0f, 0.22f, 96),
+        makeGrain("sung_eh", 220.0f, 0.23f, 96),
+    };
+    p.setBank(bank);
+    // Drain the pending-bank flag with one no-onset block.
+    {
+        float in[64] = {0}; float out[64] = {0};
+        p.process(in, out, 64);
+    }
+    // Simulate detected pitch at 200 Hz → closest anchor is 220 Hz.
+    p.setDetectedPitchHz(200.0f);
+    // First onset → first key (sung_ah), should pick the 220 Hz grain (index 2).
+    float in[64] = {0}; float out[64] = {0};
+    in[0] = 1.0f;  // synthetic transient
+    p.process(in, out, 64);
+    // The first non-zero sample of `out` should be ~0.13 (the 220 Hz grain).
+    bool found = false;
+    for (float v : out) if (v != 0.0f) { CHECK(v == Catch::Approx(0.13f)); found = true; break; }
+    CHECK(found);
+
+    // Next onset → key cursor advances to sung_eh; pitch is still ~200,
+    // so we expect the 220 Hz eh grain (~0.23).
+    // Use a large buffer (7000 samples) so env decays below rearm threshold
+    // and the debounce window (80 ms = 3840 samples) expires before the spike.
+    {
+        constexpr std::size_t N2 = 7000;
+        std::vector<float> in2(N2, 0.0f);
+        std::vector<float> out2(N2, 0.0f);
+        in2[6000] = 1.0f;  // second onset well past debounce + rearm
+        p.process(in2.data(), out2.data(), N2);
+        found = false;
+        for (std::size_t i = 6001; i < N2; ++i) if (out2[i] != 0.0f) {
+            CHECK(out2[i] == Catch::Approx(0.23f)); found = true; break;
+        }
+        CHECK(found);
+    }
+}
+
+TEST_CASE("ClipBankPlayer anchor-mode fallback when pitch unknown picks first",
+          "[clipbank][anchor][fallback]") {
+    using guitar_dsp::audio::ClipBankPlayer;
+    using guitar_dsp::audio::TTSClip;
+    auto g = [](const std::string& k, float anchor, float fill) {
+        auto c = std::make_shared<TTSClip>();
+        c->sampleRate = 48000.0;
+        c->samples.assign(96, fill);
+        c->bankKey = k; c->anchorPitchHz = anchor;
+        return std::const_pointer_cast<const TTSClip>(c);
+    };
+    ClipBankPlayer p; p.prepare(48000.0, 64);
+    p.setBank({ g("sung_ah", 98.0f, 0.5f),
+                g("sung_ah", 220.0f, 0.6f) });
+    float in[64] = {0}; float out[64] = {0}; p.process(in, out, 64); // drain
+    // Default detected pitch is 0 — anchor mode falls back to first grain
+    // of current key.
+    in[0] = 1.0f;
+    p.process(in, out, 64);
+    bool found = false;
+    for (float v : out) if (v != 0.0f) { CHECK(v == Catch::Approx(0.5f)); found = true; break; }
+    CHECK(found);
+}
+
+TEST_CASE("ClipBankPlayer legacy mode unchanged when no bankKey",
+          "[clipbank][legacy]") {
+    using guitar_dsp::audio::ClipBankPlayer;
+    using guitar_dsp::audio::TTSClip;
+    auto g = [](float fill) {
+        auto c = std::make_shared<TTSClip>();
+        c->sampleRate = 48000.0;
+        c->samples.assign(96, fill);
+        return std::const_pointer_cast<const TTSClip>(c);
+    };
+    ClipBankPlayer p; p.prepare(48000.0, 64);
+    p.setBank({ g(0.1f), g(0.2f) });
+    float in[64] = {0}; float out[64] = {0}; p.process(in, out, 64);
+    in[0] = 1.0f;
+    p.process(in, out, 64);
+    bool found = false;
+    for (float v : out) if (v != 0.0f) { CHECK(v == Catch::Approx(0.1f)); found = true; break; }
+    CHECK(found);
 }
 
 TEST_CASE("ClipBankPlayer: process is allocation-free",
