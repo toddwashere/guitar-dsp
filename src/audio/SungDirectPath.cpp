@@ -1,5 +1,7 @@
 #include "SungDirectPath.h"
 
+#include "PrerenderCache.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -43,7 +45,8 @@ void SungDirectPath::cancelAndJoinPreRender_() {
     cancelToken_.store(false, std::memory_order_release);
 }
 
-void SungDirectPath::setGrainsForBank(const std::vector<TTSClipPtr>& bank) {
+void SungDirectPath::setGrainsForBank(const std::vector<TTSClipPtr>& bank,
+                                      const std::string& bundleHash) {
     // 1. Tear down any in-flight pre-render.
     cancelAndJoinPreRender_();
 
@@ -72,10 +75,44 @@ void SungDirectPath::setGrainsForBank(const std::vector<TTSClipPtr>& bank) {
     // 3. Spawn the worker. The lambda captures a copy of the bank so the
     //    TTSClipPtrs (shared_ptr) keep the source samples alive while we
     //    analyse + render even if the message thread tears down the bank.
-    preRenderThread_ = std::thread([this, bank]() {
+    preRenderThread_ = std::thread([this, bank, bundleHash]() {
         const int total = static_cast<int>(bank.size());
         auto cache = std::make_shared<PrerenderedMap>();
         cache->reserve(static_cast<std::size_t>(total));
+
+        // ---- Fast path: try the disk cache first ------------------------
+        if (! bundleHash.empty()) {
+            const auto bakeFile = PrerenderCache::pathForHash(bundleHash);
+            if (auto cached = PrerenderCache::read(
+                    bakeFile, bundleHash, FormantShifter::kSemitoneRange)) {
+                // Map cache entries back to TTSClip pointers by phoneme index.
+                for (const auto& e : *cached) {
+                    if (e.phonemeIdx < 0 || e.phonemeIdx >= total) continue;
+                    const auto& c = bank[static_cast<std::size_t>(e.phonemeIdx)];
+                    if (!c || !e.grain) continue;
+                    (*cache)[c.get()] = e.grain;
+                }
+                loadProgressPercent_.store(100, std::memory_order_relaxed);
+                if (cancelToken_.load(std::memory_order_acquire)) return;
+                std::atomic_store(&activePrerendered_, cache);
+                for (const auto& c : bank) {
+                    if (!c) continue;
+                    auto it = cache->find(c.get());
+                    if (it != cache->end()) {
+                        shifter_.setSource(it->second);
+                        currentAnchorHz_ = c->anchorPitchHz;
+                        break;
+                    }
+                }
+                loadState_.store(static_cast<int>(LoadState::Ready),
+                                 std::memory_order_release);
+                return;
+            }
+        }
+
+        // ---- Slow path: render via WORLD, then write cache --------------
+        std::vector<PrerenderCache::GrainEntry> writeQueue;
+        writeQueue.reserve(static_cast<std::size_t>(total));
 
         for (int i = 0; i < total; ++i) {
             if (cancelToken_.load(std::memory_order_acquire)) return;
@@ -92,7 +129,14 @@ void SungDirectPath::setGrainsForBank(const std::vector<TTSClipPtr>& bank) {
 
             // Pre-render kNumRatios variants via Synthesis.
             auto prerendered = FormantShifter::preRenderGrain(raw);
-            if (prerendered) (*cache)[c.get()] = std::move(prerendered);
+            if (prerendered) {
+                (*cache)[c.get()] = prerendered;
+                PrerenderCache::GrainEntry e;
+                e.phonemeIdx    = i;
+                e.anchorPitchHz = c->anchorPitchHz;
+                e.grain         = prerendered;
+                writeQueue.push_back(std::move(e));
+            }
 
             loadProgressPercent_.store(
                 (100 * (i + 1)) / total, std::memory_order_relaxed);
@@ -113,6 +157,16 @@ void SungDirectPath::setGrainsForBank(const std::vector<TTSClipPtr>& bank) {
                 currentAnchorHz_ = c->anchorPitchHz;
                 break;
             }
+        }
+
+        // 6. Persist to disk for next activation.
+        if (! bundleHash.empty() && ! writeQueue.empty()) {
+            const auto bakeFile = PrerenderCache::pathForHash(bundleHash);
+            const bool ok = PrerenderCache::write(
+                bakeFile, bundleHash,
+                static_cast<int>(bank.front() ? bank.front()->sampleRate : 48000),
+                FormantShifter::kSemitoneRange, writeQueue);
+            (void) ok;  // best-effort; failures are logged in PrerenderCache.
         }
 
         loadProgressPercent_.store(100, std::memory_order_relaxed);

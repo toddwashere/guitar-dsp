@@ -12,6 +12,7 @@
 
 #include "AssetLocator.h"
 #include "audio/GspeakBundle.h"
+#include "audio/PrerenderCache.h"
 #include "audio/TTSSynthChain.h"
 #include "scenes/SceneLibrary.h"
 #include "TtsStatusBar.h"
@@ -306,8 +307,19 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     // player are cleared so they don't bleed into this scene's output.
     if (scene.directShift.enabled) {
         auto bank = splitMasterClipIntoBank_(loaded->clip);
-        // Push the bank into SungDirectPath (pre-analyses WORLD params per grain).
-        graph_.sungDirectPath().setGrainsForBank(bank);
+        // Hash the master clip's audio so SungDirectPath can locate (or
+        // create) the matching on-disk .bake cache. Re-built bundles get a
+        // different hash → different cache file → forced re-render.
+        std::string bundleHash;
+        if (loaded->clip && ! loaded->clip->samples.empty()) {
+            bundleHash = audio::PrerenderCache::hashBytes(
+                loaded->clip->samples.data(),
+                loaded->clip->samples.size() * sizeof(float));
+        }
+        // Push the bank into SungDirectPath. First activation per voice
+        // pre-renders (~90 s, background thread). Subsequent activations
+        // mmap the cached file (~instant).
+        graph_.sungDirectPath().setGrainsForBank(bank, bundleHash);
         graph_.sungDirectPath().setPortamentoMs(scene.directShift.portamentoMs);
         graph_.sungDirectPath().setFormantTintSemitones(
             scene.directShift.formantTintSemitones);

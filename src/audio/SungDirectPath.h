@@ -32,7 +32,14 @@ public:
     // silence. Polling progress is via loadState() / loadProgressPercent().
     //
     // Re-calling cancels any in-flight pre-render and starts fresh.
-    void setGrainsForBank(const std::vector<TTSClipPtr>& bank);
+    //
+    // `bundleHash` (if non-empty) is the cache key for the on-disk .bake
+    // file (see PrerenderCache). When provided, the loader checks for a
+    // cached file before kicking off the WORLD render — turning the 90 s
+    // first-activation wait into a sub-second mmap read on subsequent
+    // activations of the same bundle.
+    void setGrainsForBank(const std::vector<TTSClipPtr>& bank,
+                          const std::string& bundleHash = {});
 
     void setPortamentoMs(float ms) noexcept       { portamentoMs_.store(ms, std::memory_order_relaxed); }
     void setFormantTintSemitones(float n) noexcept { shifter_.setFormantTintSemitones(n); }
