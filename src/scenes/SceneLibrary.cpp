@@ -125,6 +125,26 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
     if (obj->hasProperty("gspeakAutoLoad"))
         s.gspeakAutoLoad = (bool) obj->getProperty("gspeakAutoLoad");
 
+    if (obj->hasProperty("defaultVoiceIndex"))
+        s.defaultVoiceIndex = static_cast<int>(obj->getProperty("defaultVoiceIndex"));
+    if (obj->hasProperty("showVoicePackPicker"))
+        s.showVoicePackPicker = static_cast<bool>(obj->getProperty("showVoicePackPicker"));
+
+    if (obj->hasProperty("voicePacks")) {
+        if (auto* arr = obj->getProperty("voicePacks").getArray()) {
+            s.voicePacks.clear();
+            s.voicePacks.reserve(static_cast<std::size_t>(arr->size()));
+            for (int i = 0; i < arr->size(); ++i) {
+                auto* vp = (*arr)[i].getDynamicObject();
+                if (! vp) continue;
+                Scene::VoicePack pack;
+                pack.label = vp->getProperty("label").toString().toStdString();
+                pack.path  = vp->getProperty("path").toString().toStdString();
+                if (! pack.path.empty()) s.voicePacks.push_back(std::move(pack));
+            }
+        }
+    }
+
     if (obj->hasProperty("carousel")) {
         if (auto* c = obj->getProperty("carousel").getDynamicObject()) {
             auto& cc = s.carousel;

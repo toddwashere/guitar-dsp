@@ -47,6 +47,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_tts_bank.cpp
     unit/scenes/test_scene_library_tts_fallback.cpp
     unit/scenes/test_scene_library_tts_trigger.cpp
+    unit/scenes/test_scene_library_sung_vowels.cpp
     unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_library_carousel_pitch.cpp
     unit/scenes/test_scene_library_carousel_formant.cpp
