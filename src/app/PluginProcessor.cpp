@@ -152,14 +152,15 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         auto scenes = scenes::SceneLibrary::loadDirectory(dir);
         if (scenes.empty()) scenes.push_back(scenes::Scene::defaults(0));
         sceneEngine_.loadScenes(std::move(scenes));
-        // Default to Bypass (id 11, dryWet=0) on first load so a freshly
+        // Default to Bypass (id 13, dryWet=0) on first load so a freshly
         // inserted AU passes audio through. The live demo scenes are 85-95%
         // wet and silence any source that doesn't trigger guitar onsets
         // (recorded clips, other tracks). setStateInformation (called next
         // by the host for saved projects) will override this with the saved
         // sceneId — fresh insertion lands on Bypass; reopened projects
         // restore whatever scene was active when saved.
-        sceneEngine_.activateScene(11);
+        // Bypass scene is now at slot 13 (was 11 before sung-vowels landed).
+        sceneEngine_.activateScene(13);
     }
 
     prebakedTtsSource_ = std::make_unique<audio::PrebakedTTSSource>(

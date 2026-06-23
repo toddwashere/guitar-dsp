@@ -1,0 +1,31 @@
+{
+  "id": 11,
+  "name": "Sung Vowels",
+  "color": "#c84cff",
+  "mixer": { "masterGainDb": -3.0, "dryWet": 0.95, "transitionMs": 30 },
+  "vocoder": { "enabled": true, "bypass": false },
+  "tts": {
+    "source": "clipBank",
+    "bank": ["sung_ah", "sung_eh", "sung_ee", "sung_oh", "sung_oo"],
+    "trigger": "note",
+    "wordSync": "advance",
+    "clarity": 0.0
+  },
+  "speech": {
+    "player": "noteStepped",
+    "maxSustainMs": 0,
+    "attackInterruptPolicy": "interrupt"
+  },
+  "showVocoder": true,
+  "showSay": false,
+  "showWordReadout": false,
+  "showVoicePackPicker": true,
+  "voicePacks": [
+    { "label": "Male 1",     "path": "assets/clips/gspeak/scene11_sung_m1.gspeak"  },
+    { "label": "Mighty Man", "path": "assets/clips/gspeak/scene11_sung_m10.gspeak" },
+    { "label": "Female 2",   "path": "assets/clips/gspeak/scene11_sung_f2.gspeak"  },
+    { "label": "Female 8",   "path": "assets/clips/gspeak/scene11_sung_f8.gspeak"  }
+  ],
+  "defaultVoiceIndex": 0,
+  "gspeakAutoLoad": true
+}
