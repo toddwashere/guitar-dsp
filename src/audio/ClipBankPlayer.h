@@ -103,7 +103,22 @@ private:
     float gateFadeGain_         = 1.0f;   // current fade multiplier during stop
     float gateFadeStep_         = 0.0f;   // per-sample decrement; set in prepare()
     bool  gateFadingOut_        = false;
-    static constexpr float kGateSilenceThreshold = 0.015f;  // ≈ −36 dBFS
+    static constexpr float kGateSilenceThreshold = 0.060f;  // ≈ −24 dBFS — catches
+                                                            // typical guitar decay
+                                                            // before the natural ring
+                                                            // overwhelms the gate.
+
+public:
+    // Message thread. Enabled-keys bitmask for anchor-mode rotation. Bit i
+    // corresponds to uniqueKeys_[i] (first-appearance order). If a key is
+    // disabled, anchor-mode cycling skips it. Default 0xFFFFFFFF — all keys
+    // enabled. Has no effect in legacy round-robin mode.
+    void setEnabledKeysMask(std::uint32_t mask) noexcept {
+        enabledKeysMask_.store(mask, std::memory_order_relaxed);
+    }
+
+private:
+    std::atomic<std::uint32_t> enabledKeysMask_ {0xFFFFFFFFu};
 };
 
 } // namespace guitar_dsp::audio

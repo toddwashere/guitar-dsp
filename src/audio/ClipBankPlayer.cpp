@@ -11,12 +11,15 @@ ClipBankPlayer::ClipBankPlayer() = default;
 void ClipBankPlayer::prepare(double sampleRate, int /*blockSize*/) {
     onset_.prepare(sampleRate);
     // Note-off gate coefficients.
-    //   Release time = 20 ms  → coef = exp(-1 / (sr * 0.020))
-    //   Hangover     = 100 ms → wait before fade starts after dipping silent
-    //   Fade-out     = 10 ms  → smooth click-free stop
-    gateReleaseCoef_     = std::exp(-1.0f / static_cast<float>(sampleRate * 0.020));
-    gateHangoverSamples_ = static_cast<int>(0.100 * sampleRate);
-    gateFadeStep_        = 1.0f / static_cast<float>(sampleRate * 0.010);
+    //   Release time = 10 ms  → coef = exp(-1 / (sr * 0.010)) — peak follower
+    //                          decays fast enough to track guitar's natural
+    //                          decay envelope.
+    //   Hangover     = 30 ms  → short grace period; total cutoff latency
+    //                          ~40 ms from when amplitude crosses threshold.
+    //   Fade-out     = 8 ms   → smooth click-free stop.
+    gateReleaseCoef_     = std::exp(-1.0f / static_cast<float>(sampleRate * 0.010));
+    gateHangoverSamples_ = static_cast<int>(0.030 * sampleRate);
+    gateFadeStep_        = 1.0f / static_cast<float>(sampleRate * 0.008);
     reset();
 }
 

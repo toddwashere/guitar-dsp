@@ -78,6 +78,20 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
 
     inputStage_.process(in, postInputBuffer_.data(), numSamples);
 
+    // Pitch tracking ALWAYS runs, regardless of wet source. The UI
+    // readout, ClipBankPlayer anchor selection, and SungDirectPath ratio
+    // computation all read from these atomics — previously the carrier
+    // only ran inside the Vocoder branch, so scene 12 (SungDirect) saw
+    // stale detectedHz and the shifter never tracked the guitar.
+    {
+        const auto pitchState = pitchCarrier_.process(
+            postInputBuffer_.data(), pitchCarrierBuffer_.data(), numSamples);
+        detectedNoteMidi_.store(pitchState.midiNote, std::memory_order_relaxed);
+        detectedCents_.store(pitchState.cents,       std::memory_order_relaxed);
+        detectedHz_.store(pitchState.freqHz,         std::memory_order_relaxed);
+        clipBankPlayer_.setDetectedPitchHz(pitchState.freqHz);
+    }
+
     if (wetSource_.load(std::memory_order_relaxed)
             == static_cast<int>(WetSource::SungDirect)) {
         // SungDirect branch: pitch-shift and formant-preserve the sung vowel
@@ -132,15 +146,8 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
                           drySpeechBuffer_.begin());
             }
 
-            // Pitch-tracked carrier always runs so the UI readout is live whether
-            // the toggle is on or off; its output is only routed when the toggle is on.
-            const auto pitchState = pitchCarrier_.process(
-                postInputBuffer_.data(), pitchCarrierBuffer_.data(), numSamples);
-            detectedNoteMidi_.store(pitchState.midiNote, std::memory_order_relaxed);
-            detectedCents_.store(pitchState.cents,       std::memory_order_relaxed);
-            detectedHz_.store(pitchState.freqHz,         std::memory_order_relaxed);
-            clipBankPlayer_.setDetectedPitchHz(pitchState.freqHz);
-
+            // Pitch tracking already ran at the top of process(); the saw
+            // carrier buffer is populated and atomics published. Read here.
             const bool pitchSinging = pitchSinging_.load(std::memory_order_relaxed);
 
             // Carrier = guitar (default), or (diagnostic) broadband white noise, or
