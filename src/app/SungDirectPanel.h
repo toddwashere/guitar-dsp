@@ -29,6 +29,10 @@ public:
     enum class LoadStatus { Idle, Loading, Ready };
     void setLoadStatus(LoadStatus status, int progressPercent);
 
+    // Update the detected-pitch readout. Driven from PluginEditor's timer.
+    // hz <= 0 (or midi < 0) → renders "(no pitch)".
+    void setDetectedPitch(int midi, float hz);
+
     std::function<void(int)>   onVoicePackChange;
     std::function<void(float)> onFormantTintChange;   // semitones
     std::function<void(float)> onPortamentoMsChange;
@@ -44,8 +48,11 @@ private:
     juce::Slider    scoopIn_;
     juce::Label     formantLabel_, portamentoLabel_, scoopLabel_;
     juce::Label     loadStatusLabel_;
+    juce::Label     pitchLabel_;
     LoadStatus      lastLoadStatus_   = LoadStatus::Idle;
     int             lastLoadProgress_ = -1;
+    int             lastPitchMidi_    = -2;
+    float           lastPitchHz_      = -1.0f;
 };
 
 } // namespace guitar_dsp::app

@@ -134,6 +134,12 @@ void PluginEditor::timerCallback() {
         }
         sungDirectPanel_.setLoadStatus(uiStatus,
                                        processor_.sungDirectLoadProgressPercent());
+        // Mirror the carrier's YIN-detected pitch into the panel's
+        // readout so operators have a visual confirmation that the path
+        // is hearing them on scene 12. Same atomic the SungDirectPath
+        // uses for its ratio computation.
+        sungDirectPanel_.setDetectedPitch(processor_.detectedNoteMidi(),
+                                          processor_.detectedHz());
     }
 
     const int id = processor_.sceneEngine().getActiveSceneId();

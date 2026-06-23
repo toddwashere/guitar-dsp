@@ -16,6 +16,16 @@ SungDirectPanel::SungDirectPanel() {
     loadStatusLabel_.setVisible(false);
     addAndMakeVisible(loadStatusLabel_);
 
+    // Detected-pitch readout — gives the operator a visual confirmation
+    // that YIN is tracking the played note (the SungDirect path is gated
+    // by the same detected-pitch atomic as the carrier). Always visible.
+    pitchLabel_.setText("(no pitch)", juce::dontSendNotification);
+    pitchLabel_.setFont(juce::Font{juce::FontOptions{}.withHeight(12.5f).withStyle("Bold")});
+    pitchLabel_.setColour(juce::Label::textColourId,
+                          juce::Colour::fromRGB(180, 190, 205));
+    pitchLabel_.setJustificationType(juce::Justification::centredRight);
+    addAndMakeVisible(pitchLabel_);
+
     formantLabel_.setText("Formant tint", juce::dontSendNotification);
     portamentoLabel_.setText("Portamento", juce::dontSendNotification);
     scoopLabel_.setText("Scoop", juce::dontSendNotification);
@@ -68,6 +78,29 @@ void SungDirectPanel::setVoicePacks(
     picker_.setPacks(packs, idx);
 }
 
+void SungDirectPanel::setDetectedPitch(int midi, float hz) {
+    if (midi == lastPitchMidi_ && std::abs(hz - lastPitchHz_) < 0.5f) return;
+    lastPitchMidi_ = midi;
+    lastPitchHz_   = hz;
+    if (midi < 0 || hz <= 0.0f) {
+        pitchLabel_.setText("(no pitch)", juce::dontSendNotification);
+        pitchLabel_.setColour(juce::Label::textColourId,
+                              juce::Colour::fromRGB(110, 120, 135));
+        return;
+    }
+    static constexpr const char* kNoteNames[] = {
+        "C","C#","D","D#","E","F","F#","G","G#","A","A#","B"
+    };
+    const int  noteIdx = ((midi % 12) + 12) % 12;
+    const int  octave  = (midi / 12) - 1;
+    const juce::String txt = juce::String(kNoteNames[noteIdx])
+                           + juce::String(octave) + "   "
+                           + juce::String(hz, 1) + " Hz";
+    pitchLabel_.setText(txt, juce::dontSendNotification);
+    pitchLabel_.setColour(juce::Label::textColourId,
+                          juce::Colour::fromRGB(150, 220, 255));
+}
+
 void SungDirectPanel::setLoadStatus(LoadStatus status, int progressPercent) {
     if (status == lastLoadStatus_ && progressPercent == lastLoadProgress_)
         return;
@@ -95,7 +128,12 @@ void SungDirectPanel::setLoadStatus(LoadStatus status, int progressPercent) {
 
 void SungDirectPanel::resized() {
     auto r = getLocalBounds().reduced(4);
-    picker_.setBounds(r.removeFromTop(24));
+    // Top row: picker on the left, detected-pitch readout on the right.
+    {
+        auto top = r.removeFromTop(24);
+        pitchLabel_.setBounds(top.removeFromRight(140));
+        picker_.setBounds(top);
+    }
     r.removeFromTop(2);
     // Status label sits just under the picker, only takes height when shown.
     loadStatusLabel_.setBounds(r.removeFromTop(loadStatusLabel_.isVisible() ? 18 : 0));
