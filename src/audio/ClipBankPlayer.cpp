@@ -63,9 +63,10 @@ void ClipBankPlayer::process(const float* onsetSrc, float* modOut,
 
     // Drain pending rewind.
     if (pendingRewind_.exchange(false, std::memory_order_acquire)) {
-        cursor_  = -1;
-        playPos_ = 0;
-        playing_ = false;
+        cursor_    = -1;
+        playPos_   = 0;
+        playing_   = false;
+        keyCursor_ = -1;   // I8: reset anchor-mode key cursor so next onset starts at key 0
         onset_.reset();
         currentClipIndex_.store(-1, std::memory_order_relaxed);
     }
