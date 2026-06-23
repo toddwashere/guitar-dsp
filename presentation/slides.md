@@ -61,6 +61,7 @@ sing on stage. The interesting part isn't the AI — it's what live
 performance lets you do with it.
 -->
 
+
 ---
 layout: two-cols
 class: gap-8
@@ -95,6 +96,9 @@ The question this talk is about: what does the next layer of
 live performance look like, now that AI tools are in the kit?
 -->
 
+<div class="absolute bottom-4 left-6 text-xs opacity-30">1m</div>
+
+
 ---
 
 <div class="absolute inset-0 flex items-center justify-center p-6">
@@ -113,6 +117,9 @@ Walk the audience through the panels left → right:
 
 Ebow gets a mention but isn't pictured; it's the side path.
 -->
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">1m</div>
+
 
 ---
 
@@ -150,6 +157,9 @@ Pause and read the room: "anyone here watch Stranger Things?"
 That night, sitting on the porch in costume, I started asking:
 what else could make this better?
 -->
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">3:30</div>
+
 
 ---
 

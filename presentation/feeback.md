@@ -50,3 +50,14 @@ Prebaking is best qulity
 
 For the AI
 
+feeback christie
+- slipnokot was 25 years ago. i still think about it.
+- Stanger things. 
+stay with us for a long time, what's the next thing.
+
+At the end: What are the experiences we are building that will stick with people for a long time?
+
+add cleaner eddie munson picture after pumkin slide.
+dont accidentally hit the guitar - or mute it or something?
+IDEA: Add a say mute button
+
