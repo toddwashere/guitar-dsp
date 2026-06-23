@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace guitar_dsp::audio {
 
@@ -13,20 +14,95 @@ FormantShifter::~FormantShifter() = default;
 void FormantShifter::prepare(double sampleRate, int blockSize) {
     sampleRate_ = sampleRate;
     blockSize_  = std::max(64, blockSize);
-    outBufferD_.assign(static_cast<std::size_t>(blockSize_), 0.0);
-    // M1.5 confirmed WORLD's per-block compute fits; the only latency is
-    // the synthesis lookahead — for 5 ms frame period, ~1 frame = ~5 ms.
+    // For 5 ms frame period, latency is ~1 frame = ~5 ms.
     latencySamples_ = static_cast<int>(0.005 * sampleRate_);
     reset();
 }
 
 void FormantShifter::reset() {
-    localFrameIdx_ = 0;
-    std::fill(outBufferD_.begin(), outBufferD_.end(), 0.0);
+    localPlayPos_   = 0;
+    localRatioIdx_  = kSemitoneRange;  // unity ratio index
 }
 
-void FormantShifter::setSource(std::shared_ptr<const ShifterGrain> g) noexcept {
-    std::atomic_store(&activeGrain_, std::move(g));
+int FormantShifter::latencySamples() const noexcept { return latencySamples_; }
+
+// -----------------------------------------------------------------------
+// preRenderGrain — message thread only. Allocates freely.
+// Runs WORLD's Synthesis() at each of the kNumRatios discrete semitone
+// steps and stores the resulting float samples in ShifterGrain::preRendered.
+// -----------------------------------------------------------------------
+/*static*/
+std::shared_ptr<ShifterGrain>
+FormantShifter::preRenderGrain(std::shared_ptr<const ShifterGrain> raw) {
+    if (!raw || raw->f0.empty()) return nullptr;
+
+    // Build a copy with the same WORLD params; we'll populate preRendered.
+    auto g = std::make_shared<ShifterGrain>(*raw);
+    g->preRendered.clear();
+    g->preRendered.reserve(static_cast<std::size_t>(kNumRatios));
+
+    const int    f0Len      = static_cast<int>(g->f0.size());
+    const int    fftSize    = g->fftSize;
+    const double framePeriod = g->framePeriodMs;
+    const int    fs         = g->sampleRate;
+
+    // y_length: total output samples for the full grain.
+    const int yLengthBase = static_cast<int>(
+        std::round(static_cast<double>(f0Len) * framePeriod * 0.001 * fs));
+
+    if (yLengthBase <= 0) return nullptr;
+
+    // Build const-pointer arrays for WORLD (points into g's storage).
+    std::vector<const double*> specPtr(static_cast<std::size_t>(f0Len));
+    std::vector<const double*> apPtr  (static_cast<std::size_t>(f0Len));
+    for (int i = 0; i < f0Len; ++i) {
+        specPtr[static_cast<std::size_t>(i)] =
+            g->spectrum    [static_cast<std::size_t>(i)].data();
+        apPtr  [static_cast<std::size_t>(i)] =
+            g->aperiodicity[static_cast<std::size_t>(i)].data();
+    }
+
+    std::vector<double> f0Scaled(static_cast<std::size_t>(f0Len));
+    std::vector<double> yD(static_cast<std::size_t>(yLengthBase));
+
+    for (int step = -kSemitoneRange; step <= kSemitoneRange; ++step) {
+        const float ratio = static_cast<float>(std::pow(2.0, step / 12.0));
+
+        // Scale F0 by ratio. Voiced: multiply; unvoiced (f0==0): leave 0.
+        for (int i = 0; i < f0Len; ++i) {
+            f0Scaled[static_cast<std::size_t>(i)] =
+                g->f0[static_cast<std::size_t>(i)] * static_cast<double>(ratio);
+        }
+
+        std::fill(yD.begin(), yD.end(), 0.0);
+        Synthesis(f0Scaled.data(), f0Len,
+                  specPtr.data(),
+                  apPtr.data(),
+                  fftSize, framePeriod, fs, yLengthBase, yD.data());
+
+        PreRenderedRatio pr;
+        pr.ratio = ratio;
+        pr.samples.resize(static_cast<std::size_t>(yLengthBase));
+        for (int i = 0; i < yLengthBase; ++i)
+            pr.samples[static_cast<std::size_t>(i)] =
+                static_cast<float>(yD[static_cast<std::size_t>(i)]);
+
+        g->preRendered.push_back(std::move(pr));
+    }
+
+    return g;
+}
+
+// -----------------------------------------------------------------------
+// setSource — message thread only. Grain must have preRendered populated.
+// Atomically swaps the active grain pointer; no allocation on audio thread.
+// -----------------------------------------------------------------------
+void FormantShifter::setSource(std::shared_ptr<const ShifterGrain> grain) noexcept {
+    std::atomic_store(&activeGrain_, std::move(grain));
+    // Reset local cache so process() detects the swap on the next call.
+    localGrain_.reset();
+    localPlayPos_  = 0;
+    localRatioIdx_ = kSemitoneRange;
 }
 
 void FormantShifter::setRatio(float r) noexcept {
@@ -41,67 +117,60 @@ void FormantShifter::setFormantTintSemitones(float n) noexcept {
     tintSemi_.store(n, std::memory_order_relaxed);
 }
 
-int FormantShifter::latencySamples() const noexcept { return latencySamples_; }
-
+// -----------------------------------------------------------------------
+// process — audio thread only. Zero heap allocations.
+// -----------------------------------------------------------------------
 void FormantShifter::process(float* out, int n) noexcept {
-    // Atomic load + local cache: avoid repeated atomic loads inside the loop.
+    // Detect grain swap (single atomic load is the only cross-thread touch).
     auto fresh = std::atomic_load(&activeGrain_);
     if (fresh != localGrain_) {
         localGrain_    = std::move(fresh);
-        localFrameIdx_ = 0;
+        localPlayPos_  = 0;
+        localRatioIdx_ = kSemitoneRange;
     }
-    if (! localGrain_ || localGrain_->f0.empty()) {
+
+    if (!localGrain_ || localGrain_->preRendered.empty()) {
         std::fill(out, out + n, 0.0f);
         return;
     }
 
-    const float ratio = ratio_.load(std::memory_order_relaxed);
-    const auto& g     = *localGrain_;
+    // Compute target ratio including formant tint.
+    // Formant tint: adds semitones via ratio multiplication. This is not true
+    // formant-axis warping, but it gives a visible, audible effect per C3(b).
+    const float baseRatio = ratio_.load(std::memory_order_relaxed);
+    const float tintSemi  = tintSemi_.load(std::memory_order_relaxed);
+    const float tintRatio = (tintSemi == 0.0f)
+        ? 1.0f
+        : static_cast<float>(std::pow(2.0, static_cast<double>(tintSemi) / 12.0));
+    const float targetRatio = baseRatio * tintRatio;
 
-    // Build per-block scratch arrays of pointers — small (frames-per-block
-    // is ~10–30 for a 256-sample block at 5 ms frame period at 48 kHz).
-    const double secondsPerBlock = static_cast<double>(n) / sampleRate_;
-    const int    framesPerBlock  = std::max(1, static_cast<int>(std::ceil(
-        secondsPerBlock * 1000.0 / g.framePeriodMs)) + 2);
-    const int    startFrame      = localFrameIdx_;
-    const int    endFrame        = std::min<int>(
-        startFrame + framesPerBlock, static_cast<int>(g.f0.size()));
-    const int    blockFrames     = endFrame - startFrame;
-    if (blockFrames <= 0) {
+    // Find nearest pre-rendered ratio. preRendered is sorted ascending by ratio
+    // (step -kSemitoneRange to +kSemitoneRange).
+    const auto& pr = localGrain_->preRendered;
+    int best = localRatioIdx_;
+    float bestDist = std::fabs(pr[static_cast<std::size_t>(best)].ratio - targetRatio);
+    for (int i = 0; i < static_cast<int>(pr.size()); ++i) {
+        const float d = std::fabs(pr[static_cast<std::size_t>(i)].ratio - targetRatio);
+        if (d < bestDist) { bestDist = d; best = i; }
+    }
+    // On ratio change, reset playback cursor to start of the new buffer.
+    if (best != localRatioIdx_) {
+        localRatioIdx_ = best;
+        localPlayPos_  = 0;
+    }
+
+    const auto& buf    = pr[static_cast<std::size_t>(localRatioIdx_)].samples;
+    const std::size_t bufLen = buf.size();
+    if (bufLen == 0) {
         std::fill(out, out + n, 0.0f);
         return;
     }
 
-    // Stack-alloc small arrays via fixed-size; cap framesPerBlock at 128.
-    constexpr int kMaxFramesPerBlock = 128;
-    if (blockFrames > kMaxFramesPerBlock) {
-        std::fill(out, out + n, 0.0f);
-        return;
+    // Copy samples from the pre-rendered buffer, looping at the end.
+    for (int i = 0; i < n; ++i) {
+        if (localPlayPos_ >= bufLen) localPlayPos_ = 0;  // loop
+        out[i] = buf[localPlayPos_++];
     }
-    double        f0Scaled[kMaxFramesPerBlock];
-    const double* specPtr  [kMaxFramesPerBlock];
-    const double* apPtr    [kMaxFramesPerBlock];
-    for (int i = 0; i < blockFrames; ++i) {
-        f0Scaled[i] = g.f0[(std::size_t)(startFrame + i)] * static_cast<double>(ratio);
-        specPtr [i] = g.spectrum    [(std::size_t)(startFrame + i)].data();
-        apPtr   [i] = g.aperiodicity[(std::size_t)(startFrame + i)].data();
-    }
-
-    // WORLD's Synthesis takes (const double * const *) for spectrogram and
-    // aperiodicity — our const double* arrays are compatible directly.
-    Synthesis(f0Scaled, blockFrames,
-              specPtr,
-              apPtr,
-              g.fftSize, g.framePeriodMs, g.sampleRate, n, outBufferD_.data());
-
-    for (int i = 0; i < n; ++i)
-        out[i] = static_cast<float>(outBufferD_[(std::size_t) i]);
-
-    // Advance the frame cursor by (n samples) → time → frames.
-    localFrameIdx_ += static_cast<int>(std::round(
-        secondsPerBlock * 1000.0 / g.framePeriodMs));
-    if (localFrameIdx_ >= static_cast<int>(g.f0.size()))
-        localFrameIdx_ = static_cast<int>(g.f0.size()) - 1;
 }
 
 } // namespace guitar_dsp::audio
