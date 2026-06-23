@@ -94,8 +94,8 @@ add_subdirectory(external/whisper.cpp)
 # Application source tree
 add_subdirectory(src)
 
-# Fixture generator tools
-add_subdirectory(tools/fixtures)
+# Tools (fixture generators, offline test harnesses)
+add_subdirectory(tools)
 
 # Test tree
 enable_testing()
