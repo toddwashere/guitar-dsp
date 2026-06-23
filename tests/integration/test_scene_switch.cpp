@@ -2,7 +2,9 @@
 #include "midi/FCB1010Mapping.h"
 #include "scenes/SceneEngine.h"
 #include "scenes/SceneLibrary.h"
+#include "app/AssetLocator.h"
 
+using guitar_dsp::AssetLocator;
 using guitar_dsp::midi::FCB1010Mapping;
 using guitar_dsp::midi::SceneCommandType;
 using guitar_dsp::scenes::Scene;
@@ -11,8 +13,9 @@ using guitar_dsp::scenes::SceneLibrary;
 
 TEST_CASE("integration: PC 0..13 each activate the corresponding scene id",
           "[integration][scenes][midi]") {
-    auto scenes = SceneLibrary::loadDirectory(
-        "/Users/user/GIT/guitar-dsp/assets/scenes");
+    // I5: use AssetLocator::scenesDirectory() so this test works in any
+    // worktree or CI environment (no hard-coded absolute path).
+    auto scenes = SceneLibrary::loadDirectory(AssetLocator::scenesDirectory());
     REQUIRE(!scenes.empty());
 
     SceneEngine engine;
