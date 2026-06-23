@@ -118,6 +118,18 @@ struct Scene {
     int  defaultVoiceIndex   = 0;
     bool showVoicePackPicker = false;
 
+    struct DirectShift {
+        bool        enabled              = false;
+        std::string engine               = "world";
+        bool        formantPreserve      = true;
+        float       formantTintSemitones = 0.0f;
+        float       portamentoMs         = 40.0f;
+        float       scoopInMs            = 0.0f;
+    };
+    DirectShift directShift;
+
+    bool showSungDirectPanel = false;
+
     std::string resolvedGspeakPath(int activeVoiceIndex) const {
         if (voicePacks.empty()) return gspeakPath;
         if (activeVoiceIndex < 0 ||

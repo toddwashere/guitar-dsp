@@ -145,6 +145,32 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
         }
     }
 
+    if (obj->hasProperty("showSungDirectPanel"))
+        s.showSungDirectPanel =
+            static_cast<bool>(obj->getProperty("showSungDirectPanel"));
+
+    if (obj->hasProperty("directShift")) {
+        if (auto* d = obj->getProperty("directShift").getDynamicObject()) {
+            auto& ds = s.directShift;
+            if (d->hasProperty("enabled"))
+                ds.enabled = static_cast<bool>(d->getProperty("enabled"));
+            if (d->hasProperty("engine"))
+                ds.engine = d->getProperty("engine").toString().toStdString();
+            if (d->hasProperty("formantPreserve"))
+                ds.formantPreserve =
+                    static_cast<bool>(d->getProperty("formantPreserve"));
+            if (d->hasProperty("formantTintSemitones"))
+                ds.formantTintSemitones =
+                    static_cast<float>((double) d->getProperty("formantTintSemitones"));
+            if (d->hasProperty("portamentoMs"))
+                ds.portamentoMs =
+                    static_cast<float>((double) d->getProperty("portamentoMs"));
+            if (d->hasProperty("scoopInMs"))
+                ds.scoopInMs =
+                    static_cast<float>((double) d->getProperty("scoopInMs"));
+        }
+    }
+
     if (obj->hasProperty("carousel")) {
         if (auto* c = obj->getProperty("carousel").getDynamicObject()) {
             auto& cc = s.carousel;
