@@ -39,6 +39,9 @@ struct PluginStateData {
     std::string                                       sttModelId            {"whisper-base.en"};
     int                                               pttPedalId            {9};
     int                                               clearChatPedalId      {10};
+    // Per-scene runtime voice-pack index. Scene id → index into Scene::voicePacks.
+    // Default-empty: each scene falls through to Scene::defaultVoiceIndex.
+    std::map<int, int>                                activeVoiceIndexByScene{};
 };
 
 // Minimal, forward-compatible JSON (de)serialization of the persisted plugin

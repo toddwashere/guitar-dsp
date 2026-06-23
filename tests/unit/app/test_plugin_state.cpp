@@ -130,3 +130,27 @@ TEST_CASE("PluginState: wordSyncMode defaults to 0 (Latch) when absent",
     const auto out = guitar_dsp::app::PluginState::fromJson(json);
     REQUIRE(out.wordSyncMode == 0);
 }
+
+TEST_CASE("PluginState round-trips activeVoiceIndexByScene",
+          "[plugin-state][voice-pack]") {
+    using guitar_dsp::app::PluginState;
+    using guitar_dsp::app::PluginStateData;
+
+    PluginStateData in;
+    in.activeVoiceIndexByScene[11] = 2;
+    in.activeVoiceIndexByScene[12] = 3;
+    auto json = PluginState::toJson(in);
+    auto out  = PluginState::fromJson(json);
+    REQUIRE(out.activeVoiceIndexByScene.size() == 2);
+    CHECK(out.activeVoiceIndexByScene.at(11) == 2);
+    CHECK(out.activeVoiceIndexByScene.at(12) == 3);
+}
+
+TEST_CASE("PluginState fromJson handles missing activeVoiceIndexByScene",
+          "[plugin-state][voice-pack][backcompat]") {
+    using guitar_dsp::app::PluginState;
+    // Synthesize a legacy JSON blob (no voice index map).
+    juce::String legacy = R"({ "sceneId": 0, "makeup": 4.0 })";
+    auto out = PluginState::fromJson(legacy);
+    CHECK(out.activeVoiceIndexByScene.empty());
+}
