@@ -289,11 +289,17 @@ GspeakBundle::read(const juce::File& inFile, double engineSampleRate) {
             p.startSample = clampIdx((std::size_t)(juce::int64) po->getProperty("startSample"));
             p.endSample   = clampIdx((std::size_t)(juce::int64) po->getProperty("endSample"));
             // Optional grain-metadata fields (back-compat: missing → defaults).
-            if (po->hasProperty("anchorPitchHz") && i == 0) {
-                clip->anchorPitchHz = (float)(double) po->getProperty("anchorPitchHz");
+            // Read per-phoneme bankKey + anchorPitchHz into the Phoneme struct
+            // so splitMasterClipIntoBank_ can round-trip them without heuristics.
+            // Also populate clip-level fields from phoneme 0 for back-compat with
+            // single-grain bundles that read clip->bankKey / clip->anchorPitchHz.
+            if (po->hasProperty("anchorPitchHz")) {
+                p.anchorPitchHz = (float)(double) po->getProperty("anchorPitchHz");
+                if (i == 0) clip->anchorPitchHz = p.anchorPitchHz;
             }
-            if (po->hasProperty("bankKey") && i == 0) {
-                clip->bankKey = po->getProperty("bankKey").toString().toStdString();
+            if (po->hasProperty("bankKey")) {
+                p.bankKey = po->getProperty("bankKey").toString().toStdString();
+                if (i == 0) clip->bankKey = p.bankKey;
             }
             if (po->hasProperty("variantTag") && i == 0) {
                 clip->variantTag = po->getProperty("variantTag").toString().toStdString();

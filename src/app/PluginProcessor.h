@@ -517,6 +517,14 @@ private:
     // Used only when scene.gspeakAutoLoad is true; the manual Load
     // button (WaveformView) calls into the bundle reader directly.
     bool tryAutoLoadGspeak_(const scenes::Scene& scene);
+
+    // Splits a master TTSClip (containing multiple phoneme entries) into a
+    // vector of per-grain TTSClipPtrs, one per phoneme. Each sub-clip carries
+    // the phoneme's bankKey + anchorPitchHz (populated by GspeakBundle::read
+    // per-phoneme). Empty bankKey falls back to a vowel-label heuristic.
+    // Used by tryAutoLoadGspeak_ when scene.directShift.enabled == true.
+    std::vector<audio::TTSClipPtr>
+    splitMasterClipIntoBank_(audio::TTSClipPtr master);
 };
 
 } // namespace guitar_dsp

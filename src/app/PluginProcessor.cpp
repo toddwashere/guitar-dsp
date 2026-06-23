@@ -300,6 +300,34 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     else if (scene.tts.wordSync == "syllable")
         graph_.setWordSyncMode(audio::WordSyncMode::Syllable);
 
+    // SungDirect branch (scene 12): directShift.enabled drives routing to the
+    // new SungDirectPath wet-bus. Split the master clip into per-grain sub-clips
+    // keyed by bankKey and feed them to SungDirectPath. The vocoder + clip-bank
+    // player are cleared so they don't bleed into this scene's output.
+    if (scene.directShift.enabled) {
+        auto bank = splitMasterClipIntoBank_(loaded->clip);
+        // Push the bank into SungDirectPath (pre-analyses WORLD params per grain).
+        graph_.sungDirectPath().setGrainsForBank(bank);
+        graph_.sungDirectPath().setPortamentoMs(scene.directShift.portamentoMs);
+        graph_.sungDirectPath().setFormantTintSemitones(
+            scene.directShift.formantTintSemitones);
+        graph_.setWetSource(audio::AudioGraph::WetSource::SungDirect);
+
+        // Clear vocoder + bank players so a prior scene doesn't bleed in.
+        graph_.clipBankPlayer().setBank({});
+        graph_.setModulatorSource(audio::AudioGraph::ModulatorSource::NoteStepped);
+        graph_.setActiveSpeechPlayer(
+            audio::AudioGraph::ActiveSpeechPlayer::NoteStepped);
+        graph_.ttsClipPlayer().setClip(nullptr);
+        graph_.noteSteppedPlayer().setClip(nullptr);
+        graph_.phonemeSteppedPlayer().setClip(nullptr);
+        lastPhonemeClip_.reset();
+
+        if (sayPanel_) sayPanel_->setText(juce::String(loaded->text));
+        currentTtsClipKey_ = std::string("gspeak:") + resolved;
+        return true;
+    }
+
     // Clear any leftover clip-bank state from a previous scene (e.g. scene 2
     // Vocal-Guitar). The normal scene-activation paths do this branch-by-branch;
     // the autoload helper has to be explicit because it short-circuits them.
@@ -336,6 +364,47 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     // re-activated without changing the bundle.
     currentTtsClipKey_ = std::string("gspeak:") + resolved;
     return true;
+}
+
+std::vector<audio::TTSClipPtr>
+PluginProcessor::splitMasterClipIntoBank_(audio::TTSClipPtr master) {
+    std::vector<audio::TTSClipPtr> out;
+    if (!master) return out;
+    const std::size_t totalSamples = master->samples.size();
+    for (const auto& p : master->phonemes) {
+        // Guard against out-of-range phoneme boundaries (can happen if the
+        // resample scale nudged an endSample past the real end).
+        const std::size_t start = std::min(p.startSample, totalSamples);
+        const std::size_t end   = std::min(p.endSample,   totalSamples);
+        if (end <= start) continue;  // skip zero-length grains
+
+        auto sub = std::make_shared<audio::TTSClip>();
+        sub->sampleRate = master->sampleRate;
+        sub->samples.assign(master->samples.begin() + static_cast<std::ptrdiff_t>(start),
+                            master->samples.begin() + static_cast<std::ptrdiff_t>(end));
+
+        // Prefer per-phoneme bankKey (populated by GspeakBundle::read for v2
+        // multi-grain bundles). Fall back to a vowel-label heuristic for older
+        // bundles that don't carry per-phoneme bankKey.
+        if (!p.bankKey.empty()) {
+            sub->bankKey       = p.bankKey;
+            sub->anchorPitchHz = p.anchorPitchHz;
+        } else {
+            // Heuristic: map IPA/espeak short-form vowel label → bankKey.
+            // Mirrors the build-script mapping in scripts/build_gspeak_bundle.py.
+            if      (p.label == "a")  sub->bankKey = "sung_ah";
+            else if (p.label == "e")  sub->bankKey = "sung_eh";
+            else if (p.label == "i")  sub->bankKey = "sung_ee";
+            else if (p.label == "o")  sub->bankKey = "sung_oh";
+            else if (p.label == "u")  sub->bankKey = "sung_oo";
+            else                       sub->bankKey = "sung_ah";  // safe default
+            sub->anchorPitchHz = 0.0f;  // unknown in legacy bundles
+        }
+        sub->variantTag = master->variantTag;
+
+        out.push_back(std::const_pointer_cast<const audio::TTSClip>(sub));
+    }
+    return out;
 }
 
 int PluginProcessor::activeVoiceIndex() const noexcept {

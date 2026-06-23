@@ -13,6 +13,12 @@ struct Phoneme {
     std::size_t  startSample = 0;  // inclusive
     std::size_t  endSample   = 0;  // exclusive
 
+    // Per-grain metadata (optional; populated by GspeakBundle::read for v2
+    // multi-grain bundles where each phoneme entry carries its own bankKey
+    // and anchorPitchHz). Empty / 0.0f = legacy clip, use TTSClip-level fields.
+    std::string bankKey;          // e.g. "sung_ah" — identifies the grain's vowel bank
+    float       anchorPitchHz = 0.0f;  // 0 = unknown / not stored in bundle
+
     std::size_t lengthSamples() const noexcept {
         return endSample > startSample ? endSample - startSample : 0;
     }
