@@ -375,7 +375,16 @@ public:
     void         flashStatusMessage(juce::String msg, int durationMs);  // forwards to TtsStatusBar
     double       currentSampleRate() const noexcept;
 
+    // Message thread. Switch the active voice for the current scene by index
+    // into Scene::voicePacks. No-op if the scene has no voicePacks. Triggers
+    // a bundle reload and a brief output fade across the handover.
+    void setActiveVoiceIndex(int idx);
+    int  activeVoiceIndex() const noexcept;
+
 private:
+    // Persisted plugin state (scene id, vocoder params, per-scene voice index, etc.).
+    app::PluginStateData stateData_;
+
     audio::AudioGraph graph_;
     audio::MicCapture micCapture_;
     std::vector<float> monoScratch_;
@@ -495,6 +504,11 @@ private:
 
     TtsStatusBar* ttsStatusBar_ = nullptr;
     SayPanel*     sayPanel_     = nullptr;
+
+    // 50 ms output fade armed by voice-pack swaps.
+    std::atomic<int>  voicePackSwapFadeSamples_ {0};
+    std::atomic<bool> voicePackSwapFadeArmed_   {false};
+    int               voicePackSwapFadeCounter_ = 0;
 
     // Attempts to load scene.gspeakPath via GspeakBundle and install the
     // resulting clip. Returns true if the bundle loaded successfully and

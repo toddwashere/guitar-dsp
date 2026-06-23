@@ -270,13 +270,16 @@ double PluginProcessor::currentSampleRate() const noexcept {
 }
 
 bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
-    if (scene.gspeakPath.empty() || !scene.gspeakAutoLoad) return false;
+    // Use voice-pack-aware resolved path when set.
+    const int idx = activeVoiceIndex();
+    const auto resolved = scene.resolvedGspeakPath(idx);
+    if (resolved.empty() || !scene.gspeakAutoLoad) return false;
 
-    const auto path = AssetLocator::resolveForRead(scene.gspeakPath);
+    const auto path = AssetLocator::resolveForRead(resolved);
     if (path.empty()) {
         if (ttsStatusBar_)
             ttsStatusBar_->flashMessage(
-                juce::String(scene.gspeakPath) + " missing — using fallback", 5000);
+                juce::String(resolved) + " missing — using fallback", 5000);
         return false;
     }
     juce::File file(path);
@@ -284,7 +287,7 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     if (!loaded.has_value()) {
         if (ttsStatusBar_)
             ttsStatusBar_->flashMessage(
-                juce::String(scene.gspeakPath) + " missing — using fallback", 5000);
+                juce::String(resolved) + " missing — using fallback", 5000);
         return false;
     }
 
@@ -331,8 +334,40 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     // Mark the clip-key as "consumed" so the normal-path early-return
     // (`if (key == currentTtsClipKey_) return;`) fires if this scene is
     // re-activated without changing the bundle.
-    currentTtsClipKey_ = std::string("gspeak:") + scene.gspeakPath;
+    currentTtsClipKey_ = std::string("gspeak:") + resolved;
     return true;
+}
+
+int PluginProcessor::activeVoiceIndex() const noexcept {
+    const int id = sceneEngine_.getActiveSceneId();
+    auto it = stateData_.activeVoiceIndexByScene.find(id);
+    if (it != stateData_.activeVoiceIndexByScene.end()) return it->second;
+    const auto& s = sceneEngine_.getActiveScene();
+    return s.defaultVoiceIndex;
+}
+
+void PluginProcessor::setActiveVoiceIndex(int idx) {
+    const auto& scene = sceneEngine_.getActiveScene();
+    if (scene.voicePacks.empty()) return;
+    if (idx < 0) idx = 0;
+    if (idx >= static_cast<int>(scene.voicePacks.size()))
+        idx = static_cast<int>(scene.voicePacks.size()) - 1;
+    const int id = scene.id;
+    stateData_.activeVoiceIndexByScene[id] = idx;
+
+    // Arm the 50 ms output fade BEFORE the bundle reload so the audio
+    // thread starts ramping immediately.
+    voicePackSwapFadeSamples_.store(
+        static_cast<int>(0.050 * getSampleRate()),
+        std::memory_order_relaxed);
+    voicePackSwapFadeArmed_.store(true, std::memory_order_release);
+
+    // Re-use the existing auto-load path. tryAutoLoadGspeak_ reads
+    // scene.gspeakPath; temporarily swap in the resolved path.
+    auto sceneCopy        = scene;
+    sceneCopy.gspeakPath  = scene.resolvedGspeakPath(idx);
+    sceneCopy.gspeakAutoLoad = true;
+    (void) tryAutoLoadGspeak_(sceneCopy);
 }
 
 void PluginProcessor::rebuildLlmClient() {
@@ -1066,6 +1101,32 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
         ++idx;
     }
     audioRingWriteIdx_.store(idx & mask, std::memory_order_release);
+
+    // Voice-pack swap fade: triangular dip across 50 ms masks the bundle
+    // handover transient. Runs on monoScratch_ before fan-out to channels.
+    if (voicePackSwapFadeArmed_.exchange(false, std::memory_order_acquire)) {
+        voicePackSwapFadeCounter_ =
+            voicePackSwapFadeSamples_.load(std::memory_order_relaxed);
+    }
+    if (voicePackSwapFadeCounter_ > 0) {
+        const int n = numSamples;
+        const int total = std::max(1, voicePackSwapFadeCounter_);
+        auto* w = monoScratch_.data();
+        for (int i = 0; i < n && voicePackSwapFadeCounter_ > 0; ++i) {
+            const float g =
+                static_cast<float>(total - voicePackSwapFadeCounter_)
+                    / static_cast<float>(total);
+            // Symmetric: ramp DOWN for the first half, UP for the second.
+            const float halfPos = (total - voicePackSwapFadeCounter_)
+                                / static_cast<float>(total);
+            const float gain = halfPos < 0.5f
+                ? 1.0f - 2.0f * halfPos
+                : 2.0f * (halfPos - 0.5f);
+            (void) g;  // unused — we use gain.
+            w[i] *= gain;
+            --voicePackSwapFadeCounter_;
+        }
+    }
 
     // Fan the mono graph output to all output channels.
     for (int ch = 0; ch < totalOut; ++ch) {
