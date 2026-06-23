@@ -395,14 +395,23 @@ PluginProcessor::splitMasterClipIntoBank_(audio::TTSClipPtr master) {
             sub->bankKey       = p.bankKey;
             sub->anchorPitchHz = p.anchorPitchHz;
         } else {
-            // Heuristic: map IPA/espeak short-form vowel label → bankKey.
-            // Mirrors the build-script mapping in scripts/build_gspeak_bundle.py.
+            // Heuristic: map vowel label → bankKey.
+            //
+            // Convention (I6): bundles built by tools/build_sung_vowel_bundle.py
+            // write single-character IPA labels ("a","e","i","o","u"). This
+            // heuristic matches that convention only. Legacy v2 bundles produced
+            // by espeak-ng use multi-character labels (e.g. "AE", "IH", "OW")
+            // which will fall through to the "sung_ah" default here — acceptable
+            // because those bundles do not carry anchorPitchHz metadata either,
+            // so the per-grain anchor path (I1) would have fallen back to 220 Hz
+            // regardless. Do not change the single-char mapping without updating
+            // tools/build_sung_vowel_bundle.py to match.
             if      (p.label == "a")  sub->bankKey = "sung_ah";
             else if (p.label == "e")  sub->bankKey = "sung_eh";
             else if (p.label == "i")  sub->bankKey = "sung_ee";
             else if (p.label == "o")  sub->bankKey = "sung_oh";
             else if (p.label == "u")  sub->bankKey = "sung_oo";
-            else                       sub->bankKey = "sung_ah";  // safe default
+            else                       sub->bankKey = "sung_ah";  // safe default for unknown labels
             sub->anchorPitchHz = 0.0f;  // unknown in legacy bundles
         }
         sub->variantTag = master->variantTag;
