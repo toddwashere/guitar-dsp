@@ -120,6 +120,7 @@ add_executable(guitar_dsp_tests
     integration/test_gspeak_save_then_load.cpp
     integration/test_mp3_import_flow.cpp
     integration/test_voice_pack_swap.cpp
+    integration/test_sung_vowels_scene.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AssetLocator.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
