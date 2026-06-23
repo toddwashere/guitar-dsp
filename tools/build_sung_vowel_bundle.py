@@ -36,9 +36,16 @@ VOWEL_TO_BANK_KEY = {
 PAD_MS         = 200
 TARGET_SR      = 48000
 LONG_TONE_SEC  = 4.0  # central window from each long_tones/straight clip
-                       # Short enough that each guitar attack triggers a
-                       # crisp single vowel; the carrier/shifter pre-render
-                       # cost also scales with grain length.
+                       # Long-tones ARE single sustained notes by source, so
+                       # a multi-second cap is fine — the shifter pre-renders
+                       # at multiple ratios anyway.
+SCALE_SLICE_SEC = 1.0  # cap each scale-slice grain at ≤ 1 s. The slow_piano
+                       # source recordings are the singer ascending a scale
+                       # ~1.5–2 s per note; capping at 1 s guarantees each
+                       # slice contains at most a single note pitch. Any
+                       # longer (we had 4 s earlier) and a single strum
+                       # plays the singer's next note within the grain —
+                       # sounds like the bundle "incrementing pitch".
 ANCHOR_SLICES_PER_VOWEL = 3  # from scales/slow_piano — low/mid/high
 
 
@@ -163,7 +170,7 @@ def slice_scale_into_anchors(samples, sr, num_slices):
     # Universal cap: every grain ≤ ~4.0 s, regardless of which slicer
     # path produced it. Short enough for crisp per-strike playback;
     # also keeps the WORLD pre-render time bounded (scene 12 activation).
-    max_len = int(sr * 4.0)
+    max_len = int(sr * SCALE_SLICE_SEC)
     grains = [(s, min(e, s + max_len)) for (s, e) in grains]
     return grains
 
