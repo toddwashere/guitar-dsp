@@ -31,7 +31,9 @@ TEST_CASE("FormantShifter ratio=1.0 over a stable grain produces non-silent outp
           "[formant-shifter]") {
     FormantShifter sh;
     sh.prepare(48000.0, 256);
-    sh.setSource(makeSineGrain());
+    // C1 fix: setSource() now requires a pre-rendered grain (preRendered populated).
+    // Call preRenderGrain() first (message-thread helper, allocates freely).
+    sh.setSource(FormantShifter::preRenderGrain(makeSineGrain()));
     sh.setRatio(1.0f);
     std::vector<float> out(256, 0.0f);
     sh.process(out.data(), 256);
@@ -52,7 +54,7 @@ TEST_CASE("FormantShifter clamps setRatio outside [0.25, 4.0]",
     sh.setRatio(10.0f);
     sh.setRatio(-5.0f);
     // No assertion on internal state; the contract is "no crash, no NaN".
-    sh.setSource(makeSineGrain());
+    sh.setSource(FormantShifter::preRenderGrain(makeSineGrain()));
     std::vector<float> out(256, 0.0f);
     sh.process(out.data(), 256);
     for (float v : out) REQUIRE(! std::isnan(v));
