@@ -33,3 +33,12 @@ TEST_CASE("Scene::resolvedGspeakPath clamps out-of-range to defaultVoiceIndex",
     CHECK(s.resolvedGspeakPath(-1) == "b.gspeak");
     CHECK(s.resolvedGspeakPath(99) == "b.gspeak");
 }
+
+TEST_CASE("Scene::resolvedGspeakPath final fallback to 0 when both indices invalid",
+          "[scene][voicePacks]") {
+    Scene s;
+    s.voicePacks = { { "A", "a.gspeak" }, { "B", "b.gspeak" } };
+    s.defaultVoiceIndex = 99;          // also out-of-range
+    CHECK(s.resolvedGspeakPath(-1) == "a.gspeak");
+    CHECK(s.resolvedGspeakPath(99) == "a.gspeak");
+}

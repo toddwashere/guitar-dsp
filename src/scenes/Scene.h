@@ -132,15 +132,13 @@ struct Scene {
 
     std::string resolvedGspeakPath(int activeVoiceIndex) const {
         if (voicePacks.empty()) return gspeakPath;
-        if (activeVoiceIndex < 0 ||
-            activeVoiceIndex >= static_cast<int>(voicePacks.size())) {
-            activeVoiceIndex = defaultVoiceIndex;
-            if (activeVoiceIndex < 0 ||
-                activeVoiceIndex >= static_cast<int>(voicePacks.size())) {
-                activeVoiceIndex = 0;
-            }
+        const int n = static_cast<int>(voicePacks.size());
+        int idx = activeVoiceIndex;
+        if (idx < 0 || idx >= n) {
+            idx = defaultVoiceIndex;
+            if (idx < 0 || idx >= n) idx = 0;
         }
-        return voicePacks[static_cast<std::size_t>(activeVoiceIndex)].path;
+        return voicePacks[static_cast<std::size_t>(idx)].path;
     }
 
     // Per-scene editor panel visibility. Designed so the live performance
