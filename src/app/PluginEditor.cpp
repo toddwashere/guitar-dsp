@@ -31,6 +31,7 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(wordReadout_);
     addAndMakeVisible(diagToggleBar_);
     addAndMakeVisible(vocoderPanel_);
+    addAndMakeVisible(sungDirectPanel_);
     addAndMakeVisible(ttsStatusBar_);
     if (processor_.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
         addAndMakeVisible(midiDevicePicker_);
@@ -179,6 +180,28 @@ void PluginEditor::resized() {
         } else {
             vocoderPanel_.setVoicePacks({}, 0);
         }
+
+        // SungDirectPanel: shown only when the active scene requests it (scene 12).
+        sungDirectPanel_.setVisible(s.showSungDirectPanel);
+        if (s.showSungDirectPanel) {
+            std::vector<std::pair<std::string, std::string>> packs;
+            packs.reserve(s.voicePacks.size());
+            for (const auto& vp : s.voicePacks)
+                packs.emplace_back(vp.label, vp.path);
+            sungDirectPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
+            sungDirectPanel_.onVoicePackChange = [this](int idx) {
+                processor_.setActiveVoiceIndex(idx);
+            };
+            sungDirectPanel_.onFormantTintChange = [this](float n) {
+                processor_.setSungDirectFormantTintSemitones(n);
+            };
+            sungDirectPanel_.onPortamentoMsChange = [this](float ms) {
+                processor_.setSungDirectPortamentoMs(ms);
+            };
+            sungDirectPanel_.onScoopInMsChange = [](float ms) {
+                /* scoop-in hookup is a future task */ (void)ms;
+            };
+        }
     }
     sayPanel_      .setVisible(showSay);
     oscilloscope_     .setVisible(showScope);
@@ -193,6 +216,7 @@ void PluginEditor::resized() {
     if (showWordReadout) wordReadout_.setBounds(bounds.removeFromTop(44));
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     if (showKnobs) vocoderPanel_.setBounds(bounds.removeFromTop(170));
+    if (sungDirectPanel_.isVisible()) sungDirectPanel_.setBounds(bounds.removeFromTop(108));
 
     // Waveform + slice overlay sits BETWEEN the knobs and the scope so
     // when v2 is active the boundary lines are the most prominent thing

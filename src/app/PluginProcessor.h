@@ -241,6 +241,15 @@ public:
     void  setNoiseGateThresholdDb(float dB) noexcept { graph_.setNoiseGateThresholdDb(dB); }
     float noiseGateThresholdDb() const noexcept      { return graph_.noiseGateThresholdDb(); }
 
+    // --- SungDirect live controls (message thread) -------------------------
+    // Forwarded to AudioGraph::sungDirectPath() for scene-12 UI sliders.
+    void setSungDirectFormantTintSemitones(float n) noexcept {
+        graph_.sungDirectPath().setFormantTintSemitones(n);
+    }
+    void setSungDirectPortamentoMs(float ms) noexcept {
+        graph_.sungDirectPath().setPortamentoMs(ms);
+    }
+
     // The currently active scene's declared clarity (0..1), for the visibility
     // readout — so the operator can see when the live slider has drifted from
     // the scene's authored default.
