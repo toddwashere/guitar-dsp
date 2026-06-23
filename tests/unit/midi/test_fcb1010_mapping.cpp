@@ -18,9 +18,9 @@ TEST_CASE("FCB1010Mapping: Program Change 0..9 -> ActivateScene 0..9", "[midi][f
     }
 }
 
-TEST_CASE("FCB1010Mapping: Program Change 10..127 -> nullopt (unmapped)", "[midi][fcb]") {
+TEST_CASE("FCB1010Mapping: Program Change 14..127 -> nullopt (unmapped)", "[midi][fcb]") {
     FCB1010Mapping m = FCB1010Mapping::stockDefaults();
-    REQUIRE_FALSE(m.translate(juce::MidiMessage::programChange(1, 10)).has_value());
+    REQUIRE_FALSE(m.translate(juce::MidiMessage::programChange(1, 14)).has_value());
     REQUIRE_FALSE(m.translate(juce::MidiMessage::programChange(1, 99)).has_value());
 }
 
@@ -103,4 +103,18 @@ TEST_CASE("FCB1010Mapping: loadFromJson can override pitchSingingToggle CC",
     auto cmd = m->translate(juce::MidiMessage::controllerEvent(1, 85, 100));
     REQUIRE(cmd.has_value());
     REQUIRE(cmd->type == SceneCommandType::TogglePitchSinging);
+}
+
+TEST_CASE("FCB1010 stock defaults map PC 0..13 to scenes 0..13",
+          "[fcb1010][stock-defaults]") {
+    using guitar_dsp::midi::FCB1010Mapping;
+    using guitar_dsp::midi::SceneCommandType;
+    auto m = FCB1010Mapping::stockDefaults();
+    for (int pc = 0; pc < 14; ++pc) {
+        const auto msg = juce::MidiMessage::programChange(1, pc);
+        auto cmd = m.translate(msg);
+        REQUIRE(cmd.has_value());
+        REQUIRE(cmd->type == SceneCommandType::ActivateScene);
+        REQUIRE(cmd->payload == pc);
+    }
 }
