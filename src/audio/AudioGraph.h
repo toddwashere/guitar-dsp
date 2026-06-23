@@ -15,6 +15,7 @@
 #include "NoteSteppedTTSPlayer.h"
 #include "PhonemeSteppedTTSPlayer.h"
 #include "PitchTrackedCarrier.h"
+#include "SungDirectPath.h"
 #include "TTSClipPlayer.h"
 
 namespace guitar_dsp::audio {
@@ -48,8 +49,9 @@ public:
     const ClipBankPlayer& clipBankPlayer() const { return clipBankPlayer_; }
     ChannelVocoder& vocoder() { return vocoder_; }
     Carousel& carousel() { return carousel_; }
+    SungDirectPath& sungDirectPath() { return sungDirectPath_; }
 
-    enum class WetSource { Vocoder, Carousel };
+    enum class WetSource { Vocoder, Carousel, SungDirect };
     // Message-thread: choose which branch feeds the Mixer's wet input.
     void setWetSource(WetSource s) noexcept {
         wetSource_.store(static_cast<int>(s), std::memory_order_relaxed);
@@ -176,6 +178,7 @@ private:
     ClipBankPlayer clipBankPlayer_;
     ChannelVocoder vocoder_;
     Carousel carousel_;
+    SungDirectPath sungDirectPath_;
     MicShaper micShaper_;
 
     std::atomic<int> wetSource_ {static_cast<int>(WetSource::Vocoder)};

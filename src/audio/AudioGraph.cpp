@@ -26,6 +26,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     vocoder_.setOutputGain(4.0f);     // ~ +12 dB, tanh-limited downstream
     vocoder_.setCarrierNoise(0.30f);
     carousel_.prepare(sampleRate, blockSize);
+    sungDirectPath_.prepare(sampleRate, blockSize);
 
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     wetBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
@@ -62,6 +63,7 @@ void AudioGraph::reset() {
     std::fill(pitchCarrierBuffer_.begin(), pitchCarrierBuffer_.end(), 0.0f);
     wetLpfState_ = 0.0f;
     carousel_.reset();
+    sungDirectPath_.reset();
     std::fill(postInputBuffer_.begin(), postInputBuffer_.end(), 0.0f);
     std::fill(wetBuffer_.begin(), wetBuffer_.end(), 0.0f);
     std::fill(carrierBuffer_.begin(), carrierBuffer_.end(), 0.0f);
@@ -77,6 +79,13 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
     inputStage_.process(in, postInputBuffer_.data(), numSamples);
 
     if (wetSource_.load(std::memory_order_relaxed)
+            == static_cast<int>(WetSource::SungDirect)) {
+        // SungDirect branch: pitch-shift and formant-preserve the sung vowel
+        // grains directly to the wet buffer, driven by the detected guitar pitch.
+        sungDirectPath_.process(postInputBuffer_.data(),
+                                detectedHz_.load(std::memory_order_relaxed),
+                                wetBuffer_.data(), numSamples);
+    } else if (wetSource_.load(std::memory_order_relaxed)
             == static_cast<int>(WetSource::Carousel)) {
         // Carousel branch: transform the guitar directly into the wet buffer.
         carousel_.process(postInputBuffer_.data(), wetBuffer_.data(), numSamples);

@@ -9,6 +9,7 @@
 #include <cmath>
 #include <memory>
 #include <vector>
+#include <limits>
 
 using guitar_dsp::audio::AudioGraph;
 using guitar_dsp::tests::SyntheticGuitar;
@@ -444,6 +445,21 @@ TEST_CASE("AudioGraph: pitchSinging on with TTS modulator -> wet path peak at gu
         return s1 * s1 + s2 * s2 - coef * s1 * s2;
     };
     REQUIRE(goertzel(220.0f) > 2.0f * goertzel(313.0f));
+}
+
+TEST_CASE("AudioGraph WetSource::SungDirect is selectable and routes wet bus",
+          "[audio-graph][sung-direct]") {
+    using guitar_dsp::audio::AudioGraph;
+    AudioGraph g; g.prepare(48000.0, 256);
+    g.setWetSource(AudioGraph::WetSource::SungDirect);
+    std::vector<float> in(256, 0.0f), out(256, 0.0f);
+    // No bank set → silent output is acceptable; the test only asserts
+    // no crash + no NaN/Inf under the new routing.
+    g.process(in.data(), out.data(), 256);
+    for (float v : out) {
+        REQUIRE(!std::isnan(v));
+        REQUIRE(!std::isinf(v));
+    }
 }
 
 TEST_CASE("AudioGraph: rewindSpoken resets the phoneme-stepped player when v2 is active",
