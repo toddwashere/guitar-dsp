@@ -8,6 +8,8 @@ VocoderPanel::VocoderPanel(PluginProcessor& p)
     : processor_(p), noteReadout_(p), wordSyncSelector_(p) {
     setOpaque(true);
     addAndMakeVisible(voicePackPicker_);
+    addAndMakeVisible(vowelPills_);
+    vowelPills_.setVisible(false);  // shown only on sung-vowel scenes
     addAndMakeVisible(noteReadout_);
     addAndMakeVisible(wordSyncSelector_);
 
@@ -202,6 +204,10 @@ void VocoderPanel::setOnVoicePackChange(std::function<void(int)> cb) {
     voicePackPicker_.onChange = std::move(cb);
 }
 
+void VocoderPanel::setOnVowelMaskChange(std::function<void(std::uint32_t)> cb) {
+    vowelPills_.onMaskChange = std::move(cb);
+}
+
 void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
     area.removeFromBottom(20);  // mic-meter strip (painted directly in paint())
@@ -211,6 +217,12 @@ void VocoderPanel::resized() {
     if (voicePackPicker_.isVisible()) {
         constexpr int pickerH = 24;
         voicePackPicker_.setBounds(area.removeFromTop(pickerH));
+    }
+    // Vowel pills row — under the voice picker, sung-vowel scenes only.
+    if (vowelPills_.isVisible()) {
+        constexpr int pillsH = 22;
+        area.removeFromTop(2);
+        vowelPills_.setBounds(area.removeFromTop(pillsH));
     }
 
     constexpr int selectorH = 22;

@@ -3,7 +3,9 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "VoicePackPicker.h"
+#include "VowelMaskPills.h"
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -33,16 +35,21 @@ public:
     // hz <= 0 (or midi < 0) → renders "(no pitch)".
     void setDetectedPitch(int midi, float hz);
 
-    std::function<void(int)>   onVoicePackChange;
-    std::function<void(float)> onFormantTintChange;   // semitones
-    std::function<void(float)> onPortamentoMsChange;
-    std::function<void(float)> onScoopInMsChange;
+    // Vowel mask getter for syncing from PluginState on scene activation.
+    void setVowelMask(std::uint32_t mask) { vowelPills_.setMask(mask); }
+
+    std::function<void(int)>           onVoicePackChange;
+    std::function<void(float)>         onFormantTintChange;   // semitones
+    std::function<void(float)>         onPortamentoMsChange;
+    std::function<void(float)>         onScoopInMsChange;
+    std::function<void(std::uint32_t)> onVowelMaskChange;
 
     void resized() override;
     void paint(juce::Graphics& g) override;
 
 private:
     VoicePackPicker picker_;
+    VowelMaskPills  vowelPills_;
     juce::Slider    formantTint_;
     juce::Slider    portamento_;
     juce::Slider    scoopIn_;

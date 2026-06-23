@@ -158,12 +158,20 @@ void PluginEditor::timerCallback() {
                 vocoderPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
                 vocoderPanel_.setOnVoicePackChange(
                     [this](int idx) { processor_.setActiveVoiceIndex(idx); });
+                // Vowel pills mirror the persisted mask and forward changes
+                // through PluginProcessor (which mirrors to both ClipBankPlayers).
+                vocoderPanel_.setVowelPillsVisible(true);
+                vocoderPanel_.setVowelMask(processor_.sungVowelMask());
+                vocoderPanel_.setOnVowelMaskChange(
+                    [this](std::uint32_t mask) { processor_.setSungVowelMask(mask); });
             } else {
                 vocoderPanel_.setVoicePacks({}, 0);
+                vocoderPanel_.setVowelPillsVisible(false);
             }
 
             if (s.showSungDirectPanel) {
                 sungDirectPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
+                sungDirectPanel_.setVowelMask(processor_.sungVowelMask());
                 sungDirectPanel_.onVoicePackChange = [this](int idx) {
                     processor_.setActiveVoiceIndex(idx);
                 };
@@ -175,6 +183,9 @@ void PluginEditor::timerCallback() {
                 };
                 sungDirectPanel_.onScoopInMsChange = [](float ms) {
                     /* scoop-in hookup is a future task */ (void)ms;
+                };
+                sungDirectPanel_.onVowelMaskChange = [this](std::uint32_t mask) {
+                    processor_.setSungVowelMask(mask);
                 };
             }
         }

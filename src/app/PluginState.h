@@ -4,6 +4,7 @@
 
 #include <juce_core/juce_core.h>
 
+#include <cstdint>
 #include <map>
 #include <string>
 
@@ -42,6 +43,10 @@ struct PluginStateData {
     // Per-scene runtime voice-pack index. Scene id → index into Scene::voicePacks.
     // Default-empty: each scene falls through to Scene::defaultVoiceIndex.
     std::map<int, int>                                activeVoiceIndexByScene{};
+    // Per-vowel enabled mask for sung-vowel scenes (11, 12). Bits 0..4
+    // correspond to Ah/Eh/Ee/Oh/Oo in first-appearance order. Default
+    // 0x1F = all 5 enabled.
+    std::uint32_t                                     sungVowelMask{0x1Fu};
 };
 
 // Minimal, forward-compatible JSON (de)serialization of the persisted plugin

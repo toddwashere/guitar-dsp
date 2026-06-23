@@ -121,23 +121,37 @@ void ClipBankPlayer::process(const float* onsetSrc, float* modOut,
             const int n = static_cast<int>(activeBank_.size());
             int next = -1;
             if (anchorMode_ && ! uniqueKeys_.empty()) {
-                // Cycle keys; pick closest anchor within the new key.
-                keyCursor_ = (keyCursor_ + 1) % static_cast<int>(uniqueKeys_.size());
-                const auto& wantKey = uniqueKeys_[(std::size_t) keyCursor_];
-                const float detected = detectedPitchHz_.load(std::memory_order_relaxed);
-                if (detected <= 0.0f) {
-                    // Pitch unknown — pick first grain of the key.
-                    for (int j = 0; j < n; ++j) {
-                        const auto& c = activeBank_[(std::size_t) j];
-                        if (c && c->bankKey == wantKey) { next = j; break; }
-                    }
-                } else {
-                    float bestDist = std::numeric_limits<float>::infinity();
-                    for (int j = 0; j < n; ++j) {
-                        const auto& c = activeBank_[(std::size_t) j];
-                        if (! c || c->bankKey != wantKey) continue;
-                        const float d = std::fabs(c->anchorPitchHz - detected);
-                        if (d < bestDist) { bestDist = d; next = j; }
+                // Cycle keys, skipping ones whose bit is off in the
+                // enabled-keys mask. If every key is disabled, `next`
+                // stays -1 and we drop to the legacy round-robin below.
+                const std::uint32_t mask =
+                    enabledKeysMask_.load(std::memory_order_relaxed);
+                const int numKeys = static_cast<int>(uniqueKeys_.size());
+                int candidate = keyCursor_;
+                bool enabledFound = false;
+                for (int tries = 0; tries < numKeys; ++tries) {
+                    candidate = (candidate + 1) % numKeys;
+                    if (mask & (1u << candidate)) { enabledFound = true; break; }
+                }
+                if (enabledFound) {
+                    keyCursor_ = candidate;
+                    const auto& wantKey = uniqueKeys_[(std::size_t) keyCursor_];
+                    const float detected =
+                        detectedPitchHz_.load(std::memory_order_relaxed);
+                    if (detected <= 0.0f) {
+                        // Pitch unknown — pick first grain of the key.
+                        for (int j = 0; j < n; ++j) {
+                            const auto& c = activeBank_[(std::size_t) j];
+                            if (c && c->bankKey == wantKey) { next = j; break; }
+                        }
+                    } else {
+                        float bestDist = std::numeric_limits<float>::infinity();
+                        for (int j = 0; j < n; ++j) {
+                            const auto& c = activeBank_[(std::size_t) j];
+                            if (! c || c->bankKey != wantKey) continue;
+                            const float d = std::fabs(c->anchorPitchHz - detected);
+                            if (d < bestDist) { bestDist = d; next = j; }
+                        }
                     }
                 }
             }

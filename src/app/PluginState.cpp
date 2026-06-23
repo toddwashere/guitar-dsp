@@ -33,6 +33,7 @@ juce::String PluginState::toJson(const PluginStateData& d) {
     o->setProperty("sttModelId",      juce::String(d.sttModelId));
     o->setProperty("pttPedalId",      d.pttPedalId);
     o->setProperty("clearChatPedalId", d.clearChatPedalId);
+    o->setProperty("sungVowelMask",   static_cast<int>(d.sungVowelMask));
     // activeVoiceIndexByScene — omit if empty
     if (!d.activeVoiceIndexByScene.empty()) {
         auto* voicesObj = new juce::DynamicObject();
@@ -87,6 +88,9 @@ PluginStateData PluginState::fromJson(const juce::String& json) {
             d.pttPedalId = (int) o->getProperty("pttPedalId");
         if (o->hasProperty("clearChatPedalId"))
             d.clearChatPedalId = (int) o->getProperty("clearChatPedalId");
+        if (o->hasProperty("sungVowelMask"))
+            d.sungVowelMask =
+                static_cast<std::uint32_t>((int) o->getProperty("sungVowelMask"));
         // activeVoiceIndexByScene sub-object
         if (o->hasProperty("activeVoiceIndexByScene")) {
             if (auto* vo = o->getProperty("activeVoiceIndexByScene").getDynamicObject()) {

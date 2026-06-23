@@ -6,6 +6,14 @@ SungDirectPanel::SungDirectPanel() {
     addAndMakeVisible(picker_);
     picker_.onChange = [this](int idx) { if (onVoicePackChange) onVoicePackChange(idx); };
 
+    // Vowel toggle pills (Ah/Eh/Ee/Oh/Oo) — toggle per-vowel inclusion in
+    // the rotation. Default all enabled (mask 0x1F). PluginEditor's
+    // scene-change branch pushes the persisted state in.
+    addAndMakeVisible(vowelPills_);
+    vowelPills_.onMaskChange = [this](std::uint32_t mask) {
+        if (onVowelMaskChange) onVowelMaskChange(mask);
+    };
+
     // Load-status label — small caption beneath the voice picker. Hidden
     // by default; PluginEditor's timerCallback drives setLoadStatus().
     loadStatusLabel_.setText("", juce::dontSendNotification);
@@ -135,7 +143,10 @@ void SungDirectPanel::resized() {
         picker_.setBounds(top);
     }
     r.removeFromTop(2);
-    // Status label sits just under the picker, only takes height when shown.
+    // Vowel pills strip — under the picker, above the load status.
+    vowelPills_.setBounds(r.removeFromTop(22));
+    r.removeFromTop(4);
+    // Status label sits just under the pills, only takes height when shown.
     loadStatusLabel_.setBounds(r.removeFromTop(loadStatusLabel_.isVisible() ? 18 : 0));
     if (loadStatusLabel_.isVisible()) r.removeFromTop(2);
 

@@ -259,6 +259,19 @@ public:
         return graph_.sungDirectPath().loadProgressPercent();
     }
 
+    // Per-vowel enabled mask for sung-vowel scenes (11 + 12). Bit i
+    // corresponds to the i-th unique bankKey in first-appearance order
+    // (sung_ah / sung_eh / sung_ee / sung_oh / sung_oo for our bundles).
+    // 0 = mute all vowels; default 0x1F = all 5 enabled.
+    void setSungVowelMask(std::uint32_t mask) noexcept {
+        sungVowelMask_.store(mask, std::memory_order_relaxed);
+        graph_.clipBankPlayer().setEnabledKeysMask(mask);
+        graph_.sungDirectPath().setEnabledKeysMask(mask);
+    }
+    std::uint32_t sungVowelMask() const noexcept {
+        return sungVowelMask_.load(std::memory_order_relaxed);
+    }
+
     // The currently active scene's declared clarity (0..1), for the visibility
     // readout — so the operator can see when the live slider has drifted from
     // the scene's authored default.
@@ -532,6 +545,11 @@ private:
     // AUDIO THREAD ONLY: written only inside processBlock after the
     // armed-flag is consumed. Not atomic.
     int               voicePackSwapFadeTotal_   = 0;  // captured once at arm-time
+
+    // Per-vowel enabled mask for sung-vowel scenes (11 + 12). Mirrors into
+    // both ClipBankPlayers (the modulator path used by scene 11 and the one
+    // owned by SungDirectPath for scene 12). Persisted via PluginState.
+    std::atomic<std::uint32_t> sungVowelMask_ {0x1Fu};
 
     // Attempts to load scene.gspeakPath via GspeakBundle and install the
     // resulting clip. Returns true if the bundle loaded successfully and

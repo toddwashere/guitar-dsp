@@ -7,6 +7,7 @@
 #include "VowelGrainLoop.h"
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <thread>
 #include <unordered_map>
@@ -43,6 +44,11 @@ public:
 
     void setPortamentoMs(float ms) noexcept       { portamentoMs_.store(ms, std::memory_order_relaxed); }
     void setFormantTintSemitones(float n) noexcept { shifter_.setFormantTintSemitones(n); }
+
+    // Forwards to the embedded ClipBankPlayer. See ClipBankPlayer::setEnabledKeysMask.
+    void setEnabledKeysMask(std::uint32_t mask) noexcept {
+        clipBank_.setEnabledKeysMask(mask);
+    }
 
     // ---- Background-render load state for UI -------------------------------
     enum class LoadState { Idle, Loading, Ready };

@@ -4,8 +4,10 @@
 
 #include "NoteReadout.h"
 #include "VoicePackPicker.h"
+#include "VowelMaskPills.h"
 #include "WordSyncSelector.h"
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -42,11 +44,18 @@ private:
     WordSyncSelector wordSyncSelector_;
     juce::String lastCarrierNoiseLabel_;
     app::VoicePackPicker voicePackPicker_;
+    app::VowelMaskPills  vowelPills_;
 
 public:
     void setVoicePacks(const std::vector<std::pair<std::string, std::string>>& packs,
                        int activeIdx);
     void setOnVoicePackChange(std::function<void(int)> cb);
+    // Vowel-pill controls — visible whenever the voice-pack picker is.
+    void setVowelMask(std::uint32_t mask) { vowelPills_.setMask(mask); }
+    void setOnVowelMaskChange(std::function<void(std::uint32_t)> cb);
+    // Whether to show the vowel pills row (typically follows the same
+    // flag that shows the voice-pack picker — only the sung-vowel scenes).
+    void setVowelPillsVisible(bool visible) { vowelPills_.setVisible(visible); }
 };
 
 } // namespace guitar_dsp
