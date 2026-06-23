@@ -14,6 +14,9 @@ SungDirectPanel::SungDirectPanel() {
         l->setColour(juce::Label::textColourId, juce::Colour::fromRGB(150, 160, 175));
         addAndMakeVisible(*l);
     }
+    // Note: formantTint_ is wired through FormantShifter::setFormantTintSemitones().
+    // It adds a semitone offset to the ratio lookup in the pre-rendered table.
+    // This is not true formant-axis warping but gives a visible, audible effect.
 
     formantTint_.setRange(-6.0, 6.0, 0.1);
     formantTint_.setValue(0.0);
@@ -27,8 +30,15 @@ SungDirectPanel::SungDirectPanel() {
     scoopIn_.setValue(0.0);
     scoopIn_.setTextValueSuffix(" ms");
 
-    for (auto* s : { &formantTint_, &portamento_, &scoopIn_ })
+    for (auto* s : { &formantTint_, &portamento_ })
         addAndMakeVisible(*s);
+
+    // TODO(scoop-in): scoopIn_ slider is hidden until the scoop-in effect is
+    // implemented. The slider exists and its callback is wired, but the audio
+    // engine has no corresponding implementation yet. Keep it invisible so
+    // users don't interact with a no-op control.
+    scoopIn_.setVisible(false);
+    scoopLabel_.setVisible(false);
 
     formantTint_.onValueChange = [this] {
         if (onFormantTintChange) onFormantTintChange(static_cast<float>(formantTint_.getValue()));
