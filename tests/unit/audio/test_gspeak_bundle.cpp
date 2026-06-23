@@ -166,3 +166,12 @@ TEST_CASE("GspeakBundle resamples on rate mismatch", "[audio][gspeak]") {
     REQUIRE(loaded->clip->sylsV2.back().endSample == loaded->clip->samples.size());
     temp.deleteFile();
 }
+
+TEST_CASE("TTSClip default grain-metadata fields are empty/zero",
+          "[tts][clip]") {
+    using guitar_dsp::audio::TTSClip;
+    TTSClip c;
+    REQUIRE(c.bankKey.empty());
+    REQUIRE(c.anchorPitchHz == 0.0f);
+    REQUIRE(c.variantTag.empty());
+}
