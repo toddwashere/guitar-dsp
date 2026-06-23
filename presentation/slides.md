@@ -46,23 +46,6 @@ it for the stage taught me about building with AI.
 -->
 
 ---
-
-# Setting the stage
-
-- A lot of interesting things are happening with AI right now
-- Creativity × technology yields surprising results
-- The tools we have today are opening up new possibilities for **live performance**
-
-<!--
-This talk lives at the intersection of all three. I'm a software
-engineer who plays guitar; I built a tool that uses TTS, LLMs,
-real-time DSP, and a foot controller to make a guitar talk and
-sing on stage. The interesting part isn't the AI — it's what live
-performance lets you do with it.
--->
-
-
----
 layout: two-cols
 class: gap-8
 ---
@@ -97,6 +80,23 @@ live performance look like, now that AI tools are in the kit?
 -->
 
 <div class="absolute bottom-4 left-6 text-xs opacity-30">1m</div>
+
+---
+
+# Setting the stage
+
+- Great experiences stay with us forever.
+- Creativity × technology yields surprising results
+- A lot of interesting things are happening with AI right now
+- The tools we have today are opening up new possibilities for **live performance**
+
+<!--
+This talk lives at the intersection of all three. I'm a software
+engineer who plays guitar; I built a tool that uses TTS, LLMs,
+real-time DSP, and a foot controller to make a guitar talk and
+sing on stage. The interesting part isn't the AI — it's what live
+performance lets you do with it.
+-->
 
 
 ---
@@ -133,6 +133,12 @@ the kids or stay home. Found out you can crank a guitar amp loud
 outside on Halloween and no one calls the cops. That's how this
 whole thread started.
 -->
+
+---
+
+<div class="absolute inset-0 flex items-center justify-center p-6">
+  <img src="/todd-eddie-munson-cutout.png" class="max-h-full max-w-full object-contain" />
+</div>
 
 ---
 
