@@ -50,6 +50,14 @@ public:
         return bankSize_.load(std::memory_order_relaxed);
     }
 
+    // Audio thread. Returns the clip at `idx` in the active bank, or nullptr
+    // if idx is out of range. Used by SungDirectPath to mirror source changes
+    // into the FormantShifter without touching the pending bank.
+    TTSClipPtr activeBankAt(int idx) const noexcept {
+        if (idx < 0 || idx >= static_cast<int>(activeBank_.size())) return {};
+        return activeBank_[static_cast<std::size_t>(idx)];
+    }
+
 private:
     OnsetDetector onset_;
 

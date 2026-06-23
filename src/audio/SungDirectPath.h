@@ -39,12 +39,27 @@ private:
 
     std::vector<float> grainOutBuf_;  // ClipBankPlayer's per-block output (used to detect "playing")
 
-    // Grain analysis cache: TTSClip pointer → ShifterGrain.
+    // Grain analysis cache: TTSClip pointer → raw ShifterGrain (WORLD params).
+    // Built offline in setGrainsForBank().
     std::unordered_map<const TTSClip*, std::shared_ptr<const ShifterGrain>> analysisCache_;
+
+    // Pre-rendered cache: TTSClip pointer → ShifterGrain with preRendered filled.
+    // Built offline in setGrainsForBank() via FormantShifter::preRenderGrain().
+    // Audio-thread setSource() calls always use this cache, which contains no
+    // un-rendered grains — so setSource() never calls Synthesis() on the RT thread.
+    std::unordered_map<const TTSClip*, std::shared_ptr<const ShifterGrain>> prerenderedCache_;
 
     // Per-block: last detected pitch published to shifter as ratio.
     std::atomic<float> portamentoMs_ {40.0f};
     float              smoothedRatio_ = 1.0f;
+
+    // Tracks the last-seen active clip index so we detect changes without
+    // a static thread_local (which is problematic if the audio thread
+    // changes across OS context switches or tests).
+    int   lastSourceIdx_    = -2;
+    // Anchor pitch of the currently-active grain; updated when the grain
+    // changes. Used to convert detectedHz → a ratio relative to this grain.
+    float currentAnchorHz_  = 0.0f;
 };
 
 } // namespace guitar_dsp::audio
