@@ -130,6 +130,7 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
             detectedNoteMidi_.store(pitchState.midiNote, std::memory_order_relaxed);
             detectedCents_.store(pitchState.cents,       std::memory_order_relaxed);
             detectedHz_.store(pitchState.freqHz,         std::memory_order_relaxed);
+            clipBankPlayer_.setDetectedPitchHz(pitchState.freqHz);
 
             const bool pitchSinging = pitchSinging_.load(std::memory_order_relaxed);
 
