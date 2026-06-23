@@ -110,6 +110,27 @@ struct Scene {
     CarouselConfig carousel{};
     Speech         speech{};
 
+    struct VoicePack {
+        std::string label;
+        std::string path;
+    };
+    std::vector<VoicePack> voicePacks;        // empty = single-path scene
+    int  defaultVoiceIndex   = 0;
+    bool showVoicePackPicker = false;
+
+    std::string resolvedGspeakPath(int activeVoiceIndex) const {
+        if (voicePacks.empty()) return gspeakPath;
+        if (activeVoiceIndex < 0 ||
+            activeVoiceIndex >= static_cast<int>(voicePacks.size())) {
+            activeVoiceIndex = defaultVoiceIndex;
+            if (activeVoiceIndex < 0 ||
+                activeVoiceIndex >= static_cast<int>(voicePacks.size())) {
+                activeVoiceIndex = 0;
+            }
+        }
+        return voicePacks[static_cast<std::size_t>(activeVoiceIndex)].path;
+    }
+
     // Per-scene editor panel visibility. Designed so the live performance
     // UI only shows what each scene actually uses. Defaults preserve old
     // behavior for any scene that doesn't declare these explicitly: vocoder
