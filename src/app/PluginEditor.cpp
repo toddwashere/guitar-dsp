@@ -163,6 +163,23 @@ void PluginEditor::resized() {
     wordReadout_   .setVisible(showWordReadout);
     vocoderPanel_  .setVisible(showKnobs);
     ttsStatusBar_  .setVisible(false);  // TTS source pills are dev-only; off in stage UI
+
+    // Wire voice pack picker from the active scene whenever the scene changes.
+    // setVoicePacks internally hides the picker for scenes with no voicePacks.
+    {
+        const auto& s = processor_.sceneEngine().getActiveScene();
+        if (s.showVoicePackPicker) {
+            std::vector<std::pair<std::string, std::string>> packs;
+            packs.reserve(s.voicePacks.size());
+            for (const auto& vp : s.voicePacks)
+                packs.emplace_back(vp.label, vp.path);
+            vocoderPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
+            vocoderPanel_.setOnVoicePackChange(
+                [this](int idx) { processor_.setActiveVoiceIndex(idx); });
+        } else {
+            vocoderPanel_.setVoicePacks({}, 0);
+        }
+    }
     sayPanel_      .setVisible(showSay);
     oscilloscope_     .setVisible(showScope);
     spectrumAnalyzer_ .setVisible(showScope);

@@ -3,7 +3,12 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "NoteReadout.h"
+#include "VoicePackPicker.h"
 #include "WordSyncSelector.h"
+
+#include <functional>
+#include <string>
+#include <vector>
 
 namespace guitar_dsp {
 
@@ -36,6 +41,12 @@ private:
     NoteReadout  noteReadout_;
     WordSyncSelector wordSyncSelector_;
     juce::String lastCarrierNoiseLabel_;
+    app::VoicePackPicker voicePackPicker_;
+
+public:
+    void setVoicePacks(const std::vector<std::pair<std::string, std::string>>& packs,
+                       int activeIdx);
+    void setOnVoicePackChange(std::function<void(int)> cb);
 };
 
 } // namespace guitar_dsp

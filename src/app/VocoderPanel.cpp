@@ -7,6 +7,7 @@ namespace guitar_dsp {
 VocoderPanel::VocoderPanel(PluginProcessor& p)
     : processor_(p), noteReadout_(p), wordSyncSelector_(p) {
     setOpaque(true);
+    addAndMakeVisible(voicePackPicker_);
     addAndMakeVisible(noteReadout_);
     addAndMakeVisible(wordSyncSelector_);
 
@@ -191,10 +192,26 @@ void VocoderPanel::paint(juce::Graphics& g) {
     g.drawText(dbStr, rightLabel, juce::Justification::centredRight);
 }
 
+void VocoderPanel::setVoicePacks(
+    const std::vector<std::pair<std::string, std::string>>& packs,
+    int activeIdx) {
+    voicePackPicker_.setPacks(packs, activeIdx);
+}
+
+void VocoderPanel::setOnVoicePackChange(std::function<void(int)> cb) {
+    voicePackPicker_.onChange = std::move(cb);
+}
+
 void VocoderPanel::resized() {
     auto area = getLocalBounds().reduced(6, 4);
     area.removeFromBottom(20);  // mic-meter strip (painted directly in paint())
     area.removeFromTop(12);    // header band
+
+    // Voice pack picker — only takes space when visible (non-empty voicePacks).
+    if (voicePackPicker_.isVisible()) {
+        constexpr int pickerH = 24;
+        voicePackPicker_.setBounds(area.removeFromTop(pickerH));
+    }
 
     constexpr int selectorH = 22;
     wordSyncSelector_.setBounds(area.removeFromBottom(selectorH));
