@@ -328,6 +328,11 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
         return true;
     }
 
+    // I7: Reset WetSource to Vocoder when leaving a directShift scene (or when
+    // landing on a non-directShift scene that skipped the directShift branch above).
+    // Without this, scene 12 → scene 11 transitions leave the wet bus on SungDirect.
+    graph_.setWetSource(audio::AudioGraph::WetSource::Vocoder);
+
     // Clear any leftover clip-bank state from a previous scene (e.g. scene 2
     // Vocal-Guitar). The normal scene-activation paths do this branch-by-branch;
     // the autoload helper has to be explicit because it short-circuits them.
