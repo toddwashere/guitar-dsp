@@ -10,6 +10,13 @@ ClipBankPlayer::ClipBankPlayer() = default;
 
 void ClipBankPlayer::prepare(double sampleRate, int /*blockSize*/) {
     onset_.prepare(sampleRate);
+    // Note-off gate coefficients.
+    //   Release time = 20 ms  → coef = exp(-1 / (sr * 0.020))
+    //   Hangover     = 100 ms → wait before fade starts after dipping silent
+    //   Fade-out     = 10 ms  → smooth click-free stop
+    gateReleaseCoef_     = std::exp(-1.0f / static_cast<float>(sampleRate * 0.020));
+    gateHangoverSamples_ = static_cast<int>(0.100 * sampleRate);
+    gateFadeStep_        = 1.0f / static_cast<float>(sampleRate * 0.010);
     reset();
 }
 
@@ -19,6 +26,12 @@ void ClipBankPlayer::reset() {
     playPos_ = 0;
     playing_ = false;
     currentClipIndex_.store(-1, std::memory_order_relaxed);
+
+    // Reset gate state — start with envelope at zero, no in-flight fade.
+    gateEnv_            = 0.0f;
+    gateSilenceCounter_ = 0;
+    gateFadeGain_       = 1.0f;
+    gateFadingOut_      = false;
 }
 
 void ClipBankPlayer::setBank(std::vector<TTSClipPtr> clips) {
@@ -74,6 +87,33 @@ void ClipBankPlayer::process(const float* onsetSrc, float* modOut,
     const bool haveBank = !activeBank_.empty();
 
     for (std::size_t i = 0; i < numSamples; ++i) {
+        // ---- Note-off gate (envelope follower on the guitar input) -------
+        // Attack instant, release smoothed — peak-follower style.
+        const float absG = std::fabs(onsetSrc[i]);
+        if (absG > gateEnv_) {
+            gateEnv_ = absG;
+        } else {
+            gateEnv_ = gateReleaseCoef_ * gateEnv_
+                     + (1.0f - gateReleaseCoef_) * absG;
+        }
+        if (gateEnv_ < kGateSilenceThreshold) {
+            if (gateSilenceCounter_ < gateHangoverSamples_) {
+                ++gateSilenceCounter_;
+            } else if (playing_ && !gateFadingOut_) {
+                // Guitar has been silent past the hangover — fade the
+                // current grain out.
+                gateFadingOut_ = true;
+                gateFadeGain_  = 1.0f;
+            }
+        } else {
+            gateSilenceCounter_ = 0;
+            // Guitar is back — cancel any in-flight fade.
+            if (gateFadingOut_) {
+                gateFadingOut_ = false;
+                gateFadeGain_  = 1.0f;
+            }
+        }
+
         if (haveBank && onset_.processSample(onsetSrc[i])) {
             const int n = static_cast<int>(activeBank_.size());
             int next = -1;
@@ -104,6 +144,10 @@ void ClipBankPlayer::process(const float* onsetSrc, float* modOut,
             cursor_  = next;
             playPos_ = 0;
             playing_ = true;
+            // Fresh attack overrides any in-progress gate fade.
+            gateFadingOut_      = false;
+            gateFadeGain_       = 1.0f;
+            gateSilenceCounter_ = 0;
             currentClipIndex_.store(cursor_, std::memory_order_relaxed);
         }
 
@@ -114,6 +158,16 @@ void ClipBankPlayer::process(const float* onsetSrc, float* modOut,
                 s = clip->samples[playPos_++];
             } else {
                 playing_ = false;
+            }
+        }
+        // Apply note-off fade if active.
+        if (gateFadingOut_) {
+            s *= gateFadeGain_;
+            gateFadeGain_ -= gateFadeStep_;
+            if (gateFadeGain_ <= 0.0f) {
+                gateFadingOut_ = false;
+                gateFadeGain_  = 0.0f;
+                playing_       = false;
             }
         }
         modOut[i] = s;

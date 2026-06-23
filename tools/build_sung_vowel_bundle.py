@@ -35,7 +35,7 @@ VOWEL_TO_BANK_KEY = {
 }
 PAD_MS         = 200
 TARGET_SR      = 48000
-LONG_TONE_SEC  = 0.8  # central window from each long_tones/straight clip
+LONG_TONE_SEC  = 4.0  # central window from each long_tones/straight clip
                        # Short enough that each guitar attack triggers a
                        # crisp single vowel; the carrier/shifter pre-render
                        # cost also scales with grain length.
@@ -160,10 +160,10 @@ def slice_scale_into_anchors(samples, sr, num_slices):
             start = onsets[k]
             end = onsets[k + 1] if k + 1 < len(onsets) else n
             grains.append((start, end))
-    # Universal cap: every grain ≤ ~0.8 s, regardless of which slicer
+    # Universal cap: every grain ≤ ~4.0 s, regardless of which slicer
     # path produced it. Short enough for crisp per-strike playback;
     # also keeps the WORLD pre-render time bounded (scene 12 activation).
-    max_len = int(sr * 0.8)
+    max_len = int(sr * 4.0)
     grains = [(s, min(e, s + max_len)) for (s, e) in grains]
     return grains
 

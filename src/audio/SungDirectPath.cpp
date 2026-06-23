@@ -125,6 +125,18 @@ void SungDirectPath::process(const float* guitarIn, float detectedHz,
 
     shifter_.setRatio(smoothedRatio_);
     shifter_.process(wetOut, static_cast<int>(numSamples));
+
+    // Mirror ClipBankPlayer's note-off gate onto the shifter output so a
+    // released note silences the shifter in lockstep with the modulator
+    // path. currentGateGain() returns 1.0 while the grain is sounding,
+    // ramps to 0.0 during the 10 ms fade triggered by guitar silence.
+    // Block-level multiply is sufficient — at 256-sample blocks the
+    // fade still spans ~2 blocks, which is below the perceptual click
+    // threshold for a smooth envelope.
+    const float gate = clipBank_.currentGateGain();
+    if (gate < 1.0f) {
+        for (std::size_t i = 0; i < numSamples; ++i) wetOut[i] *= gate;
+    }
 }
 
 } // namespace guitar_dsp::audio

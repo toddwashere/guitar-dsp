@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <string>
@@ -58,6 +59,15 @@ public:
         return activeBank_[static_cast<std::size_t>(idx)];
     }
 
+    // Audio thread (same thread as process). Returns the current note-off
+    // gate gain: 1.0 while a grain is sounding, ramps down during the
+    // 10 ms fade triggered by guitar going silent, 0.0 once gated off.
+    // SungDirectPath uses this to gate FormantShifter output in lockstep.
+    float currentGateGain() const noexcept {
+        if (!playing_) return 0.0f;
+        return gateFadingOut_ ? std::max(0.0f, gateFadeGain_) : 1.0f;
+    }
+
 private:
     OnsetDetector onset_;
 
@@ -79,6 +89,21 @@ private:
     bool                     anchorMode_   = false;
     std::vector<std::string> uniqueKeys_;     // ordered, first-appearance
     int                      keyCursor_    = -1;
+
+    // ---- Note-off gate: stop the current grain shortly after the guitar
+    // goes silent, so a held grain doesn't keep playing into a quiet
+    // passage. Works alongside the onset-triggered restart — a new pluck
+    // cancels any in-progress fade and starts a fresh grain.
+    //
+    // Audio-thread state only — never touched from message thread.
+    float gateEnv_              = 0.0f;   // peak-follower amplitude
+    float gateReleaseCoef_      = 0.0f;   // 1-pole release; set in prepare()
+    int   gateSilenceCounter_   = 0;      // samples spent below threshold
+    int   gateHangoverSamples_  = 0;      // grace period before fade starts
+    float gateFadeGain_         = 1.0f;   // current fade multiplier during stop
+    float gateFadeStep_         = 0.0f;   // per-sample decrement; set in prepare()
+    bool  gateFadingOut_        = false;
+    static constexpr float kGateSilenceThreshold = 0.015f;  // ≈ −36 dBFS
 };
 
 } // namespace guitar_dsp::audio
