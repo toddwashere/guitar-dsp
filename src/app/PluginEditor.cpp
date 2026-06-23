@@ -120,6 +120,40 @@ void PluginEditor::timerCallback() {
     const int id = processor_.sceneEngine().getActiveSceneId();
     if (id != lastObservedSceneId_) {
         lastObservedSceneId_ = id;
+
+        // Wire voice-pack pickers once per scene change (not every resized()).
+        // setVoicePacks internally hides the picker for scenes with no voicePacks.
+        const auto& s = processor_.sceneEngine().getActiveScene();
+        {
+            std::vector<std::pair<std::string, std::string>> packs;
+            packs.reserve(s.voicePacks.size());
+            for (const auto& vp : s.voicePacks)
+                packs.emplace_back(vp.label, vp.path);
+            if (s.showVoicePackPicker) {
+                vocoderPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
+                vocoderPanel_.setOnVoicePackChange(
+                    [this](int idx) { processor_.setActiveVoiceIndex(idx); });
+            } else {
+                vocoderPanel_.setVoicePacks({}, 0);
+            }
+
+            if (s.showSungDirectPanel) {
+                sungDirectPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
+                sungDirectPanel_.onVoicePackChange = [this](int idx) {
+                    processor_.setActiveVoiceIndex(idx);
+                };
+                sungDirectPanel_.onFormantTintChange = [this](float n) {
+                    processor_.setSungDirectFormantTintSemitones(n);
+                };
+                sungDirectPanel_.onPortamentoMsChange = [this](float ms) {
+                    processor_.setSungDirectPortamentoMs(ms);
+                };
+                sungDirectPanel_.onScoopInMsChange = [](float ms) {
+                    /* scoop-in hookup is a future task */ (void)ms;
+                };
+            }
+        }
+
         resized();
     }
 }
@@ -165,44 +199,9 @@ void PluginEditor::resized() {
     vocoderPanel_  .setVisible(showKnobs);
     ttsStatusBar_  .setVisible(false);  // TTS source pills are dev-only; off in stage UI
 
-    // Wire voice pack picker from the active scene whenever the scene changes.
-    // setVoicePacks internally hides the picker for scenes with no voicePacks.
-    {
-        const auto& s = processor_.sceneEngine().getActiveScene();
-        if (s.showVoicePackPicker) {
-            std::vector<std::pair<std::string, std::string>> packs;
-            packs.reserve(s.voicePacks.size());
-            for (const auto& vp : s.voicePacks)
-                packs.emplace_back(vp.label, vp.path);
-            vocoderPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
-            vocoderPanel_.setOnVoicePackChange(
-                [this](int idx) { processor_.setActiveVoiceIndex(idx); });
-        } else {
-            vocoderPanel_.setVoicePacks({}, 0);
-        }
-
-        // SungDirectPanel: shown only when the active scene requests it (scene 12).
-        sungDirectPanel_.setVisible(s.showSungDirectPanel);
-        if (s.showSungDirectPanel) {
-            std::vector<std::pair<std::string, std::string>> packs;
-            packs.reserve(s.voicePacks.size());
-            for (const auto& vp : s.voicePacks)
-                packs.emplace_back(vp.label, vp.path);
-            sungDirectPanel_.setVoicePacks(packs, processor_.activeVoiceIndex());
-            sungDirectPanel_.onVoicePackChange = [this](int idx) {
-                processor_.setActiveVoiceIndex(idx);
-            };
-            sungDirectPanel_.onFormantTintChange = [this](float n) {
-                processor_.setSungDirectFormantTintSemitones(n);
-            };
-            sungDirectPanel_.onPortamentoMsChange = [this](float ms) {
-                processor_.setSungDirectPortamentoMs(ms);
-            };
-            sungDirectPanel_.onScoopInMsChange = [](float ms) {
-                /* scoop-in hookup is a future task */ (void)ms;
-            };
-        }
-    }
+    // SungDirectPanel: shown only when the active scene requests it (scene 12).
+    // Callback wiring is done once per scene change in timerCallback(), not here.
+    sungDirectPanel_.setVisible(processor_.sceneEngine().getActiveScene().showSungDirectPanel);
     sayPanel_      .setVisible(showSay);
     oscilloscope_     .setVisible(showScope);
     spectrumAnalyzer_ .setVisible(showScope);
