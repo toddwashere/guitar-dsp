@@ -44,7 +44,7 @@ TEST_CASE("RT-safety: scene 11 (clip bank modulator) is allocation-free on audio
     constexpr std::size_t block = 512;
     constexpr int blocks = 200;  // 200 blocks * 512 / 48000 = ~2.1 seconds
 
-    auto scenes = SceneLibrary::loadDirectory("/Users/user/GIT/guitar-dsp/assets/scenes");
+    auto scenes = SceneLibrary::loadDirectory("/Users/user/GIT/guitar-dsp/.claude/worktrees/scene-11-12-sung-vowels/assets/scenes");
     SceneEngine engine;
     engine.loadScenes(std::move(scenes));
     REQUIRE(engine.activateScene(11));
@@ -67,6 +67,45 @@ TEST_CASE("RT-safety: scene 11 (clip bank modulator) is allocation-free on audio
     sentinel.markCurrentThreadAsRealtime();
     for (int i = 0; i < blocks; ++i) {
         // Vary input pattern to exercise onset detection and clip-bank playback.
+        if (i % 100 == 0) gen.silence(in.data(), in.size());
+        else if (i % 50 == 0) gen.sweep(80.0f, 8000.0f, 0.4f, in.data(), in.size());
+        else gen.sine(440.0f, 0.4f, in.data(), in.size());
+
+        graph.process(in.data(), out.data(), in.size());
+    }
+    sentinel.unmarkCurrentThreadAsRealtime();
+    REQUIRE(sentinel.violations() == 0);
+}
+
+TEST_CASE("RT-safety: scene 12 (sung vowel path) is allocation-free on audio thread",
+          "[integration][realtime-safety][scene-12]") {
+    constexpr double sr = 48000.0;
+    constexpr std::size_t block = 512;
+    constexpr int blocks = 200;  // 200 blocks * 512 / 48000 = ~2.1 seconds
+
+    auto scenes = SceneLibrary::loadDirectory("/Users/user/GIT/guitar-dsp/.claude/worktrees/scene-11-12-sung-vowels/assets/scenes");
+    SceneEngine engine;
+    engine.loadScenes(std::move(scenes));
+    REQUIRE(engine.activateScene(12));
+
+    const auto& scene12 = engine.getActiveScene();
+    AudioGraph graph;
+    graph.prepare(sr, static_cast<int>(block));
+
+    // Apply scene 12 configuration to the graph.
+    // Scene 12 uses SungDirectPath (FormantShifter + ClipBank + VowelGrainLoop).
+    graph.setModulatorSource(AudioGraph::ModulatorSource::ClipBank);
+    graph.mixer().setDryWet(scene12.mixer.dryWet);
+    graph.mixer().setMasterGainDb(scene12.mixer.masterGainDb);
+    graph.mixer().reset();
+
+    SyntheticGuitar gen{sr};
+    std::vector<float> in(block), out(block);
+
+    RealtimeSentinel sentinel;
+    sentinel.markCurrentThreadAsRealtime();
+    for (int i = 0; i < blocks; ++i) {
+        // Vary input pattern to exercise vowel grain processing.
         if (i % 100 == 0) gen.silence(in.data(), in.size());
         else if (i % 50 == 0) gen.sweep(80.0f, 8000.0f, 0.4f, in.data(), in.size());
         else gen.sine(440.0f, 0.4f, in.data(), in.size());
