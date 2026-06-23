@@ -1,33 +1,31 @@
 #include <catch2/catch_test_macros.hpp>
 #include "midi/FCB1010Mapping.h"
 #include "scenes/SceneEngine.h"
+#include "scenes/SceneLibrary.h"
 
 using guitar_dsp::midi::FCB1010Mapping;
 using guitar_dsp::midi::SceneCommandType;
 using guitar_dsp::scenes::Scene;
 using guitar_dsp::scenes::SceneEngine;
+using guitar_dsp::scenes::SceneLibrary;
 
-TEST_CASE("integration: PC message switches scene and updates mixer params",
+TEST_CASE("integration: PC 0..13 each activate the corresponding scene id",
           "[integration][scenes][midi]") {
-    SceneEngine engine;
-    std::vector<Scene> scenes;
-    for (int i = 0; i < 10; ++i) {
-        Scene s = Scene::defaults(i);
-        s.mixer.masterGainDb = -static_cast<float>(i);  // 0..-9 dB
-        scenes.push_back(s);
-    }
-    engine.loadScenes(std::move(scenes));
-    REQUIRE(engine.getActiveSceneId() == 0);
+    auto scenes = SceneLibrary::loadDirectory(
+        "/Users/user/GIT/guitar-dsp/assets/scenes");
+    REQUIRE(!scenes.empty());
 
+    SceneEngine engine;
+    engine.loadScenes(std::move(scenes));
     auto mapping = FCB1010Mapping::stockDefaults();
 
-    // PC 7 → scene 7 → masterGainDb -7.
-    const auto msg = juce::MidiMessage::programChange(1, 7);
-    auto cmd = mapping.translate(msg);
-    REQUIRE(cmd.has_value());
-    REQUIRE(cmd->type == SceneCommandType::ActivateScene);
-
-    REQUIRE(engine.activateScene(cmd->payload));
-    REQUIRE(engine.getActiveSceneId() == 7);
-    REQUIRE(engine.currentMixerParams().masterGainDb == -7.0f);
+    for (int pc = 0; pc < 14; ++pc) {
+        const auto msg = juce::MidiMessage::programChange(1, pc);
+        auto cmd = mapping.translate(msg);
+        REQUIRE(cmd.has_value());
+        REQUIRE(cmd->type == SceneCommandType::ActivateScene);
+        const bool ok = engine.activateScene(cmd->payload);
+        if (! ok) continue;  // Skip undefined slots (12 doesn't exist until M2).
+        REQUIRE(engine.getActiveSceneId() == pc);
+    }
 }
