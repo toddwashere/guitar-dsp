@@ -37,6 +37,7 @@ add_library(guitar_dsp_audio STATIC
     audio/PhonemeSteppedTTSPlayer.cpp
     audio/AudioFileDecoder.cpp
     audio/FormantShifter.cpp
+    audio/GrainAnalyser.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC

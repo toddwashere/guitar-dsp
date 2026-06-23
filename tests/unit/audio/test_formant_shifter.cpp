@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "audio/FormantShifter.h"
+#include "audio/GrainAnalyser.h"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -64,4 +65,24 @@ TEST_CASE("FormantShifter reports finite latencySamples",
     const int lat = sh.latencySamples();
     REQUIRE(lat >= 0);
     REQUIRE(lat < 48000);  // < 1 s
+}
+
+TEST_CASE("analyseGrain produces a non-empty ShifterGrain over a sine",
+          "[grain-analyser]") {
+    using namespace guitar_dsp::audio;
+    const int sr = 48000;
+    const int n  = sr;  // 1 s
+    std::vector<float> samples(static_cast<std::size_t>(n), 0.0f);
+    for (int i = 0; i < n; ++i)
+        samples[i] = 0.3f * std::sin(2.0 * M_PI * 220.0 * i / sr);
+    auto g = analyseGrain(samples.data(), n, sr);
+    REQUIRE(g);
+    CHECK(g->sampleRate == sr);
+    CHECK(g->f0.size() > 0);
+    CHECK(g->spectrum.size() == g->f0.size());
+    CHECK(g->aperiodicity.size() == g->f0.size());
+    // Expect detected F0 near 220 Hz on at least one frame.
+    bool foundNear = false;
+    for (double f : g->f0) if (std::fabs(f - 220.0) < 20.0) { foundNear = true; break; }
+    CHECK(foundNear);
 }
