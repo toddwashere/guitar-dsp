@@ -54,8 +54,8 @@ private:
     double sampleRate_ = 48000.0;
 
     std::atomic<bool>  enabled_      {false};
-    std::atomic<float> thresholdDb_  {-3.0f};
-    std::atomic<float> thresholdLin_ {0.7079f};  // 10^(-3/20)
+    std::atomic<float> thresholdDb_  {-10.0f};
+    std::atomic<float> thresholdLin_ {0.3162f};  // 10^(-10/20)
     std::atomic<float> reportedGRdb_ {0.0f};
 
     // Audio-thread-only state.

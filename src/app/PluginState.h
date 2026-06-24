@@ -49,10 +49,11 @@ struct PluginStateData {
     std::uint32_t                                     sungVowelMask{0x1Fu};
 
     // Master limiter — applied at the very end of AudioGraph::process.
-    // Default off; threshold −3 dBFS catches near-clipping peaks without
-    // squashing typical playing.
+    // Default off; threshold −10 dBFS gives sensible loudness balancing
+    // across scenes for live use (the original −3 dB was too lenient —
+    // hot scenes still hit the master output much louder than quiet ones).
     bool                                              limiterEnabled{false};
-    float                                             limiterThresholdDb{-3.0f};
+    float                                             limiterThresholdDb{-10.0f};
 };
 
 // Minimal, forward-compatible JSON (de)serialization of the persisted plugin
