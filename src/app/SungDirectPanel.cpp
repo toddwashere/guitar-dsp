@@ -34,7 +34,7 @@ SungDirectPanel::SungDirectPanel() {
     pitchLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(pitchLabel_);
 
-    formantLabel_.setText("Formant tint", juce::dontSendNotification);
+    formantLabel_.setText("Pitch offset", juce::dontSendNotification);
     portamentoLabel_.setText("Portamento", juce::dontSendNotification);
     scoopLabel_.setText("Scoop", juce::dontSendNotification);
     for (auto* l : { &formantLabel_, &portamentoLabel_, &scoopLabel_ }) {

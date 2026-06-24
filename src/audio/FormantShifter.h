@@ -80,14 +80,17 @@ public:
     int latencySamples() const noexcept;
 
     // Number of semitones pre-rendered on each side of 1.0 (unity).
-    // 3 → 7 discrete ratios (-3..+3) which covers ±a minor third per grain.
-    // ClipBankPlayer picks the nearest-anchor grain on each onset so the
-    // shifter only has to span a small range around each anchor; with 3
-    // anchors per vowel this gives ~1.5 octaves of coverage per voice.
-    // Smaller numbers here = faster scene-12 activation (WORLD Synthesis
-    // is the expensive offline step).
-    static constexpr int kSemitoneRange = 3;
-    // Total discrete ratios = 2*kSemitoneRange + 1 (i.e. -3 to +3 inclusive).
+    // 18 → 37 discrete ratios (-18..+18) covering ±1.5 octaves per grain.
+    // Combined with the bundle's anchor spread (~150–290 Hz on m1) this
+    // covers the full guitar range E2 (82 Hz) → E5 (659 Hz) with margin —
+    // every played note maps to a pre-rendered ratio that's at most half
+    // a semitone away from the target pitch, so output tracks the guitar.
+    // Cost: WORLD's Synthesis runs once per ratio per grain offline at
+    // scene-12 activation. With 19 grains × 37 ratios × the M1.5 RT factor
+    // (~0.244) this is ~4–5 minutes per voice, then cached on disk via
+    // PrerenderCache for instant subsequent activations.
+    static constexpr int kSemitoneRange = 18;
+    // Total discrete ratios = 2*kSemitoneRange + 1 (i.e. -18 to +18 inclusive).
     static constexpr int kNumRatios = 2 * kSemitoneRange + 1;
 
 private:
