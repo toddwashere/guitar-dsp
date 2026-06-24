@@ -27,6 +27,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     vocoder_.setCarrierNoise(0.30f);
     carousel_.prepare(sampleRate, blockSize);
     sungDirectPath_.prepare(sampleRate, blockSize);
+    limiter_.prepare(sampleRate);
 
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     wetBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
@@ -208,6 +209,11 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
 
     // Mixer: dry = post-input guitar, wet = selected branch output.
     mixer_.process(postInputBuffer_.data(), wetBuffer_.data(), out, numSamples);
+
+    // Master limiter — last thing before output, catches any scene's peaks
+    // (loud vocoder bursts, hot sung-vowel grains, etc.) and keeps them at
+    // or below the configured threshold. No-op when disabled.
+    limiter_.process(out, static_cast<int>(numSamples));
 }
 
 void AudioGraph::setMicBlock(const float* mono, std::size_t numSamples) noexcept {

@@ -1267,6 +1267,9 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.personaId       = currentPersonaId_;
 
     d.activeVoiceIndexByScene = stateData_.activeVoiceIndexByScene;
+    d.sungVowelMask            = sungVowelMask();
+    d.limiterEnabled           = limiterEnabled();
+    d.limiterThresholdDb       = limiterThresholdDb();
 
     // Snapshot only custom prompts that differ from defaults.
     static constexpr ai::PersonaId kAllPersonas[] = {
@@ -1297,6 +1300,9 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     graph_.setPitchSinging(d.pitchSinging);
     graph_.setSinging(d.singing);
     graph_.setWordSyncMode(static_cast<audio::WordSyncMode>(d.wordSyncMode));
+    setSungVowelMask(d.sungVowelMask);
+    setLimiterEnabled(d.limiterEnabled);
+    setLimiterThresholdDb(d.limiterThresholdDb);
     sceneEngine_.activateScene(d.sceneId);
 
     selectModelId(d.selectedModelId);

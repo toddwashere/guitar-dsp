@@ -9,6 +9,7 @@
 #include "Carousel.h"
 #include "ChannelVocoder.h"
 #include "InputStage.h"
+#include "Limiter.h"
 #include "MicShaper.h"
 #include "Mixer.h"
 #include "ClipBankPlayer.h"
@@ -40,6 +41,8 @@ public:
     void  setNoiseGateThresholdDb(float dB) noexcept { inputStage_.setNoiseGateThreshold(dB); }
     float noiseGateThresholdDb()      const noexcept { return inputStage_.noiseGateThresholdDb(); }
     Mixer& mixer() { return mixer_; }
+    Limiter&       limiter()       { return limiter_; }
+    const Limiter& limiter() const { return limiter_; }
     TTSClipPlayer& ttsClipPlayer() { return ttsClipPlayer_; }
     NoteSteppedTTSPlayer& noteSteppedPlayer() { return noteSteppedPlayer_; }
     const NoteSteppedTTSPlayer& noteSteppedPlayer() const { return noteSteppedPlayer_; }
@@ -173,6 +176,7 @@ public:
 private:
     InputStage inputStage_;
     Mixer mixer_;
+    Limiter limiter_;
     TTSClipPlayer ttsClipPlayer_;
     NoteSteppedTTSPlayer noteSteppedPlayer_;
     PhonemeSteppedTTSPlayer phonemeSteppedPlayer_;

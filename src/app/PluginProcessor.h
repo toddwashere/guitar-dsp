@@ -272,6 +272,13 @@ public:
         return sungVowelMask_.load(std::memory_order_relaxed);
     }
 
+    // Master limiter controls (sits at the very end of the audio chain).
+    void  setLimiterEnabled(bool on) noexcept       { graph_.limiter().setEnabled(on); }
+    bool  limiterEnabled() const noexcept           { return graph_.limiter().enabled(); }
+    void  setLimiterThresholdDb(float db) noexcept  { graph_.limiter().setThresholdDb(db); }
+    float limiterThresholdDb() const noexcept       { return graph_.limiter().thresholdDb(); }
+    float limiterGainReductionDb() const noexcept   { return graph_.limiter().currentGainReductionDb(); }
+
     // The currently active scene's declared clarity (0..1), for the visibility
     // readout — so the operator can see when the live slider has drifted from
     // the scene's authored default.

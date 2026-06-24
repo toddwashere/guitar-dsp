@@ -114,6 +114,55 @@ void DiagnosticPanel::paint(juce::Graphics& g) {
                                     statusRow.getY(), 60, statusRow.getHeight()),
                juce::Justification::left);
 
+    // -------- Master limiter widget ----------------------------------
+    // Inline pill to the right of the Gate readout, left of the MIDI lamp.
+    // Click to toggle enabled; vertical drag to adjust threshold dB.
+    {
+        const bool  limOn = processor_.limiterEnabled();
+        const float thrDb = processor_.limiterThresholdDb();
+        const float grDb  = processor_.limiterGainReductionDb();
+
+        const int limX = lampBounds.getRight() + 64;
+        const int limW = 130;
+        limiterHitBox_ = juce::Rectangle<int>(limX,
+                                              statusRow.getY() + 1,
+                                              limW,
+                                              statusRow.getHeight() - 2);
+
+        // Background pill so the click target is visible.
+        g.setColour(limOn ? juce::Colour::fromRGB(48, 36, 24)
+                          : juce::Colour::fromRGB(28, 30, 36));
+        g.fillRoundedRectangle(limiterHitBox_.toFloat(), 4.0f);
+
+        // "Limit" label
+        g.setColour(limOn ? juce::Colour::fromRGB(230, 230, 235)
+                          : juce::Colour::fromRGB(120, 130, 145));
+        g.setFont(makeFont(11.0f));
+        g.drawText("Limit", limiterHitBox_.reduced(8, 0).removeFromLeft(34),
+                   juce::Justification::centredLeft);
+
+        // Activity LED — amber, brightness proportional to current GR.
+        const float grRange  = 10.0f;  // saturate at 10 dB GR
+        const float grNorm   = juce::jlimit(0.0f, 1.0f, grDb / grRange);
+        const float litBrt   = limOn ? (0.25f + 0.75f * grNorm) : 0.15f;
+        auto lampR = limiterHitBox_.withWidth(14)
+                                    .withSizeKeepingCentre(14, 14)
+                                    .translated(38, 0);
+        g.setColour(juce::Colour::fromFloatRGBA(0.95f, 0.65f, 0.20f, litBrt));
+        g.fillEllipse(lampR.toFloat());
+
+        // Threshold readout
+        const juce::String thrText = limOn
+            ? (juce::String(thrDb, 1) + " dB")
+            : juce::String("off");
+        g.setColour(limOn ? juce::Colour::fromRGB(250, 200, 120)
+                          : juce::Colour::fromRGB(110, 115, 125));
+        g.setFont(makeFont(11.0f));
+        g.drawText(thrText,
+                   limiterHitBox_.reduced(8, 0).removeFromRight(60),
+                   juce::Justification::centredRight);
+    }
+
     // MIDI activity LED at the far right of the status row.
     {
         const auto now = juce::Time::currentTimeMillis();
@@ -176,6 +225,31 @@ void DiagnosticPanel::drawMeter(juce::Graphics& g,
 
     g.setColour(barColour);
     g.fillRoundedRectangle(fill, 2.0f);
+}
+
+void DiagnosticPanel::mouseDown(const juce::MouseEvent& e) {
+    if (limiterHitBox_.contains(e.getPosition())) {
+        // Right-click → toggle enable. Left-click → start a drag (handled
+        // in mouseDrag) but also captures current threshold for relative
+        // changes.
+        if (e.mods.isRightButtonDown()) {
+            processor_.setLimiterEnabled(! processor_.limiterEnabled());
+            repaint();
+        } else {
+            limiterDragStartDb_ = processor_.limiterThresholdDb();
+        }
+        return;
+    }
+}
+
+void DiagnosticPanel::mouseDrag(const juce::MouseEvent& e) {
+    if (! limiterHitBox_.contains(e.getMouseDownPosition())) return;
+    // Each pixel of vertical drag = 0.25 dB. Up = louder threshold,
+    // down = harder limiting.
+    const int dy   = e.getMouseDownY() - e.getPosition().getY();
+    const float dDb = static_cast<float>(dy) * 0.25f;
+    processor_.setLimiterThresholdDb(limiterDragStartDb_ + dDb);
+    repaint();
 }
 
 } // namespace guitar_dsp

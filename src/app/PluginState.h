@@ -47,6 +47,12 @@ struct PluginStateData {
     // correspond to Ah/Eh/Ee/Oh/Oo in first-appearance order. Default
     // 0x1F = all 5 enabled.
     std::uint32_t                                     sungVowelMask{0x1Fu};
+
+    // Master limiter — applied at the very end of AudioGraph::process.
+    // Default off; threshold −3 dBFS catches near-clipping peaks without
+    // squashing typical playing.
+    bool                                              limiterEnabled{false};
+    float                                             limiterThresholdDb{-3.0f};
 };
 
 // Minimal, forward-compatible JSON (de)serialization of the persisted plugin

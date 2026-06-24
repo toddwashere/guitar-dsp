@@ -19,6 +19,8 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
 
 private:
     void timerCallback() override;
@@ -36,6 +38,11 @@ private:
     // MIDI activity indicator state.
     int          lastMidiSummary_ = 0;
     juce::int64  lastMidiTimeMs_  = 0;
+
+    // Hit-test rect for the limiter widget — populated in paint(), read in
+    // mouseDown() / mouseDrag() to decide whether the click belongs to us.
+    juce::Rectangle<int> limiterHitBox_;
+    float                limiterDragStartDb_ = -3.0f;
 };
 
 } // namespace guitar_dsp
