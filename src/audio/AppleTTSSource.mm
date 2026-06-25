@@ -1,4 +1,5 @@
 #include "AppleTTSSource.h"
+#include "util/PluginLogger.h"
 
 #import <AVFoundation/AVFoundation.h>
 
@@ -135,8 +136,9 @@ TTSClipPtr AppleTTSSource::synthesize(const std::string& text) {
             const bool ok = state->cv.wait_for(lock, std::chrono::seconds(3),
                                                [&state] { return state->done; });
             if (!ok || !state->gotAnyAudio) {
-                std::cerr << "[AppleTTSSource] synthesis failed or timed out for: "
-                          << text.substr(0, 64) << '\n';
+                guitar_dsp::log::warn(
+                    juce::String("AppleTTS synth ") + (ok ? "produced no audio" : "timed out")
+                    + " for: " + juce::String(text.substr(0, 64)));
                 return nullptr;
             }
         }

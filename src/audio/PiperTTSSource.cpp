@@ -1,4 +1,5 @@
 #include "PiperTTSSource.h"
+#include "util/PluginLogger.h"
 
 #include <juce_core/juce_core.h>
 
@@ -273,14 +274,14 @@ std::string PiperTTSSource::statusDetail() const {
 TTSClipPtr PiperTTSSource::synthesize(const std::string& text) {
     if (text.empty()) return nullptr;
     if (!isReady()) {
-        std::cerr << "[PiperTTSSource] not ready (binary or voice missing): "
-                  << binaryPath_ << " / " << voicePath_ << '\n';
+        guitar_dsp::log::warn("PiperTTS not ready: " + juce::String(statusDetail()));
         return nullptr;
     }
 
     const auto stdoutBytes = runPiperSubprocess(binaryPath_, voicePath_, text, 10000);
     if (stdoutBytes.empty()) {
-        std::cerr << "[PiperTTSSource] no audio from subprocess\n";
+        guitar_dsp::log::warn("PiperTTS subprocess produced no audio for: "
+                              + juce::String(text.substr(0, 64)));
         return nullptr;
     }
 

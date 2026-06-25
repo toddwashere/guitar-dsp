@@ -37,10 +37,15 @@ public:
     ~HostMidiPoller() override { stopTimer(); }
     void timerCallback() override {
         const int s = p_.pendingHostScene_.exchange(-1, std::memory_order_acquire);
-        if (s >= 0) p_.sceneEngine_.activateScene(s);
+        if (s >= 0) {
+            log::info("scene -> " + juce::String(s) + " (host MIDI)");
+            p_.sceneEngine_.activateScene(s);
+        }
 
-        if (p_.pendingPitchSingingToggle_.exchange(false, std::memory_order_acquire))
+        if (p_.pendingPitchSingingToggle_.exchange(false, std::memory_order_acquire)) {
+            log::info("pitch-singing toggle (host MIDI)");
             p_.togglePitchSinging();
+        }
     }
 private:
     PluginProcessor& p_;
@@ -92,8 +97,10 @@ PluginProcessor::PluginProcessor()
 
             if (auto cmd = midiMapping_.translate(msg)) {
                 if (cmd->type == midi::SceneCommandType::ActivateScene) {
+                    log::info("scene -> " + juce::String(cmd->payload) + " (direct MIDI)");
                     sceneEngine_.activateScene(cmd->payload);
                 } else if (cmd->type == midi::SceneCommandType::TogglePitchSinging) {
+                    log::info("pitch-singing toggle (direct MIDI)");
                     graph_.setPitchSinging(!graph_.pitchSinging());
                 }
                 // SetWetDry / SetMasterGain are recognized but no-op in
@@ -170,6 +177,7 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         // sceneId — fresh insertion lands on Bypass; reopened projects
         // restore whatever scene was active when saved.
         // Bypass scene is now at slot 13 (was 11 before sung-vowels landed).
+        log::info("scene -> 13 (Bypass on fresh load)");
         sceneEngine_.activateScene(13);
     }
 
@@ -347,6 +355,7 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
         graph_.sungDirectPath().setPortamentoMs(scene.directShift.portamentoMs);
         graph_.sungDirectPath().setFormantTintSemitones(
             scene.directShift.formantTintSemitones);
+        log::info("wetSource -> SungDirect (gspeak autoload)");
         graph_.setWetSource(audio::AudioGraph::WetSource::SungDirect);
 
         // Clear vocoder + bank players so a prior scene doesn't bleed in.
@@ -367,6 +376,7 @@ bool PluginProcessor::tryAutoLoadGspeak_(const scenes::Scene& scene) {
     // I7: Reset WetSource to Vocoder when leaving a directShift scene (or when
     // landing on a non-directShift scene that skipped the directShift branch above).
     // Without this, scene 12 → scene 11 transitions leave the wet bus on SungDirect.
+    log::info("wetSource -> Vocoder (gspeak autoload non-directShift)");
     graph_.setWetSource(audio::AudioGraph::WetSource::Vocoder);
 
     // Clear any leftover clip-bank state from a previous scene (e.g. scene 2
@@ -780,6 +790,9 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             // Carousel branch selection + config push (message thread).
             const auto carouselCfg = sceneEngine_.activeCarouselConfig();
             graph_.carousel().setConfig(carouselCfg);
+            log::info(juce::String("wetSource -> ")
+                      + (carouselCfg.enabled ? "Carousel" : "Vocoder")
+                      + " (scene-change callAsync)");
             graph_.setWetSource(carouselCfg.enabled
                 ? audio::AudioGraph::WetSource::Carousel
                 : audio::AudioGraph::WetSource::Vocoder);
@@ -1327,6 +1340,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     setSungVowelMask(d.sungVowelMask);
     setLimiterEnabled(d.limiterEnabled);
     setLimiterThresholdDb(d.limiterThresholdDb);
+    log::info("scene -> " + juce::String(d.sceneId) + " (setStateInformation)");
     sceneEngine_.activateScene(d.sceneId);
 
     selectModelId(d.selectedModelId);
