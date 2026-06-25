@@ -55,6 +55,13 @@ public:
     bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
+    // Override only to log — Logic may renegotiate channels or layouts under
+    // the plugin (e.g. after a project load, sample-rate change, or sidechain
+    // hookup). These transitions can silently break audio if state isn't
+    // re-prepared, so we want a log line whenever they fire.
+    void numChannelsChanged() override;
+    void processorLayoutsChanged() override;
+
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 

@@ -1,3 +1,17 @@
+# Cross-module utilities. Kept minimal — only things every layer can need.
+# Currently: the file logger (~/Library/Logs/Guitar Speak/…).
+add_library(guitar_dsp_util STATIC
+    util/PluginLogger.cpp
+)
+
+target_include_directories(guitar_dsp_util PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_compile_features(guitar_dsp_util PUBLIC cxx_std_20)
+
+target_link_libraries(guitar_dsp_util PUBLIC juce::juce_core)
+
 # Audio module library — pure C++, no JUCE dependency.
 # Modules added here as they are implemented.
 add_library(guitar_dsp_audio STATIC
@@ -51,6 +65,7 @@ target_compile_features(guitar_dsp_audio PUBLIC cxx_std_20)
 
 target_link_libraries(guitar_dsp_audio
     PUBLIC
+        guitar_dsp_util
         juce::juce_audio_formats
         juce::juce_dsp
     PRIVATE

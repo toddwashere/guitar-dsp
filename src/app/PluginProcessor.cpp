@@ -17,6 +17,7 @@
 #include "scenes/SceneLibrary.h"
 #include "TtsStatusBar.h"
 #include "SayPanel.h"
+#include "util/PluginLogger.h"
 
 namespace guitar_dsp {
 
@@ -64,7 +65,12 @@ PluginProcessor::PluginProcessor()
     // it's fully buffered, so the conversational-AI diagnostics never
     // appear until process exit. Force unbuffered so live tailing works.
     std::setvbuf(stderr, nullptr, _IONBF, 0);
-    std::fprintf(stderr, "[PluginProcessor] ctor wrapperType=%d\n", (int)wrapperType);
+
+    // File logger: ~/Library/Logs/Guitar Speak/Guitar Speak <date>.log
+    // (idempotent; first plugin instance wins). Critical for AU diagnosis —
+    // stderr is dropped inside Logic's sandboxed AUHostingServiceXPC.
+    log::init();
+    log::info("PluginProcessor ctor wrapperType=" + juce::String((int)wrapperType));
 
     midiRouter_ = std::make_unique<midi::MidiRouter>(
         [this, weakAlive = std::weak_ptr<std::atomic<bool>>(alive_)]
@@ -141,9 +147,12 @@ PluginProcessor::~PluginProcessor() {
     // already queued by MidiRouter will see this and bail out instead
     // of dereferencing a half-destroyed `this`.
     alive_->store(false, std::memory_order_release);
+    log::info("PluginProcessor dtor");
 }
 
 void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+    log::info("prepareToPlay sr=" + juce::String(sampleRate, 1)
+              + " block=" + juce::String(samplesPerBlock));
     graph_.prepare(sampleRate, samplesPerBlock);
     micCapture_.prepare(sampleRate, 1);
     monoScratch_.assign(static_cast<std::size_t>(samplesPerBlock), 0.0f);
@@ -218,7 +227,22 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
 }
 
 void PluginProcessor::releaseResources() {
+    log::info("releaseResources");
     graph_.reset();
+}
+
+void PluginProcessor::numChannelsChanged() {
+    log::info("numChannelsChanged in=" + juce::String(getTotalNumInputChannels())
+              + " out=" + juce::String(getTotalNumOutputChannels()));
+}
+
+void PluginProcessor::processorLayoutsChanged() {
+    juce::String desc;
+    for (int b = 0; b < getBusCount(true);  ++b)
+        desc += "in["  + juce::String(b) + "]=" + getChannelLayoutOfBus(true,  b).getDescription() + " ";
+    for (int b = 0; b < getBusCount(false); ++b)
+        desc += "out[" + juce::String(b) + "]=" + getChannelLayoutOfBus(false, b).getDescription() + " ";
+    log::info("processorLayoutsChanged " + desc);
 }
 
 void PluginProcessor::setMidiPreferredDeviceName(const juce::String& name) {
