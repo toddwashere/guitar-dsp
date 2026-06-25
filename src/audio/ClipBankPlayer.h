@@ -62,11 +62,34 @@ public:
 
     // Audio thread (same thread as process). Returns the current note-off
     // gate gain: 1.0 while a grain is sounding, ramps down during the
-    // 10 ms fade triggered by guitar going silent, 0.0 once gated off.
+    // release fade triggered by guitar going silent, 0.0 once gated off.
     // SungDirectPath uses this to gate FormantShifter output in lockstep.
+    //
+    // While the post-onset minimum-hold window is active, returns 1.0
+    // unconditionally — this lets downstream consumers (e.g. the SungDirect
+    // shifter, which loops the analysed grain) sustain past the natural
+    // length of the source clip without the gate clipping them.
     float currentGateGain() const noexcept {
+        if (gateHoldRemaining_ > 0) return 1.0f;
         if (!playing_) return 0.0f;
         return gateFadingOut_ ? std::max(0.0f, gateFadeGain_) : 1.0f;
+    }
+
+    // Message thread. Minimum window during which the gate stays fully open
+    // after each onset, regardless of guitar input amplitude. Prevents
+    // staccato plucks from cutting a sustained-vowel scene short. Set to 0
+    // to disable (default — preserves the legacy "track guitar amplitude
+    // exactly" behaviour used by scenes 2 and 11).
+    void setGateMinHoldMs(float ms) noexcept {
+        gateMinHoldMs_ = std::max(0.0f, ms);
+        recomputeGateTimes_();
+    }
+    // Message thread. Length of the smooth fade-to-silence applied once the
+    // gate releases (after hold + hangover). Larger values give consecutive
+    // notes a natural overlap; smaller values are tighter. Default 8 ms.
+    void setGateReleaseMs(float ms) noexcept {
+        gateReleaseMs_ = std::max(0.1f, ms);
+        recomputeGateTimes_();
     }
 
 private:
@@ -104,10 +127,20 @@ private:
     float gateFadeGain_         = 1.0f;   // current fade multiplier during stop
     float gateFadeStep_         = 0.0f;   // per-sample decrement; set in prepare()
     bool  gateFadingOut_        = false;
+    int   gateMinHoldSamples_   = 0;      // length of post-onset open window
+    int   gateHoldRemaining_    = 0;      // countdown during hold window
     static constexpr float kGateSilenceThreshold = 0.060f;  // ≈ −24 dBFS — catches
                                                             // typical guitar decay
                                                             // before the natural ring
                                                             // overwhelms the gate.
+
+    // Configured gate times (ms). Defaults preserve legacy behaviour. Caller
+    // tunes via setGateMinHoldMs / setGateReleaseMs; values get applied to
+    // sample-domain members on the next prepare() or setter call.
+    double sampleRate_     = 48000.0;
+    float  gateMinHoldMs_  = 0.0f;
+    float  gateReleaseMs_  = 8.0f;
+    void   recomputeGateTimes_() noexcept;
 
 public:
     // Message thread. Enabled-keys bitmask for anchor-mode rotation. Bit i

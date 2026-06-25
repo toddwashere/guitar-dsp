@@ -15,6 +15,14 @@ void SungDirectPath::prepare(double sampleRate, int blockSize) {
     sampleRate_ = sampleRate;
     blockSize_  = std::max(64, blockSize);
     clipBank_.prepare(sampleRate, blockSize_);
+    // Sustained-vowel feel: hold the gate fully open for 300 ms after each
+    // onset so a quickly-decaying pluck (palm mute, fingerstyle) doesn't
+    // chop the vowel short, then release over 400 ms so consecutive notes
+    // overlap naturally instead of snapping off. The shifter loops the
+    // analysed grain indefinitely under the gate, so longer hold/release
+    // costs nothing on the audio path.
+    clipBank_.setGateMinHoldMs(300.0f);
+    clipBank_.setGateReleaseMs(400.0f);
     shifter_.prepare(sampleRate, blockSize_);
     vowelLoop_.prepare(sampleRate);
     grainOutBuf_.assign(static_cast<std::size_t>(blockSize_), 0.0f);

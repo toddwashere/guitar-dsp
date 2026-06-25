@@ -9,18 +9,30 @@ namespace guitar_dsp::audio {
 ClipBankPlayer::ClipBankPlayer() = default;
 
 void ClipBankPlayer::prepare(double sampleRate, int /*blockSize*/) {
+    sampleRate_ = sampleRate;
     onset_.prepare(sampleRate);
     // Note-off gate coefficients.
-    //   Release time = 10 ms  → coef = exp(-1 / (sr * 0.010)) — peak follower
-    //                          decays fast enough to track guitar's natural
-    //                          decay envelope.
-    //   Hangover     = 30 ms  → short grace period; total cutoff latency
-    //                          ~40 ms from when amplitude crosses threshold.
-    //   Fade-out     = 8 ms   → smooth click-free stop.
+    //   Envelope release = 10 ms  → coef = exp(-1 / (sr * 0.010)) — peak
+    //                                follower decays fast enough to track
+    //                                guitar's natural decay envelope.
+    //   Hangover         = 30 ms  → short grace period; total cutoff latency
+    //                                ~40 ms from when amplitude crosses
+    //                                threshold.
+    //   Hold + Fade-out  → tunable via setGateMinHoldMs/setGateReleaseMs;
+    //                       defaults preserve the original tight "8 ms fade,
+    //                       no hold" behaviour.
     gateReleaseCoef_     = std::exp(-1.0f / static_cast<float>(sampleRate * 0.010));
     gateHangoverSamples_ = static_cast<int>(0.030 * sampleRate);
-    gateFadeStep_        = 1.0f / static_cast<float>(sampleRate * 0.008);
+    recomputeGateTimes_();
     reset();
+}
+
+void ClipBankPlayer::recomputeGateTimes_() noexcept {
+    gateMinHoldSamples_ =
+        static_cast<int>(gateMinHoldMs_ * 0.001f * static_cast<float>(sampleRate_));
+    const float releaseSamples =
+        std::max(1.0f, gateReleaseMs_ * 0.001f * static_cast<float>(sampleRate_));
+    gateFadeStep_ = 1.0f / releaseSamples;
 }
 
 void ClipBankPlayer::reset() {
@@ -35,6 +47,7 @@ void ClipBankPlayer::reset() {
     gateSilenceCounter_ = 0;
     gateFadeGain_       = 1.0f;
     gateFadingOut_      = false;
+    gateHoldRemaining_  = 0;
 }
 
 void ClipBankPlayer::setBank(std::vector<TTSClipPtr> clips) {
@@ -99,7 +112,18 @@ void ClipBankPlayer::process(const float* onsetSrc, float* modOut,
             gateEnv_ = gateReleaseCoef_ * gateEnv_
                      + (1.0f - gateReleaseCoef_) * absG;
         }
-        if (gateEnv_ < kGateSilenceThreshold) {
+        if (gateHoldRemaining_ > 0) {
+            // Post-onset minimum-hold window: gate stays fully open
+            // regardless of guitar amplitude. Lets sustained-vowel scenes
+            // (sung-direct) ride out the guitar's natural decay without
+            // chopping the note short.
+            --gateHoldRemaining_;
+            gateSilenceCounter_ = 0;
+            if (gateFadingOut_) {
+                gateFadingOut_ = false;
+                gateFadeGain_  = 1.0f;
+            }
+        } else if (gateEnv_ < kGateSilenceThreshold) {
             if (gateSilenceCounter_ < gateHangoverSamples_) {
                 ++gateSilenceCounter_;
             } else if (playing_ && !gateFadingOut_) {
@@ -161,10 +185,13 @@ void ClipBankPlayer::process(const float* onsetSrc, float* modOut,
             cursor_  = next;
             playPos_ = 0;
             playing_ = true;
-            // Fresh attack overrides any in-progress gate fade.
+            // Fresh attack overrides any in-progress gate fade and arms the
+            // minimum-hold window so the new note is guaranteed N ms of
+            // open gate regardless of how fast the guitar amplitude decays.
             gateFadingOut_      = false;
             gateFadeGain_       = 1.0f;
             gateSilenceCounter_ = 0;
+            gateHoldRemaining_  = gateMinHoldSamples_;
             currentClipIndex_.store(cursor_, std::memory_order_relaxed);
         }
 
