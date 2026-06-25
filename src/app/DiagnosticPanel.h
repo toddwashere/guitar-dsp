@@ -43,6 +43,11 @@ private:
     // mouseDown() / mouseDrag() to decide whether the click belongs to us.
     juce::Rectangle<int> limiterHitBox_;
     float                limiterDragStartDb_ = -3.0f;
+
+    // Hit-test rect for the "Log" pill — click reveals ~/Library/Logs/Guitar
+    // Speak/ in Finder so the operator can grab the active log file after a
+    // bad take without leaving Logic.
+    juce::Rectangle<int> logHitBox_;
 };
 
 } // namespace guitar_dsp

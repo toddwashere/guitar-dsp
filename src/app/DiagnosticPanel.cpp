@@ -1,6 +1,7 @@
 #include "DiagnosticPanel.h"
 
 #include "PluginProcessor.h"
+#include "util/PluginLogger.h"
 
 #include <cmath>
 
@@ -179,6 +180,20 @@ void DiagnosticPanel::paint(juce::Graphics& g) {
         g.drawText("MIDI", midiArea, juce::Justification::left);
     }
 
+    // "Log" pill — click reveals the active log file in Finder.
+    {
+        const int logX = limiterHitBox_.getRight() + 8;
+        logHitBox_ = juce::Rectangle<int>(logX,
+                                          statusRow.getY() + 1,
+                                          44,
+                                          statusRow.getHeight() - 2);
+        g.setColour(juce::Colour::fromRGB(28, 30, 36));
+        g.fillRoundedRectangle(logHitBox_.toFloat(), 4.0f);
+        g.setColour(juce::Colour::fromRGB(180, 190, 205));
+        g.setFont(makeFont(11.0f));
+        g.drawText("Log", logHitBox_, juce::Justification::centred);
+    }
+
     area.removeFromTop(4);
 
     // --- Row 2: side-by-side input + output meters -----------------------
@@ -238,6 +253,17 @@ void DiagnosticPanel::mouseDown(const juce::MouseEvent& e) {
         } else {
             limiterDragStartDb_ = processor_.limiterThresholdDb();
         }
+        return;
+    }
+    if (logHitBox_.contains(e.getPosition())) {
+        // Reveal active log file. Falls back to opening the parent dir if
+        // the file doesn't exist yet (init failed) — better than silently
+        // doing nothing.
+        const auto file = log::file();
+        if (file != juce::File{} && file.existsAsFile())
+            file.revealToUser();
+        else if (auto dir = log::dir(); dir != juce::File{})
+            dir.revealToUser();
         return;
     }
 }
