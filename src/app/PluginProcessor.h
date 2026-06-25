@@ -513,6 +513,17 @@ private:
     class HostMidiPoller;
     std::unique_ptr<HostMidiPoller> hostMidiPoller_;
 
+    // Silence watchdog. The audio thread bumps audioBlockCounter_ each block
+    // and tracks how many consecutive blocks have had input present but
+    // output silent. A message-thread timer reads both, logs once on rising
+    // edge ("audio silent with input present" / "audio thread stopped"), and
+    // re-arms only after a cooldown. Zero overhead on the audio path: two
+    // relaxed atomic ops per block, no allocations.
+    std::atomic<std::uint64_t> audioBlockCounter_ {0};
+    std::atomic<int>           silenceBlockStreak_ {0};
+    class SilenceWatchdog;
+    std::unique_ptr<SilenceWatchdog> silenceWatchdog_;
+
     // Conversational AI subsystem.
     std::unique_ptr<ai::AppPreferences>     prefs_;
     // MUST stay declared above personas_: PersonaRegistry holds a raw

@@ -31,6 +31,70 @@ private:
     PluginProcessor& owner_;
 };
 
+// 4 Hz watchdog. Reads two atomics published by the audio thread and logs
+// once per rising edge of (a) audio-thread stalled (no processBlock for >2s),
+// and (b) audio silent with input present (>~290ms of input>-60 dBFS while
+// output<-90 dBFS). Re-arms only after 10s of recovery so log volume stays
+// at "1 line per event" regardless of how long the bad state lasts.
+class PluginProcessor::SilenceWatchdog : public juce::Timer {
+public:
+    explicit SilenceWatchdog(PluginProcessor& p) : p_(p) { startTimerHz(4); }
+    ~SilenceWatchdog() override { stopTimer(); }
+    void timerCallback() override {
+        // (1) Is the audio thread alive?
+        const auto ctr = p_.audioBlockCounter_.load(std::memory_order_relaxed);
+        if (ctr == lastBlockCtr_) {
+            ++stalledTicks_;
+            if (stalledTicks_ == 8 && !stallLogged_) {  // 8 ticks @ 4 Hz = 2s
+                stallLogged_ = true;
+                log::warn("audio thread stopped — no processBlock for >2s; scene="
+                          + juce::String(p_.activeSceneId())
+                          + " inCh="  + juce::String(p_.getLastInputChannelCount())
+                          + " outCh=" + juce::String(p_.getLastOutputChannelCount()));
+            }
+        } else {
+            if (stallLogged_) {
+                log::info("audio thread resumed (after " + juce::String(stalledTicks_ / 4)
+                          + "s stall)");
+                stallLogged_ = false;
+            }
+            stalledTicks_ = 0;
+            lastBlockCtr_ = ctr;
+        }
+
+        // (2) Input present + output silent?
+        const auto streak = p_.silenceBlockStreak_.load(std::memory_order_relaxed);
+        if (streak >= 100 && !silenceLogged_) {  // ~290ms at 44.1k/128
+            silenceLogged_ = true;
+            log::warn(juce::String("audio silent with input present; streak=")
+                      + juce::String(streak)
+                      + " scene="    + juce::String(p_.activeSceneId())
+                      + " inPeak="   + juce::String(p_.getInputPeak(),  4)
+                      + " outPeak="  + juce::String(p_.getOutputPeak(), 6)
+                      + " gateGain=" + juce::String(p_.getGateGain(),   3)
+                      + " wetSrc="   + juce::String((int)p_.graph_.wetSource())
+                      + " limiterOn="    + juce::String(p_.limiterEnabled() ? 1 : 0)
+                      + " limiterGRdB="  + juce::String(p_.limiterGainReductionDb(), 1));
+        }
+        if (streak == 0 && silenceLogged_) {
+            if (++recoveryTicks_ >= 40) {  // 10s @ 4 Hz
+                log::info("audio recovered (silence cleared)");
+                silenceLogged_ = false;
+                recoveryTicks_ = 0;
+            }
+        } else if (streak != 0) {
+            recoveryTicks_ = 0;
+        }
+    }
+private:
+    PluginProcessor& p_;
+    std::uint64_t lastBlockCtr_  = 0;
+    int  stalledTicks_  = 0;
+    int  recoveryTicks_ = 0;
+    bool stallLogged_   = false;
+    bool silenceLogged_ = false;
+};
+
 class PluginProcessor::HostMidiPoller : public juce::Timer {
 public:
     explicit HostMidiPoller(PluginProcessor& p) : p_(p) { startTimerHz(30); }
@@ -132,6 +196,10 @@ PluginProcessor::PluginProcessor()
     // own direct-CoreMIDI MidiRouter (avoids double-triggering).
     if (wrapperType != wrapperType_Standalone)
         hostMidiPoller_ = std::make_unique<HostMidiPoller>(*this);
+
+    // Silence watchdog: detects "audio went quiet while input was present" and
+    // "audio thread stopped firing processBlock" — one log line per event.
+    silenceWatchdog_ = std::make_unique<SilenceWatchdog>(*this);
 
     // Conversational AI subsystem.
     prefs_ = std::make_unique<ai::AppPreferences>(ai::AppPreferences::defaultPath());
@@ -1223,6 +1291,16 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
     inputPeak_.store(inPeak, std::memory_order_relaxed);
     outputPeak_.store(outPeak, std::memory_order_relaxed);
     gateGain_.store(graph_.input().currentGateGain(), std::memory_order_relaxed);
+
+    // Silence-watchdog publish (read by SilenceWatchdog::timerCallback at 4 Hz).
+    // Two relaxed atomic ops — zero allocations, no file I/O on the audio path.
+    audioBlockCounter_.fetch_add(1, std::memory_order_relaxed);
+    constexpr float kInputPresentLin = 0.001f;     // -60 dBFS
+    constexpr float kOutputSilentLin = 3.16e-5f;   // -90 dBFS
+    if (inPeak > kInputPresentLin && outPeak < kOutputSilentLin)
+        silenceBlockStreak_.fetch_add(1, std::memory_order_relaxed);
+    else
+        silenceBlockStreak_.store(0, std::memory_order_relaxed);
 
     // Write post-DSP mono samples into the visualization ring buffer.
     // Bitmask wraparound (kAudioRingSize is power-of-two).

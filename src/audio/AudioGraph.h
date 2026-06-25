@@ -60,6 +60,9 @@ public:
     void setWetSource(WetSource s) noexcept {
         wetSource_.store(static_cast<int>(s), std::memory_order_relaxed);
     }
+    WetSource wetSource() const noexcept {
+        return static_cast<WetSource>(wetSource_.load(std::memory_order_relaxed));
+    }
 
     enum class ModulatorSource { Linear, NoteStepped, ClipBank, Mic };
     // Message-thread: choose which TTS player feeds the vocoder modulator.
