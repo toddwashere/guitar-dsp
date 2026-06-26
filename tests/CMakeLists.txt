@@ -62,6 +62,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_nan_inf_guard.cpp
     unit/audio/test_branch_limiter.cpp
     unit/audio/test_rave_front_end_gate.cpp
+    unit/audio/test_rave_front_end_eq.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
