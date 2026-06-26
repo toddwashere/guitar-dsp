@@ -16,6 +16,7 @@
 #include "NoteSteppedTTSPlayer.h"
 #include "PhonemeSteppedTTSPlayer.h"
 #include "PitchTrackedCarrier.h"
+#include "RaveSynthesizer.h"
 #include "SungDirectPath.h"
 #include "TTSClipPlayer.h"
 
@@ -61,13 +62,43 @@ public:
     SungDirectPath&       sungDirectPath()       { return sungDirectPath_; }
     const SungDirectPath& sungDirectPath() const { return sungDirectPath_; }
 
-    enum class WetSource { Vocoder, Carousel, SungDirect };
+    enum class WetSource { Vocoder, Carousel, SungDirect, Rave };
     // Message-thread: choose which branch feeds the Mixer's wet input.
     void setWetSource(WetSource s) noexcept {
         wetSource_.store(static_cast<int>(s), std::memory_order_relaxed);
     }
     WetSource wetSource() const noexcept {
         return static_cast<WetSource>(wetSource_.load(std::memory_order_relaxed));
+    }
+    WetSource getWetSource() const noexcept {
+        return static_cast<WetSource>(wetSource_.load(std::memory_order_relaxed));
+    }
+
+    // UI-facing mirror of RaveBranchStatus (insulates callers from RaveSynthesizer.h).
+    enum class RaveStatusForUI { Loading, Loaded, Unavailable, Stalled };
+
+    // Load the RAVE ONNX model. Non-blocking: triggers background load;
+    // reports Unavailable gracefully if the file doesn't exist (T14).
+    void loadRaveModel(const std::string& onnxPath);
+
+    // RAVE parameter setters — message thread, atomic writes.
+    void setRaveGateDb(float db)  noexcept { rave_.setGateDb(db); }
+    void setRavePresence(float a) noexcept { rave_.setPresence(a); }
+    void setRaveDriveDb(float db) noexcept { rave_.setDriveDb(db); }
+    void setRaveDryWet(float w)   noexcept { raveDryWet_.store(w, std::memory_order_relaxed); }
+
+    // RAVE diagnostic readouts.
+    RaveStatusForUI raveStatusForUI() const noexcept;
+    float raveInputRms()     const noexcept { return rave_.inputRms(); }
+    float raveOutputRms()    const noexcept { return rave_.outputRms(); }
+    float raveInferenceMs()  const noexcept { return rave_.inferenceMs(); }
+
+    // 4-arg process overload: sidechain is currently unused (pass nullptr).
+    // Provided so the RAVE integration test can match the brief's call pattern
+    // without breaking existing 3-arg callers.
+    void process(const float* in, const float* /*sidechain*/,
+                 float* out, std::size_t numSamples) {
+        process(in, out, numSamples);
     }
 
     enum class ModulatorSource { Linear, NoteStepped, ClipBank, Mic };
@@ -193,11 +224,13 @@ private:
     ChannelVocoder vocoder_;
     Carousel carousel_;
     SungDirectPath sungDirectPath_;
+    RaveSynthesizer rave_;
     MicShaper micShaper_;
 
-    std::atomic<int> wetSource_ {static_cast<int>(WetSource::Vocoder)};
-    std::atomic<int> modulatorSource_ {static_cast<int>(ModulatorSource::Linear)};
-    std::atomic<int> activeSpeechPlayer_ {static_cast<int>(ActiveSpeechPlayer::NoteStepped)};
+    std::atomic<int>   wetSource_ {static_cast<int>(WetSource::Vocoder)};
+    std::atomic<int>   modulatorSource_ {static_cast<int>(ModulatorSource::Linear)};
+    std::atomic<int>   activeSpeechPlayer_ {static_cast<int>(ActiveSpeechPlayer::NoteStepped)};
+    std::atomic<float> raveDryWet_ {0.95f};
 
     // Cached UI-visible value. The broadcast in setOnsetSensitivityDb pushes
     // the threshold into every player's OnsetDetector; this atomic is just
