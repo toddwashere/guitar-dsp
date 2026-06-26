@@ -54,6 +54,18 @@ TEST_CASE("RaveSynthesizer: stub model passes audio through (after warm-up)", "[
     // Push enough audio to fill the input ring + complete one inference window.
     runBlocks(syn, /*blocks=*/40, /*bs=*/512);
 
+    // Wait for the background worker to complete at least one inference window.
+    // Worker idle-sleeps 1 ms; one window (2048 samples) of inference takes a
+    // few ms on the stub identity model. Poll by continuing to push audio and
+    // checking outputRms (which is set in processBlock when output ring has data).
+    std::vector<float> in(512), out(512);
+    for (int i = 0; i < 50 && syn.outputRms() == 0.0f; ++i) {
+        for (std::size_t j = 0; j < 512; ++j)
+            in[j] = 0.3f * std::sin(2.0f * 3.14159265f * 220.0f * float(i * 512 + j) / 48000.0f);
+        syn.processBlock(in.data(), out.data(), 512);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
     REQUIRE(syn.inputRms() > 0.01f);
     REQUIRE(syn.outputRms() > 0.0f);  // identity model + audio in -> audio out
 }
