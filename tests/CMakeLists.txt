@@ -15,6 +15,7 @@ add_custom_target(sung_vowels_test_bundle ALL DEPENDS ${SUNG_VOWELS_TEST_BUNDLE}
 
 add_executable(guitar_dsp_tests
     unit/test_smoke.cpp
+    unit/test_onnx_runtime_links.cpp
     unit/test_realtime_sentinel.cpp
     unit/test_synthetic_guitar.cpp
     unit/test_golden_file.cpp
@@ -142,6 +143,7 @@ target_link_libraries(guitar_dsp_tests PRIVATE
     juce::juce_audio_processors
     juce::juce_gui_basics
     Catch2::Catch2WithMain
+    onnxruntime::onnxruntime
 )
 
 target_include_directories(guitar_dsp_tests PRIVATE

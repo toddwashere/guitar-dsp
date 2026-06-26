@@ -23,3 +23,27 @@ endif()
 if(TARGET world)
     target_compile_options(world PRIVATE -w)
 endif()
+
+# ---- ONNX Runtime (RAVE inference, scene 5) -----------------------------
+set(ONNX_VERSION "1.18.0")
+if(APPLE)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+        set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-osx-arm64-${ONNX_VERSION}.tgz")
+    else()
+        set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-osx-x86_64-${ONNX_VERSION}.tgz")
+    endif()
+else()
+    message(FATAL_ERROR "ONNX Runtime fetch only configured for macOS in this project")
+endif()
+FetchContent_Declare(onnxruntime_prebuilt URL "${ONNX_URL}")
+FetchContent_MakeAvailable(onnxruntime_prebuilt)
+
+add_library(onnxruntime SHARED IMPORTED GLOBAL)
+set_target_properties(onnxruntime PROPERTIES
+    IMPORTED_LOCATION "${onnxruntime_prebuilt_SOURCE_DIR}/lib/libonnxruntime.dylib"
+    INTERFACE_INCLUDE_DIRECTORIES "${onnxruntime_prebuilt_SOURCE_DIR}/include")
+add_library(onnxruntime::onnxruntime ALIAS onnxruntime)
+
+# Install the dylib next to the app/AU at build time
+set(GUITAR_DSP_ONNX_DYLIB "${onnxruntime_prebuilt_SOURCE_DIR}/lib/libonnxruntime.dylib"
+    CACHE INTERNAL "Path to the ONNX Runtime dylib for bundling")
