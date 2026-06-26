@@ -53,7 +53,6 @@ TEST_CASE("LockFreeSPSCRing: wrap-around preserves order", "[audio][ring]") {
 TEST_CASE("LockFreeSPSCRing: stress producer/consumer threads", "[audio][ring][stress]") {
     constexpr std::size_t N = 100'000;
     LockFreeSPSCRing<int> r(1024);
-    std::atomic<bool> done{false};
     std::vector<int> got;
     got.reserve(N);
 
@@ -74,7 +73,6 @@ TEST_CASE("LockFreeSPSCRing: stress producer/consumer threads", "[audio][ring][s
             off += r.write(chunk + off, std::size_t(j) - off);
         }
     }
-    done.store(true);
     consumer.join();
 
     REQUIRE(got.size() == N);

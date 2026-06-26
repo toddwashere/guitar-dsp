@@ -39,6 +39,8 @@ public:
     }
 
     std::size_t available() const noexcept {
+        // SPSC: only producer writes wr_, only consumer writes rd_,
+        // so caller's own pointer is relaxed; foreign pointer needs acquire.
         const auto r = rd_.load(std::memory_order_relaxed);
         const auto w = wr_.load(std::memory_order_acquire);
         return (w + cap_ - r) % cap_;
