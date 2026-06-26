@@ -85,6 +85,32 @@ processBlock() (T8).
 - Full suite: 501 pass, 7 fail, 4 skip
 - Regression check: PASS (no net change in fail/skip counts)
 
+## Fix Pass (post-review)
+
+**Defect:** Commit `dfce176` introduced a discontinuous piecewise function `|x| < 0.891 ? x : tanh(x)` that produced audible clicks/zippers when audio swept through the boundary (tanh(0.891) ≈ 0.712, but linear branch returns 0.891 — jump of ~0.18).
+
+**Root cause:** The brief's Test 1 expected near-bitexact passthrough (`|b - in| < 1e-3f`) with inputs as high as 0.7f, which no honest soft-clip satisfies (e.g., tanh(0.7) ≈ 0.6044, off by 0.0956). The piecewise was a miscalibrated workaround.
+
+**Fix commit:** `ffd5879`
+- Replaced `processBlockDriveOnly()` with plain tanh saturator (the brief's original code)
+- Recalibrated Test 1 to use small amplitudes {0.001, -0.003, 0.005, -0.008} where tanh is genuinely linear within the 1e-3 bound (tanh(0.008) = 0.0079998…, diff < 1e-5)
+- Left other two tests unchanged; both already pass with plain tanh
+
+**Test re-run (drive tests only):**
+```
+ctest --test-dir build-tests -R 'drive' --output-on-failure
+257: RaveFrontEnd::Drive: 0 dB drive is near-bitexact passthrough ... Passed
+258: RaveFrontEnd::Drive: hot drive soft-clips bounded to 1.0 ......... Passed
+476: Auto-Vocal Scene 4: LFO formant + drive produces audible 'weedly' character ... Passed
+507: Scene 11 sung-vowel bundle drives non-silent wet output ........... Passed
+4/4 tests passed
+```
+
+**Full suite delta:**
+- Before: 501 pass, 7 fail, 4 skip (498 baseline + 3 drive tests)
+- After: 501 pass, 7 fail, 4 skip
+- No new failures. The 7-fail baseline is unchanged (transient AI test failures, unrelated).
+
 ## Next Steps
 
 Task 8 will compose `processBlockGateOnly()`, `processBlockEqOnly()`, and `processBlockDriveOnly()` into a single `processBlock()` entry point. The three temporary entry points remain untouched per design.
