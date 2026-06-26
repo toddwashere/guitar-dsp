@@ -32,37 +32,39 @@ public:
         driveLin_ = std::pow(10.0f, db / 20.0f);
     }
 
-    void processBlockDriveOnly(float* buf, std::size_t n) noexcept {
-        for (std::size_t i = 0; i < n; ++i) {
-            float x = buf[i] * driveLin_;
-            buf[i] = std::tanh(x);
-        }
-    }
-
-    void processBlockEqOnly(float* buf, std::size_t n) noexcept {
+    void processBlock(float* buf, std::size_t n) noexcept {
+        // EQ coefficient recompute if presence changed (audio-thread-safe; no alloc).
         if (presence_ != currentPresence_) {
             updateEqCoeffs_();
             currentPresence_ = presence_;
         }
+        double sum = 0.0;
         for (std::size_t i = 0; i < n; ++i) {
-            float x = buf[i];
-            x = hpf_.process(x);
-            x = peak_.process(x);
-            x = shelf_.process(x);
-            buf[i] = x;
-        }
-    }
-
-    void processBlockGateOnly(float* buf, std::size_t n) noexcept {
-        for (std::size_t i = 0; i < n; ++i) {
+            // Gate
             const float a = std::fabs(buf[i]);
             const float c = (a > env_) ? attackCoeff_ : releaseCoeff_;
             env_ += (a - env_) * c;
             const float target = (env_ > gateLin_) ? 1.0f : 0.0f;
             const float gc = (target > gateGain_) ? attackCoeff_ : releaseCoeff_;
             gateGain_ += (target - gateGain_) * gc;
-            buf[i] *= gateGain_;
+            float x = buf[i] * gateGain_;
+            // EQ
+            x = hpf_.process(x);
+            x = peak_.process(x);
+            x = shelf_.process(x);
+            // Drive + soft clip
+            x = std::tanh(x * driveLin_);
+            buf[i] = x;
+            sum += double(x) * x;
         }
+        postRms_ = std::sqrt(float(sum / double(n)));
+    }
+
+    float postRms() const noexcept { return postRms_; }
+
+    void resetState() noexcept {
+        env_ = 0.0f; gateGain_ = 0.0f; postRms_ = 0.0f;
+        hpf_.reset(); peak_.reset(); shelf_.reset();
     }
 
 protected:
@@ -95,6 +97,9 @@ protected:
 
     // Drive state
     float driveLin_ = 1.0f;
+
+    // Output state
+    float postRms_ = 0.0f;
 
     static void makeHighPass(Biquad& b, float fs, float f0) noexcept {
         const float w0 = 6.2831853f * f0 / fs;
