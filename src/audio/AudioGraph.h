@@ -70,9 +70,6 @@ public:
     WetSource wetSource() const noexcept {
         return static_cast<WetSource>(wetSource_.load(std::memory_order_relaxed));
     }
-    WetSource getWetSource() const noexcept {
-        return static_cast<WetSource>(wetSource_.load(std::memory_order_relaxed));
-    }
 
     // UI-facing mirror of RaveBranchStatus (insulates callers from RaveSynthesizer.h).
     enum class RaveStatusForUI { Loading, Loaded, Unavailable, Stalled };

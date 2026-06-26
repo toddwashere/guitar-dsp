@@ -46,5 +46,5 @@ TEST_CASE("AudioGraph: scene without rave leaves WetSource at Vocoder", "[integr
     AudioGraph g;
     g.prepare(48000.0, 512);
     // No loadRaveModel; default wet source is Vocoder.
-    REQUIRE(g.getWetSource() != AudioGraph::WetSource::Rave);
+    REQUIRE(g.wetSource() != AudioGraph::WetSource::Rave);
 }
