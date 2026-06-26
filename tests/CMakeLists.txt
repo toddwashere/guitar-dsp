@@ -118,7 +118,9 @@ add_executable(guitar_dsp_tests
     unit/app/test_asset_locator.cpp
     unit/app/test_ai_settings_panel.cpp
     unit/app/test_song_store.cpp
+    unit/app/test_rave_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/RavePanel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/StatePill.cpp
     ${CMAKE_SOURCE_DIR}/src/app/ConversationPanel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AiSettingsPanel.cpp

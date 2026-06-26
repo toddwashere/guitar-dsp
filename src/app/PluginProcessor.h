@@ -281,6 +281,10 @@ public:
         return sungVowelMask_.load(std::memory_order_relaxed);
     }
 
+    // Direct AudioGraph access — used by RavePanel which takes AudioGraph& directly
+    // so its unit tests can construct a bare AudioGraph without PluginProcessor.
+    audio::AudioGraph& graph() noexcept { return graph_; }
+
     // Master limiter controls (sits at the very end of the audio chain).
     void  setLimiterEnabled(bool on) noexcept       { graph_.limiter().setEnabled(on); }
     bool  limiterEnabled() const noexcept           { return graph_.limiter().enabled(); }
