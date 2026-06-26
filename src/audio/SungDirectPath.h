@@ -49,6 +49,10 @@ public:
     void setEnabledKeysMask(std::uint32_t mask) noexcept {
         clipBank_.setEnabledKeysMask(mask);
     }
+    // Forwards to the embedded ClipBankPlayer's onset detector.
+    void setOnsetSensitivityDb(float dB) noexcept {
+        clipBank_.setOnsetSensitivityDb(dB);
+    }
 
     // ---- Background-render load state for UI -------------------------------
     enum class LoadState { Idle, Loading, Ready };

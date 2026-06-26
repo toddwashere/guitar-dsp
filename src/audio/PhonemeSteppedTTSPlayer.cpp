@@ -1,6 +1,7 @@
 #include "PhonemeSteppedTTSPlayer.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace guitar_dsp::audio {
 
@@ -36,6 +37,13 @@ void PhonemeSteppedTTSPlayer::setMaxSustainMs(double ms) noexcept {
 
 void PhonemeSteppedTTSPlayer::rewind() noexcept {
     pendingRewind_.store(true, std::memory_order_release);
+}
+
+void PhonemeSteppedTTSPlayer::setOnsetSensitivityDb(float dB) noexcept {
+    const float attackLin = std::pow(10.0f, dB         * 0.05f);
+    const float rearmLin  = std::pow(10.0f, (dB - 8.0f) * 0.05f);
+    onset_.setAttackThreshold(attackLin);
+    onset_.setRearmThreshold (rearmLin);
 }
 
 void PhonemeSteppedTTSPlayer::advanceToNext_() {

@@ -1,5 +1,7 @@
 #include "NoteSteppedTTSPlayer.h"
 
+#include <cmath>
+
 namespace guitar_dsp::audio {
 
 NoteSteppedTTSPlayer::NoteSteppedTTSPlayer() = default;
@@ -37,6 +39,13 @@ WordSyncMode NoteSteppedTTSPlayer::mode() const noexcept {
 
 void NoteSteppedTTSPlayer::rewind() noexcept {
     pendingRewind_.store(true, std::memory_order_release);
+}
+
+void NoteSteppedTTSPlayer::setOnsetSensitivityDb(float dB) noexcept {
+    const float attackLin = std::pow(10.0f, dB         * 0.05f);
+    const float rearmLin  = std::pow(10.0f, (dB - 8.0f) * 0.05f);
+    onset_.setAttackThreshold(attackLin);
+    onset_.setRearmThreshold (rearmLin);
 }
 
 void NoteSteppedTTSPlayer::process(const float* onsetSrc, float* modOut,

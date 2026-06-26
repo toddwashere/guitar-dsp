@@ -92,6 +92,12 @@ public:
         recomputeGateTimes_();
     }
 
+    // Message thread. Onset detector attack threshold in dBFS — softer plucks
+    // register when this is lower (more negative). Re-arm threshold sits 8 dB
+    // below to provide hysteresis against double-triggers. Forwarded to the
+    // embedded OnsetDetector.
+    void setOnsetSensitivityDb(float dB) noexcept;
+
 private:
     OnsetDetector onset_;
 

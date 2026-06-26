@@ -20,7 +20,7 @@ juce::String PluginState::toJson(const PluginStateData& d) {
     o->setProperty("makeup",       d.makeup);
     o->setProperty("carrierNoise", d.carrierNoise);
     o->setProperty("sibilance",    d.sibilance);
-    o->setProperty("gateThresholdDb", d.gateThresholdDb);
+    o->setProperty("onsetSensitivityDb", d.onsetSensitivityDb);
     o->setProperty("micCaptureGain",  d.micCaptureGain);
     o->setProperty("pitchSinging", d.pitchSinging);
     o->setProperty("singing", d.singing);
@@ -65,8 +65,8 @@ PluginStateData PluginState::fromJson(const juce::String& json) {
         if (o->hasProperty("makeup"))       d.makeup       = (float) (double) o->getProperty("makeup");
         if (o->hasProperty("carrierNoise")) d.carrierNoise = (float) (double) o->getProperty("carrierNoise");
         if (o->hasProperty("sibilance"))    d.sibilance    = (float) (double) o->getProperty("sibilance");
-        if (o->hasProperty("gateThresholdDb"))
-            d.gateThresholdDb = (float) (double) o->getProperty("gateThresholdDb");
+        if (o->hasProperty("onsetSensitivityDb"))
+            d.onsetSensitivityDb = (float) (double) o->getProperty("onsetSensitivityDb");
         if (o->hasProperty("micCaptureGain"))
             d.micCaptureGain = (float) (double) o->getProperty("micCaptureGain");
         if (o->hasProperty("pitchSinging"))

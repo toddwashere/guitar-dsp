@@ -244,9 +244,11 @@ public:
     float detectedCents()    const noexcept { return graph_.detectedCents(); }
     float detectedHz()       const noexcept { return graph_.detectedHz(); }
 
-    // Noise gate threshold (dBFS). Lower = more permissive.
-    void  setNoiseGateThresholdDb(float dB) noexcept { graph_.setNoiseGateThresholdDb(dB); }
-    float noiseGateThresholdDb() const noexcept      { return graph_.noiseGateThresholdDb(); }
+    // Onset detector sensitivity (dBFS attack threshold). Lower = more
+    // sensitive — softer plucks trigger note-driven scenes. Re-arm sits
+    // 8 dB below for hysteresis. Broadcasts to every onset-driven player.
+    void  setOnsetSensitivityDb(float dB) noexcept { graph_.setOnsetSensitivityDb(dB); }
+    float onsetSensitivityDb() const noexcept      { return graph_.onsetSensitivityDb(); }
 
     // --- SungDirect live controls (message thread) -------------------------
     // Forwarded to AudioGraph::sungDirectPath() for scene-12 UI sliders.

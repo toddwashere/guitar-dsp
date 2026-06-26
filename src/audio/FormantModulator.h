@@ -32,6 +32,10 @@ public:
     //   posOut   — filled with one position value per sample.
     void process(const float* onsetSrc, float* posOut, std::size_t numSamples) noexcept;
 
+    // Message thread. Onset detector attack threshold in dBFS — softer plucks
+    // register when this is lower (more negative). Re-arm sits 8 dB below.
+    void setOnsetSensitivityDb(float dB) noexcept;
+
 private:
     Mode  mode_              = Mode::Static;
     float staticPos_         = 0.0f;

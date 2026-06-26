@@ -15,7 +15,12 @@ struct PluginStateData {
     float makeup       = 4.0f;
     float carrierNoise = 0.30f;
     float sibilance    = 0.3f;
-    float gateThresholdDb = -60.0f;  // noise gate (lower = more permissive)
+    float onsetSensitivityDb = -32.0f;  // dBFS attack threshold for the
+                                         // onset detector (lower = more
+                                         // sensitive). Re-arm sits 8 dB
+                                         // below in OnsetDetector. Persisted
+                                         // because per-rig pickups vary a
+                                         // lot in level.
     float micCaptureGain  = 4.0f;    // linear; +12 dB default. Boosts the
                                       // mic input fed to MicCapture (whisper)
                                       // and the VocoderPanel meter. Tunable

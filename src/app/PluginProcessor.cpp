@@ -1371,7 +1371,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest) {
     d.makeup       = graph_.vocoderMakeup();
     d.carrierNoise = graph_.vocoderCarrierNoise();
     d.sibilance    = graph_.vocoderSibilance();
-    d.gateThresholdDb = graph_.noiseGateThresholdDb();
+    d.onsetSensitivityDb = graph_.onsetSensitivityDb();
     d.micCaptureGain  = micCaptureGain();
     d.pitchSinging = graph_.pitchSinging();
     d.singing = graph_.singing();
@@ -1410,7 +1410,7 @@ void PluginProcessor::setStateInformation(const void* data, int sizeInBytes) {
     graph_.setVocoderMakeup(d.makeup);
     graph_.setVocoderCarrierNoise(d.carrierNoise);
     graph_.setVocoderSibilance(d.sibilance);
-    graph_.setNoiseGateThresholdDb(d.gateThresholdDb);
+    graph_.setOnsetSensitivityDb(d.onsetSensitivityDb);
     setMicCaptureGain(d.micCaptureGain);
     graph_.setPitchSinging(d.pitchSinging);
     graph_.setSinging(d.singing);

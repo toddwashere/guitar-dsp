@@ -39,6 +39,12 @@ public:
     // Audio-thread API. in and out may alias.
     void process(const float* in, float* out, std::size_t numSamples) noexcept;
 
+    // Forwards to the embedded FormantModulator (only relevant in Envelope
+    // mode — Static / Lfo ignore the onset detector entirely).
+    void setOnsetSensitivityDb(float dB) noexcept {
+        formantMod_.setOnsetSensitivityDb(dB);
+    }
+
 private:
     void applyConfig(const scenes::CarouselConfig& cfg) noexcept;  // audio thread
 

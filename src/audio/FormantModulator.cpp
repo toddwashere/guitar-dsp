@@ -37,6 +37,13 @@ void FormantModulator::setEnvelopeAttackMs(float ms) noexcept {
     envRampPerSample_ = (samples > 0.0f) ? (1.0f / samples) : 1.0f;
 }
 
+void FormantModulator::setOnsetSensitivityDb(float dB) noexcept {
+    const float attackLin = std::pow(10.0f, dB         * 0.05f);
+    const float rearmLin  = std::pow(10.0f, (dB - 8.0f) * 0.05f);
+    onset_.setAttackThreshold(attackLin);
+    onset_.setRearmThreshold (rearmLin);
+}
+
 void FormantModulator::process(const float* onsetSrc, float* posOut,
                                 std::size_t numSamples) noexcept {
     switch (mode_) {

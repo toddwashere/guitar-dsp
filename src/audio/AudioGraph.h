@@ -37,9 +37,15 @@ public:
 
     InputStage& input() { return inputStage_; }
 
-    // Noise-gate threshold convenience (forwards to InputStage).
-    void  setNoiseGateThresholdDb(float dB) noexcept { inputStage_.setNoiseGateThreshold(dB); }
-    float noiseGateThresholdDb()      const noexcept { return inputStage_.noiseGateThresholdDb(); }
+    // Onset-detector sensitivity (dBFS). Broadcasts to every player that
+    // triggers off guitar onsets — ClipBankPlayer (scenes 2 & 11), the one
+    // inside SungDirectPath (scene 12), NoteSteppedTTSPlayer (scenes 1 & 6),
+    // PhonemeSteppedTTSPlayer, and FormantModulator. Lower (more negative)
+    // = more sensitive; default -32 dBFS matches OnsetDetector's defaults.
+    void  setOnsetSensitivityDb(float dB) noexcept;
+    float onsetSensitivityDb()      const noexcept {
+        return onsetSensitivityDb_.load(std::memory_order_relaxed);
+    }
     Mixer& mixer() { return mixer_; }
     Limiter&       limiter()       { return limiter_; }
     const Limiter& limiter() const { return limiter_; }
@@ -192,6 +198,11 @@ private:
     std::atomic<int> wetSource_ {static_cast<int>(WetSource::Vocoder)};
     std::atomic<int> modulatorSource_ {static_cast<int>(ModulatorSource::Linear)};
     std::atomic<int> activeSpeechPlayer_ {static_cast<int>(ActiveSpeechPlayer::NoteStepped)};
+
+    // Cached UI-visible value. The broadcast in setOnsetSensitivityDb pushes
+    // the threshold into every player's OnsetDetector; this atomic is just
+    // for the read-back getter.
+    std::atomic<float> onsetSensitivityDb_ {-32.0f};
 
     std::atomic<bool> diagBypassVocoder_ {false};
     std::atomic<bool> diagNoiseCarrier_  {false};

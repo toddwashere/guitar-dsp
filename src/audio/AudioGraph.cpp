@@ -7,6 +7,17 @@ namespace guitar_dsp::audio {
 
 AudioGraph::AudioGraph() = default;
 
+void AudioGraph::setOnsetSensitivityDb(float dB) noexcept {
+    onsetSensitivityDb_.store(dB, std::memory_order_relaxed);
+    // Broadcast to every onset-driven player. Each forwards to its embedded
+    // OnsetDetector and recomputes attack + rearm thresholds.
+    clipBankPlayer_.setOnsetSensitivityDb(dB);
+    noteSteppedPlayer_.setOnsetSensitivityDb(dB);
+    phonemeSteppedPlayer_.setOnsetSensitivityDb(dB);
+    sungDirectPath_.setOnsetSensitivityDb(dB);
+    carousel_.setOnsetSensitivityDb(dB);
+}
+
 void AudioGraph::prepare(double sampleRate, int blockSize) {
     inputStage_.prepare(sampleRate, blockSize);
     mixer_.prepare(sampleRate, blockSize);
@@ -28,6 +39,10 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     carousel_.prepare(sampleRate, blockSize);
     sungDirectPath_.prepare(sampleRate, blockSize);
     limiter_.prepare(sampleRate);
+
+    // Re-apply the cached onset sensitivity so a sample-rate change /
+    // re-prepare doesn't snap detectors back to the OnsetDetector default.
+    setOnsetSensitivityDb(onsetSensitivityDb_.load(std::memory_order_relaxed));
 
     postInputBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);
     wetBuffer_.assign(static_cast<std::size_t>(blockSize), 0.0f);

@@ -45,6 +45,11 @@ public:
     // Audio thread. onsetSrc = clean guitar; writes the modulator to modOut.
     void process(const float* onsetSrc, float* modOut, std::size_t numSamples) noexcept;
 
+    // Message thread. Onset detector attack threshold in dBFS — softer plucks
+    // register when this is lower (more negative). See ClipBankPlayer for the
+    // same convention. Rearm threshold is set 8 dB below.
+    void setOnsetSensitivityDb(float dB) noexcept;
+
     // UI: current spoken word index, or -1 when idle.
     int currentWordIndex() const noexcept {
         return currentWordIndex_.load(std::memory_order_relaxed);

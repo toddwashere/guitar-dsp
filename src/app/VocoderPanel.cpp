@@ -41,12 +41,17 @@ VocoderPanel::VocoderPanel(PluginProcessor& p)
         processor_.setVocoderClarity(static_cast<float>(clarity_.getValue()));
     };
 
-    configureSlider(gateThreshold_, gateThresholdLabel_, "Noise Gate");
-    gateThreshold_.setRange(-90.0, -20.0, 0.5);
-    gateThreshold_.setTextValueSuffix(" dB");
-    gateThreshold_.setValue(processor_.noiseGateThresholdDb(), juce::dontSendNotification);
-    gateThreshold_.onValueChange = [this] {
-        processor_.setNoiseGateThresholdDb(static_cast<float>(gateThreshold_.getValue()));
+    // Onset detector attack threshold. Lower (more negative dB) = more
+    // sensitive — softer plucks register. Re-arm threshold sits 8 dB below
+    // for hysteresis (handled internally by each player's OnsetDetector).
+    // Replaces the old "Noise Gate" knob, which at its -60 dB default was
+    // effectively a pass-through for any intentionally-played note.
+    configureSlider(sensitivity_, sensitivityLabel_, "Sensitivity");
+    sensitivity_.setRange(-50.0, -10.0, 0.5);
+    sensitivity_.setTextValueSuffix(" dB");
+    sensitivity_.setValue(processor_.onsetSensitivityDb(), juce::dontSendNotification);
+    sensitivity_.onValueChange = [this] {
+        processor_.setOnsetSensitivityDb(static_cast<float>(sensitivity_.getValue()));
     };
 
     // Mic capture gain — boost applied to the mic input before BOTH the
@@ -84,7 +89,7 @@ void VocoderPanel::timerCallback() {
     syncSlider(carrierNoise_,  processor_.vocoderCarrierNoise());
     syncSlider(sibilance_,     processor_.vocoderSibilance());
     syncSlider(clarity_,       processor_.vocoderClarity());
-    syncSlider(gateThreshold_, processor_.noiseGateThresholdDb());
+    syncSlider(sensitivity_, processor_.onsetSensitivityDb());
     syncSlider(micGain_,
                20.0 * std::log10(juce::jmax(0.001f, processor_.micCaptureGain())));
 
@@ -247,7 +252,7 @@ void VocoderPanel::resized() {
     cell(1, carrierNoise_,  carrierNoiseLabel_);
     cell(2, sibilance_,     sibilanceLabel_);
     cell(3, clarity_,       clarityLabel_);
-    cell(4, gateThreshold_, gateThresholdLabel_);
+    cell(4, sensitivity_,   sensitivityLabel_);
     cell(5, micGain_,       micGainLabel_);
 }
 

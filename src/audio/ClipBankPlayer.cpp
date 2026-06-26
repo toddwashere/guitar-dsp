@@ -35,6 +35,13 @@ void ClipBankPlayer::recomputeGateTimes_() noexcept {
     gateFadeStep_ = 1.0f / releaseSamples;
 }
 
+void ClipBankPlayer::setOnsetSensitivityDb(float dB) noexcept {
+    const float attackLin = std::pow(10.0f, dB         * 0.05f);
+    const float rearmLin  = std::pow(10.0f, (dB - 8.0f) * 0.05f);
+    onset_.setAttackThreshold(attackLin);
+    onset_.setRearmThreshold (rearmLin);
+}
+
 void ClipBankPlayer::reset() {
     onset_.reset();
     cursor_  = -1;

@@ -31,6 +31,10 @@ public:
     void process(const float* onsetSrc, float* modOut,
                  std::size_t numSamples) noexcept;     // audio thread
 
+    // Message thread. Onset detector attack threshold in dBFS — softer plucks
+    // register when this is lower (more negative). Re-arm sits 8 dB below.
+    void setOnsetSensitivityDb(float dB) noexcept;
+
     int currentSyllableIndex() const noexcept {
         return currentSylIdx_.load(std::memory_order_relaxed);
     }

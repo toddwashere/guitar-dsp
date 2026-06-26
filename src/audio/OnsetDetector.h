@@ -21,8 +21,13 @@ private:
     double sampleRate_   = 48000.0;
     float  env_          = 0.0f;
     float  releaseCoef_  = 0.0f;
-    float  attackThresh_ = 0.05f;
-    float  rearmThresh_  = 0.02f;
+    // Default thresholds correspond to -32 dBFS attack, -40 dBFS re-arm
+    // (8 dB hysteresis). Tuned for soft fingerstyle plucks on a clean
+    // pickup — the previous defaults (-26 / -34 dB) required hard strums
+    // to trigger. Overridable per-player via setAttackThreshold/
+    // setRearmThreshold.
+    float  attackThresh_ = 0.025f;
+    float  rearmThresh_  = 0.010f;
     bool   armed_        = true;
     int    debounceSamples_ = 0;
     int    sinceOnset_      = 0;
