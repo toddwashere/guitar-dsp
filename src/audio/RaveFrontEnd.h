@@ -28,6 +28,17 @@ public:
         // audio thread with zero allocation.
     }
 
+    void setDriveDb(float db) noexcept {
+        driveLin_ = std::pow(10.0f, db / 20.0f);
+    }
+
+    void processBlockDriveOnly(float* buf, std::size_t n) noexcept {
+        for (std::size_t i = 0; i < n; ++i) {
+            float x = buf[i] * driveLin_;
+            buf[i] = std::fabs(x) < 0.891253533f ? x : std::tanh(x);
+        }
+    }
+
     void processBlockEqOnly(float* buf, std::size_t n) noexcept {
         if (presence_ != currentPresence_) {
             updateEqCoeffs_();
@@ -81,6 +92,9 @@ protected:
     Biquad hpf_, peak_, shelf_;
     float presence_ = 0.5f;
     float currentPresence_ = -1.0f;   // forces first-block recompute
+
+    // Drive state
+    float driveLin_ = 1.0f;
 
     static void makeHighPass(Biquad& b, float fs, float f0) noexcept {
         const float w0 = 6.2831853f * f0 / fs;
