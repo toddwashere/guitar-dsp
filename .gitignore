@@ -26,6 +26,7 @@ tests/output/
 Testing/
 tests/fixtures/tts/*/audio.wav
 tests/fixtures/sung_vowels_test.gspeak
+tests/fixtures/rave_stub_model.onnx
 
 # Ballmer chant — user-generated, not redistributed (see scripts/build_developers_clip.py)
 assets/tts/01_developers/audio.wav

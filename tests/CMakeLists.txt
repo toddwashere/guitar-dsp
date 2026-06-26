@@ -13,6 +13,18 @@ add_custom_command(
     VERBATIM)
 add_custom_target(sung_vowels_test_bundle ALL DEPENDS ${SUNG_VOWELS_TEST_BUNDLE})
 
+set(RAVE_STUB_MODEL
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/rave_stub_model.onnx)
+add_custom_command(
+    OUTPUT ${RAVE_STUB_MODEL}
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_rave_stub_model.py
+            ${RAVE_STUB_MODEL}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_rave_stub_model.py
+    COMMENT "Building rave_stub_model.onnx fixture"
+    VERBATIM)
+add_custom_target(rave_stub_model ALL DEPENDS ${RAVE_STUB_MODEL})
+
 add_executable(guitar_dsp_tests
     unit/test_smoke.cpp
     unit/test_onnx_runtime_links.cpp
@@ -82,6 +94,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_resolved_gspeak_path.cpp
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
+    unit/ml/test_rave_inference.cpp
     unit/midi/test_fcb1010_mapping.cpp
     unit/midi/test_fcb1010_mapping_ai.cpp
     unit/midi/test_host_midi_scene_router.cpp
@@ -140,12 +153,14 @@ add_executable(guitar_dsp_tests
 )
 
 add_dependencies(guitar_dsp_tests sung_vowels_test_bundle)
+add_dependencies(guitar_dsp_tests rave_stub_model)
 
 target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio
     guitar_dsp_scenes
     guitar_dsp_midi
     guitar_dsp_ai
+    guitar_dsp_ml
     juce::juce_audio_formats
     juce::juce_audio_processors
     juce::juce_gui_basics
@@ -156,6 +171,9 @@ target_link_libraries(guitar_dsp_tests PRIVATE
 target_include_directories(guitar_dsp_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+target_compile_definitions(guitar_dsp_tests PRIVATE
+    STUB_MODEL_PATH="${RAVE_STUB_MODEL}")
 
 include(${CMAKE_SOURCE_DIR}/external/Catch2/extras/Catch.cmake)
 catch_discover_tests(guitar_dsp_tests)

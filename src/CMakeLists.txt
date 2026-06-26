@@ -132,6 +132,8 @@ target_link_libraries(guitar_dsp_midi
         juce::juce_events
 )
 
+add_subdirectory(ml)
+
 # Standalone application (declared in Task 5)
 # The app target is added by app/CMakeLists.txt when it exists.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/app/CMakeLists.txt")
