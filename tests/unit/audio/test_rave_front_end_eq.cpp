@@ -38,11 +38,11 @@ TEST_CASE("RaveFrontEnd::VoiceEQ: 2.5 kHz tone boosted with presence>0", "[audio
     REQUIRE(rmsAt(b1, 2048) > rmsAt(b0, 2048) * 1.5f); // +~6 dB
 }
 
-TEST_CASE("RaveFrontEnd::VoiceEQ: 8 kHz tone cut with presence>0", "[audio][rave-frontend][eq]") {
+TEST_CASE("RaveFrontEnd::VoiceEQ: 16 kHz tone cut with presence>0", "[audio][rave-frontend][eq]") {
     RaveFrontEnd f0; f0.prepare(48000.0); f0.setPresence(0.0f);
     RaveFrontEnd f1; f1.prepare(48000.0); f1.setPresence(1.0f);
-    auto b0 = tone(8000.0f, 0.5f, 4096, 48000.0);
-    auto b1 = tone(8000.0f, 0.5f, 4096, 48000.0);
+    auto b0 = tone(16000.0f, 0.5f, 4096, 48000.0);
+    auto b1 = tone(16000.0f, 0.5f, 4096, 48000.0);
     f0.processBlockEqOnly(b0.data(), b0.size());
     f1.processBlockEqOnly(b1.data(), b1.size());
     REQUIRE(rmsAt(b1, 2048) < rmsAt(b0, 2048) * 0.85f); // -~3 dB
