@@ -547,7 +547,11 @@ private:
     // llm_->generate(). The engine takes its own shared_ptr; the old client
     // stays alive until that worker call returns.
     std::shared_ptr<ai::ILlmClient>         llm_;
-    std::string                             selectedModelId_ {"claude-haiku-4-5"};
+    // Default LLM = local Ollama llama3.2 (zero-dep, no API key required, runs
+    // entirely off-machine state). Scene 4 is the only LLM-using scene today,
+    // and the user wants it usable out of the box without first opening the
+    // AI Settings panel to pick a model.
+    std::string                             selectedModelId_ {"ollama:llama3.2"};
     ai::PersonaId                           currentPersonaId_ {ai::PersonaId::Interviewer};
     std::unique_ptr<ai::ConversationEngine> engine_;
 

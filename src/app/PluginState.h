@@ -37,7 +37,7 @@ struct PluginStateData {
     // change a scene's clarity persistently, edit the scene JSON.
 
     // AI feature fields
-    std::string                                       selectedModelId       {"claude-haiku-4-5"};
+    std::string                                       selectedModelId       {"ollama:llama3.2"};
     ai::PersonaId                                     personaId             {ai::PersonaId::Interviewer};
     std::map<ai::PersonaId, std::string>              customPromptByPersona {};
     int                                               maxSentences          {2};
