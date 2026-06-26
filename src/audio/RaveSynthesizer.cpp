@@ -1,4 +1,5 @@
 #include "audio/RaveSynthesizer.h"
+#include <juce_core/juce_core.h>
 #include <algorithm>
 #include <cstring>
 
@@ -32,6 +33,11 @@ void RaveSynthesizer::releaseResources() {
 }
 
 void RaveSynthesizer::loadModel(const std::string& path) {
+    if (worker_.joinable()) {
+        juce::Logger::writeToLog("RaveSynthesizer::loadModel called twice — ignoring subsequent call. "
+                                  "Model is one-shot; restart the host to swap models.");
+        return;
+    }
     releaseResources();
     stop_.store(false, std::memory_order_release);
     status_.store(RaveBranchStatus::Loading, std::memory_order_release);
@@ -118,11 +124,11 @@ void RaveSynthesizer::processBlock(const float* in, float* wetOut, std::size_t n
         if (silent > 100) status_.store(RaveBranchStatus::Stalled, std::memory_order_release);
     }
 
-    // NaN/Inf guard.
+    // NaN/Inf guard. guard_.processBlock already zero-fills wetOut when it
+    // detects bad samples, so no separate memset is needed here.
     if (!guard_.processBlock(wetOut, n) && guard_.stalled() &&
         s == RaveBranchStatus::Loaded) {
         status_.store(RaveBranchStatus::Stalled, std::memory_order_release);
-        std::memset(wetOut, 0, n * sizeof(float));
     }
 
     // Branch peak limiter.

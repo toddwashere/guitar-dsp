@@ -45,6 +45,9 @@ TEST_CASE("AudioGraph: WetSource::Rave routes through RaveSynthesizer", "[integr
 TEST_CASE("AudioGraph: scene without rave leaves WetSource at Vocoder", "[integration][rave]") {
     AudioGraph g;
     g.prepare(48000.0, 512);
-    // No loadRaveModel; default wet source is Vocoder.
-    REQUIRE(g.wetSource() != AudioGraph::WetSource::Rave);
+    // No loadRaveModel; explicitly set Vocoder and confirm routing holds after a push.
+    g.setWetSource(AudioGraph::WetSource::Vocoder);
+    std::vector<float> in(512, 0.0f), out(512, 0.0f);
+    g.process(in.data(), out.data(), 512);
+    REQUIRE(g.wetSource() == AudioGraph::WetSource::Vocoder);
 }

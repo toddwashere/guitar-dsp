@@ -90,11 +90,13 @@ public:
     float raveOutputRms()    const noexcept { return rave_.outputRms(); }
     float raveInferenceMs()  const noexcept { return rave_.inferenceMs(); }
 
-    // 4-arg process overload: sidechain is currently unused (pass nullptr).
+    // reserved — not currently wired
+    // 4-arg process overload: sidechain parameter is reserved for future use (pass nullptr).
     // Provided so the RAVE integration test can match the brief's call pattern
     // without breaking existing 3-arg callers.
-    void process(const float* in, const float* /*sidechain*/,
+    void process(const float* in, const float* unusedSidechain,
                  float* out, std::size_t numSamples) {
+        (void)unusedSidechain;
         process(in, out, numSamples);
     }
 

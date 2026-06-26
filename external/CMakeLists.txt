@@ -26,6 +26,7 @@ endif()
 
 # ---- ONNX Runtime (RAVE inference, scene 5) -----------------------------
 set(ONNX_VERSION "1.18.0")
+set(GUITAR_DSP_ONNX_VERSION "${ONNX_VERSION}" CACHE INTERNAL "ONNX Runtime version for bundling")
 if(APPLE)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
         set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-osx-arm64-${ONNX_VERSION}.tgz")
