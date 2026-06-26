@@ -47,6 +47,7 @@ target_sources(guitar_dsp_app PRIVATE
     SceneIndicator.cpp
     SpectrumAnalyzer.cpp
     VocoderPanel.cpp
+    RavePanel.cpp
     VoicePackPicker.cpp
     VowelMaskPills.cpp
     SungDirectPanel.cpp
@@ -113,6 +114,66 @@ endfunction()
 
 guitar_dsp_post_build_copy(guitar_dsp_app_Standalone "${GUITAR_DSP_ASSETS_SRC}"  assets)
 guitar_dsp_post_build_copy(guitar_dsp_app_Standalone "${GUITAR_DSP_WHISPER_SRC}" whisper)
+
+# ── ONNX Runtime dylib bundling ───────────────────────────────────────────────
+# The dylib's install name is @rpath/libonnxruntime.<version>.dylib (versioned).
+# We copy the versioned file next to each binary and set @rpath / @loader_path
+# so the dynamic linker finds it without an absolute path.
+# Version is controlled by GUITAR_DSP_ONNX_VERSION (set in external/CMakeLists.txt).
+#
+# Per-target locations:
+#   Standalone → Contents/MacOS/libonnxruntime.<version>.dylib   (@executable_path)
+#   AU         → Contents/MacOS/libonnxruntime.<version>.dylib   (@loader_path)
+#
+# The unversioned symlink (libonnxruntime.dylib → libonnxruntime.<version>.dylib)
+# resolves the install name only because macOS dyld follows symlinks; copying
+# the versioned file directly is cleaner and avoids symlink-across-filesystem
+# issues in CMake's copy_if_different.
+# GUITAR_DSP_ONNX_DYLIB points at the unversioned symlink (.../libonnxruntime.dylib).
+# The dylib's actual install name is @rpath/libonnxruntime.<version>.dylib, so we
+# must bundle the VERSIONED file so the dynamic linker finds it by that name.
+# Derive the versioned path by replacing the filename in the same directory.
+get_filename_component(_onnx_dylib_dir "${GUITAR_DSP_ONNX_DYLIB}" DIRECTORY)
+set(_onnx_versioned_dylib "${_onnx_dylib_dir}/libonnxruntime.${GUITAR_DSP_ONNX_VERSION}.dylib")
+
+foreach(_rpath_target guitar_dsp_app_Standalone guitar_dsp_app_AU)
+    if(TARGET ${_rpath_target})
+        add_custom_command(TARGET ${_rpath_target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${_onnx_versioned_dylib}"
+                "$<TARGET_FILE_DIR:${_rpath_target}>/libonnxruntime.${GUITAR_DSP_ONNX_VERSION}.dylib"
+            COMMENT "Copying ONNX Runtime dylib next to ${_rpath_target}"
+            VERBATIM)
+    endif()
+endforeach()
+
+# Set rpath so the binary resolves @rpath/libonnxruntime.<version>.dylib at
+# runtime without knowing the absolute path. BUILD_WITH_INSTALL_RPATH applies
+# the rpath even in non-install (local build) invocations.
+set_target_properties(guitar_dsp_app_Standalone PROPERTIES
+    INSTALL_RPATH          "@executable_path"
+    BUILD_WITH_INSTALL_RPATH TRUE)
+
+if(TARGET guitar_dsp_app_AU)
+    # AU bundles are loaded by the host via dlopen; the binary sits in
+    # Contents/MacOS/ so @loader_path refers to that same directory.
+    set_target_properties(guitar_dsp_app_AU PROPERTIES
+        INSTALL_RPATH          "@loader_path"
+        BUILD_WITH_INSTALL_RPATH TRUE)
+endif()
+
+# Also copy the dylib into the installed AU component (written to
+# ~/Library/Audio/Plug-Ins/Components/ by JUCE's COPY_PLUGIN_AFTER_BUILD).
+if(TARGET guitar_dsp_app_AU)
+    set(_au_installed_macos
+        "$ENV{HOME}/Library/Audio/Plug-Ins/Components/${GUITAR_DSP_PRODUCT_NAME}.component/Contents/MacOS")
+    add_custom_command(TARGET guitar_dsp_app_AU POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${_onnx_versioned_dylib}"
+            "${_au_installed_macos}/libonnxruntime.${GUITAR_DSP_ONNX_VERSION}.dylib"
+        COMMENT "Copying ONNX Runtime dylib into the installed AU .component/MacOS"
+        VERBATIM)
+endif()
 
 if(TARGET guitar_dsp_app_AU)
     guitar_dsp_post_build_copy(guitar_dsp_app_AU "${GUITAR_DSP_ASSETS_SRC}"  assets)

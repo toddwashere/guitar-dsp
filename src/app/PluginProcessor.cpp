@@ -297,6 +297,13 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     phonemeExtractor_ = std::make_unique<audio::PhonemeExtractor>(
         AssetLocator::espeakBinaryPath());
 
+    // Load the default RAVE model. The RavePanel picker can swap to any of
+    // the bundled models at runtime via swapRaveModelByName. Graceful
+    // degradation: if the file is missing, status flips to Unavailable and
+    // scene 5 passes dry guitar through.
+    graph_.loadRaveModel(AssetLocator::resolveRelativePath(
+        std::string("assets/models/") + raveModelOptions()[0].filename));
+
     currentTtsClipKey_.clear();
     lastSeenSceneId_ = -1;
     graph_.ttsClipPlayer().setClip(nullptr);
@@ -858,12 +865,30 @@ void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiB
             // Carousel branch selection + config push (message thread).
             const auto carouselCfg = sceneEngine_.activeCarouselConfig();
             graph_.carousel().setConfig(carouselCfg);
+            const auto& scene = sceneEngine_.getActiveScene();
+
+            // Wet-source precedence: SungDirect > Rave > Carousel > Vocoder.
+            using WS = audio::AudioGraph::WetSource;
+            WS desired = WS::Vocoder;
+            if (scene.directShift.enabled)     desired = WS::SungDirect;
+            else if (scene.raveConfig.enabled) desired = WS::Rave;
+            else if (carouselCfg.enabled)      desired = WS::Carousel;
+
             log::info(juce::String("wetSource -> ")
-                      + (carouselCfg.enabled ? "Carousel" : "Vocoder")
+                      + (desired == WS::SungDirect ? "SungDirect"
+                       : desired == WS::Rave       ? "Rave"
+                       : desired == WS::Carousel   ? "Carousel"
+                                                   : "Vocoder")
                       + " (scene-change callAsync)");
-            graph_.setWetSource(carouselCfg.enabled
-                ? audio::AudioGraph::WetSource::Carousel
-                : audio::AudioGraph::WetSource::Vocoder);
+            graph_.setWetSource(desired);
+
+            if (scene.raveConfig.enabled) {
+                graph_.setRaveGateDb(scene.raveConfig.gateDb);
+                graph_.setRavePresence(scene.raveConfig.presence);
+                graph_.setRaveDriveDb(scene.raveConfig.driveDb);
+                graph_.setRaveDryWet(scene.raveConfig.dryWet);
+            }
+
             if (carouselCfg.enabled) {
                 // Instrument scene: no TTS clip plays under it. Clear both TTS
                 // players + revert the modulator so a prior note-triggered scene

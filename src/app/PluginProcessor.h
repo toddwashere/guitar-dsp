@@ -281,6 +281,35 @@ public:
         return sungVowelMask_.load(std::memory_order_relaxed);
     }
 
+    // Direct AudioGraph access — used by RavePanel which takes AudioGraph& directly
+    // so its unit tests can construct a bare AudioGraph without PluginProcessor.
+    audio::AudioGraph& graph() noexcept { return graph_; }
+
+    // RAVE model picker: small bundled catalog. The RavePanel ComboBox is
+    // populated from this list; selecting an entry calls swapRaveModelByName.
+    struct RaveModelOption {
+        const char* displayName;   // shown in the dropdown
+        const char* filename;      // resolved under assets/models/
+    };
+    static const std::vector<RaveModelOption>& raveModelOptions() {
+        static const std::vector<RaveModelOption> opts{
+            { "Funk Drums",  "funk_drums.onnx" },
+            { "Djembe",      "djembe.onnx" },
+        };
+        return opts;
+    }
+    // Resolve filename via AssetLocator and call AudioGraph::swapRaveModel.
+    // Safe to call from the message thread.
+    void swapRaveModelByName(const juce::String& displayName) {
+        for (const auto& opt : raveModelOptions()) {
+            if (displayName == opt.displayName) {
+                graph_.swapRaveModel(AssetLocator::resolveRelativePath(
+                    std::string("assets/models/") + opt.filename));
+                return;
+            }
+        }
+    }
+
     // Master limiter controls (sits at the very end of the audio chain).
     void  setLimiterEnabled(bool on) noexcept       { graph_.limiter().setEnabled(on); }
     bool  limiterEnabled() const noexcept           { return graph_.limiter().enabled(); }

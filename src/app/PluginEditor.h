@@ -15,6 +15,7 @@
 #include "SungDirectPanel.h"
 #include "TtsStatusBar.h"
 #include "VocoderPanel.h"
+#include "RavePanel.h"
 #include "MicScopeView.h"
 #include "WaveformView.h"
 #include "WordReadout.h"
@@ -59,6 +60,7 @@ private:
     WaveformView       waveformView_;
     MicScopeView       micScopeView_;
 
+    std::unique_ptr<app::RavePanel>    ravePanel_;
     std::unique_ptr<ConversationPanel> conversationPanel_;
     std::unique_ptr<AiSettingsPanel>   aiSettingsPanel_;
     juce::TextButton                   toggleAiSettingsBtn_ {"Settings"};

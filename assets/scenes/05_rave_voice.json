@@ -1,0 +1,23 @@
+{
+    "id": 5,
+    "name": "Neural Voice (WIP)",
+    "colorRgb": [110, 180, 220],
+    "mixer": {
+        "masterGainDb": -3.0,
+        "dryWet": 0.95,
+        "transitionMs": 80
+    },
+    "rave": {
+        "enabled": true,
+        "gateDb": -40.0,
+        "presence": 0.5,
+        "driveDb": 0.0,
+        "dryWet": 0.95
+    },
+    "carousel": { "enabled": false },
+    "directShift": { "enabled": false },
+    "showRave": true,
+    "showVocoder": false,
+    "showSay": false,
+    "showWordReadout": false
+}

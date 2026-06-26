@@ -882,11 +882,11 @@ point; T8 will replace it with the composed processBlock()."
   ```
 
 The EQ is a fixed-shape voice-friendly tilt scaled by the `presence` knob:
-- HPF at 100 Hz, single-pole, always on at 100%
+- HPF at 100 Hz, single-pole biquad, always on
 - Peak EQ at 2.5 kHz, Q = 1.0, gain = `presence * 6 dB`
 - High-shelf at 8 kHz, gain = `presence * -3 dB`
 
-Implemented as three biquads in series. Use [JUCE's `juce::dsp::IIR`](https://docs.juce.com/master/group__juce__dsp-_p_filter.html) since the project already links `juce::juce_dsp`.
+Implemented as three **hand-rolled biquads** (Direct Form II Transposed) using RBJ cookbook formulas. We intentionally do NOT use `juce::dsp::IIR::Filter` here: `Coefficients::make*` returns a ref-counted object — a heap allocation — and `setPresence` would call it on the audio thread, violating the no-audio-thread-allocations constraint. Hand-rolled biquads recompute coefficients from float math with zero allocation. `setPresence` just stores the new value; the next `processBlock` notices the change and recomputes 15 floats (5 per biquad × 3) before filtering.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -954,48 +954,102 @@ cmake --build build-tests --target guitar_dsp_tests -j 2>&1 | tail -10
 
 Expected: failure — `setPresence` and `processBlockEqOnly` don't exist yet.
 
-- [ ] **Step 3: Implement EQ in RaveFrontEnd.h**
+- [ ] **Step 3: Implement EQ in RaveFrontEnd.h (hand-rolled biquads, no allocations)**
 
-Edit `src/audio/RaveFrontEnd.h`. Add at the top of the file (after `#include <cstddef>`):
-
-```cpp
-#include <juce_dsp/juce_dsp.h>
-```
+Add `#include <algorithm>` at the top of `src/audio/RaveFrontEnd.h`.
 
 Inside the class body, after `setGateDb` (still in the public section), add:
 
 ```cpp
 void setPresence(float amount) noexcept {
     presence_ = std::clamp(amount, 0.0f, 1.0f);
-    updateEqCoeffs_();
+    // NOTE: do not recompute coefficients here. processBlock notices the
+    // change and recomputes inline — keeps setPresence callable from the
+    // audio thread with zero allocation.
 }
 
 void processBlockEqOnly(float* buf, std::size_t n) noexcept {
-    juce::dsp::AudioBlock<float> block(&buf, 1, n);
-    juce::dsp::ProcessContextReplacing<float> ctx(block);
-    hpf_.process(ctx);
-    peak_.process(ctx);
-    shelf_.process(ctx);
+    if (presence_ != currentPresence_) {
+        updateEqCoeffs_();
+        currentPresence_ = presence_;
+    }
+    for (std::size_t i = 0; i < n; ++i) {
+        float x = buf[i];
+        x = hpf_.process(x);
+        x = peak_.process(x);
+        x = shelf_.process(x);
+        buf[i] = x;
+    }
 }
 ```
 
-In the `protected:` section, add member state:
+In the `protected:` section, add the biquad and state:
 
 ```cpp
-juce::dsp::IIR::Filter<float> hpf_;
-juce::dsp::IIR::Filter<float> peak_;
-juce::dsp::IIR::Filter<float> shelf_;
+struct Biquad {
+    float b0 = 1.0f, b1 = 0.0f, b2 = 0.0f, a1 = 0.0f, a2 = 0.0f;
+    float z1 = 0.0f, z2 = 0.0f;
+    inline float process(float x) noexcept {
+        // Direct Form II Transposed
+        const float y = b0 * x + z1;
+        z1 = b1 * x - a1 * y + z2;
+        z2 = b2 * x - a2 * y;
+        return y;
+    }
+    void reset() noexcept { z1 = z2 = 0.0f; }
+};
+
+Biquad hpf_, peak_, shelf_;
 float presence_ = 0.5f;
+float currentPresence_ = -1.0f;   // forces first-block recompute
+
+static void makeHighPass(Biquad& b, float fs, float f0) noexcept {
+    const float w0 = 6.2831853f * f0 / fs;
+    const float cw = std::cos(w0), sw = std::sin(w0);
+    const float Q  = 0.7071f;
+    const float al = sw / (2.0f * Q);
+    const float a0 =  1.0f + al;
+    b.b0 = (1.0f + cw) / 2.0f / a0;
+    b.b1 = -(1.0f + cw)        / a0;
+    b.b2 = (1.0f + cw) / 2.0f / a0;
+    b.a1 = -2.0f * cw          / a0;
+    b.a2 = (1.0f - al)         / a0;
+}
+static void makePeak(Biquad& b, float fs, float f0, float Q, float gainDb) noexcept {
+    const float A  = std::pow(10.0f, gainDb / 40.0f);
+    const float w0 = 6.2831853f * f0 / fs;
+    const float cw = std::cos(w0), sw = std::sin(w0);
+    const float al = sw / (2.0f * Q);
+    const float a0 =  1.0f + al / A;
+    b.b0 = ( 1.0f + al * A) / a0;
+    b.b1 = (-2.0f * cw)     / a0;
+    b.b2 = ( 1.0f - al * A) / a0;
+    b.a1 = (-2.0f * cw)     / a0;
+    b.a2 = ( 1.0f - al / A) / a0;
+}
+static void makeHighShelf(Biquad& b, float fs, float f0, float gainDb) noexcept {
+    const float A  = std::pow(10.0f, gainDb / 40.0f);
+    const float w0 = 6.2831853f * f0 / fs;
+    const float cw = std::cos(w0), sw = std::sin(w0);
+    const float S  = 1.0f; // shelf slope
+    const float al = sw / 2.0f * std::sqrt((A + 1.0f/A) * (1.0f/S - 1.0f) + 2.0f);
+    const float sqrtA2al = 2.0f * std::sqrt(A) * al;
+    const float a0 =      (A + 1.0f) - (A - 1.0f) * cw + sqrtA2al;
+    b.b0 =  A * ((A + 1.0f) + (A - 1.0f) * cw + sqrtA2al) / a0;
+    b.b1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cw)   / a0;
+    b.b2 =  A * ((A + 1.0f) + (A - 1.0f) * cw - sqrtA2al) / a0;
+    b.a1 =  2.0f * ((A - 1.0f) - (A + 1.0f) * cw)        / a0;
+    b.a2 =      ((A + 1.0f) - (A - 1.0f) * cw - sqrtA2al) / a0;
+}
 
 void updateEqCoeffs_() noexcept {
-    using Coef = juce::dsp::IIR::Coefficients<float>;
-    hpf_.coefficients   = Coef::makeHighPass(sr_, 100.0f);
-    peak_.coefficients  = Coef::makePeakFilter(sr_, 2500.0f, 1.0f, juce::Decibels::decibelsToGain(presence_ *  6.0f));
-    shelf_.coefficients = Coef::makeHighShelf(sr_, 8000.0f, 0.7071f, juce::Decibels::decibelsToGain(presence_ * -3.0f));
+    makeHighPass(hpf_,   float(sr_), 100.0f);
+    makePeak(peak_,      float(sr_), 2500.0f, 1.0f, presence_ *  6.0f);
+    makeHighShelf(shelf_,float(sr_), 8000.0f,        presence_ * -3.0f);
 }
 ```
 
-Extend `prepare()`:
+Extend `prepare()` (replacing the existing implementation from T5):
 
 ```cpp
 void prepare(double sampleRate) noexcept {
@@ -1004,14 +1058,10 @@ void prepare(double sampleRate) noexcept {
     releaseCoeff_ = 1.0f - std::exp(-1.0f / (float(sr_) * 0.080f));
     env_ = 0.0f;
     gateGain_ = 0.0f;
-
-    juce::dsp::ProcessSpec spec{ sr_, 4096u, 1u };
-    hpf_.prepare(spec); peak_.prepare(spec); shelf_.prepare(spec);
-    updateEqCoeffs_();
+    hpf_.reset(); peak_.reset(); shelf_.reset();
+    currentPresence_ = -1.0f;  // force coefficient recompute on first block
 }
 ```
-
-Add `#include <algorithm>` at the top.
 
 - [ ] **Step 4: Run, verify pass**
 
@@ -1212,26 +1262,29 @@ In `src/audio/RaveFrontEnd.h`, replace the three `processBlock*Only` functions w
 
 ```cpp
 void processBlock(float* buf, std::size_t n) noexcept {
-    // Gate
+    // EQ coefficient recompute if presence changed (audio-thread-safe; no alloc).
+    if (presence_ != currentPresence_) {
+        updateEqCoeffs_();
+        currentPresence_ = presence_;
+    }
+    double sum = 0.0;
     for (std::size_t i = 0; i < n; ++i) {
+        // Gate
         const float a = std::fabs(buf[i]);
         const float c = (a > env_) ? attackCoeff_ : releaseCoeff_;
         env_ += (a - env_) * c;
         const float target = (env_ > gateLin_) ? 1.0f : 0.0f;
         const float gc = (target > gateGain_) ? attackCoeff_ : releaseCoeff_;
         gateGain_ += (target - gateGain_) * gc;
-        buf[i] *= gateGain_;
-    }
-    // EQ
-    juce::dsp::AudioBlock<float> block(&buf, 1, n);
-    juce::dsp::ProcessContextReplacing<float> ctx(block);
-    hpf_.process(ctx); peak_.process(ctx); shelf_.process(ctx);
-    // Drive + soft clip
-    double sum = 0.0;
-    for (std::size_t i = 0; i < n; ++i) {
-        float x = buf[i] * driveLin_;
-        buf[i] = std::tanh(x);
-        sum += double(buf[i]) * buf[i];
+        float x = buf[i] * gateGain_;
+        // EQ
+        x = hpf_.process(x);
+        x = peak_.process(x);
+        x = shelf_.process(x);
+        // Drive + soft clip
+        x = std::tanh(x * driveLin_);
+        buf[i] = x;
+        sum += double(x) * x;
     }
     postRms_ = std::sqrt(float(sum / double(n)));
 }
@@ -1826,6 +1879,9 @@ private:
     std::atomic<float> outputRms_{0.0f};
     std::atomic<float> inferenceMs_{0.0f};
 
+    // Pre-allocated audio-thread scratch (no per-block allocations).
+    std::vector<float> scratch_;
+
     // Watchdog: last time audio thread successfully read from outRing.
     std::atomic<int64_t> lastOutputReadMsSinceEpoch_{0};
     static int64_t nowMs_() {
@@ -1863,6 +1919,7 @@ void RaveSynthesizer::prepare(double sampleRate, int samplesPerBlock) {
     limiter_.prepare(sr_);
     limiter_.setCeilingDb(-3.0f);
     limiter_.setReleaseMs(60.0f);
+    scratch_.assign(std::size_t(samplesPerBlock), 0.0f); // pre-allocate; processBlock never resizes
     inRing_.clear();
     outRing_.clear();
     guard_.reset();
@@ -1929,11 +1986,14 @@ void RaveSynthesizer::processBlock(const float* in, float* wetOut, std::size_t n
 
     applyParamsIfChanged_();
 
-    // Front-end conditioning into a scratch buffer, then push to ring.
-    std::vector<float> scratch(in, in + n); // small alloc — for v1; replace with reusable buffer in optimization pass.
-    frontEnd_.processBlock(scratch.data(), n);
+    // Front-end conditioning into pre-allocated scratch (no audio-thread alloc).
+    // Defensive: if host gave us a larger block than prepare() expected, fall back
+    // to per-block bookkeeping but never realloc — clamp n down.
+    const std::size_t nn = std::min(n, scratch_.size());
+    std::memcpy(scratch_.data(), in, nn * sizeof(float));
+    frontEnd_.processBlock(scratch_.data(), nn);
     inputRms_.store(frontEnd_.postRms(), std::memory_order_relaxed);
-    inRing_.write(scratch.data(), n);
+    inRing_.write(scratch_.data(), nn);
 
     // Pull whatever is available from outRing. If we get nothing for >100 ms while Loaded, flip to Stalled.
     const auto got = outRing_.read(wetOut, n);

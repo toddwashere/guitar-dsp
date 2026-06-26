@@ -13,8 +13,21 @@ add_custom_command(
     VERBATIM)
 add_custom_target(sung_vowels_test_bundle ALL DEPENDS ${SUNG_VOWELS_TEST_BUNDLE})
 
+set(RAVE_STUB_MODEL
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/rave_stub_model.onnx)
+add_custom_command(
+    OUTPUT ${RAVE_STUB_MODEL}
+    COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_rave_stub_model.py
+            ${RAVE_STUB_MODEL}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/build_rave_stub_model.py
+    COMMENT "Building rave_stub_model.onnx fixture"
+    VERBATIM)
+add_custom_target(rave_stub_model ALL DEPENDS ${RAVE_STUB_MODEL})
+
 add_executable(guitar_dsp_tests
     unit/test_smoke.cpp
+    unit/test_onnx_runtime_links.cpp
     unit/test_realtime_sentinel.cpp
     unit/test_synthetic_guitar.cpp
     unit/test_golden_file.cpp
@@ -57,6 +70,14 @@ add_executable(guitar_dsp_tests
     unit/audio/test_phoneme_stepped_player.cpp
     unit/audio/test_formant_shifter.cpp
     unit/audio/test_sung_direct_path.cpp
+    unit/audio/test_lock_free_spsc_ring.cpp
+    unit/audio/test_nan_inf_guard.cpp
+    unit/audio/test_branch_limiter.cpp
+    unit/audio/test_rave_front_end_gate.cpp
+    unit/audio/test_rave_front_end_eq.cpp
+    unit/audio/test_rave_front_end_drive.cpp
+    unit/audio/test_rave_front_end.cpp
+    unit/audio/test_rave_synthesizer.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp
@@ -68,12 +89,14 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_sung_direct.cpp
     unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_library_carousel_pitch.cpp
+    unit/scenes/test_scene_library_rave.cpp
     unit/scenes/test_scene_library_carousel_formant.cpp
     unit/scenes/test_scene_library_speech_v2.cpp
     unit/scenes/test_scene_library_developers.cpp
     unit/scenes/test_scene_resolved_gspeak_path.cpp
     unit/scenes/test_scene_engine.cpp
     unit/scenes/test_scene_engine_carousel.cpp
+    unit/ml/test_rave_inference.cpp
     unit/midi/test_fcb1010_mapping.cpp
     unit/midi/test_fcb1010_mapping_ai.cpp
     unit/midi/test_host_midi_scene_router.cpp
@@ -95,7 +118,9 @@ add_executable(guitar_dsp_tests
     unit/app/test_asset_locator.cpp
     unit/app/test_ai_settings_panel.cpp
     unit/app/test_song_store.cpp
+    unit/app/test_rave_panel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/PluginState.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/RavePanel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/StatePill.cpp
     ${CMAKE_SOURCE_DIR}/src/app/ConversationPanel.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AiSettingsPanel.cpp
@@ -125,6 +150,8 @@ add_executable(guitar_dsp_tests
     integration/test_voice_pack_swap.cpp
     integration/test_sung_vowels_scene.cpp
     integration/test_sung_direct_scene.cpp
+    integration/test_rave_scene.cpp
+    integration/test_rave_soak.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AssetLocator.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
@@ -132,21 +159,27 @@ add_executable(guitar_dsp_tests
 )
 
 add_dependencies(guitar_dsp_tests sung_vowels_test_bundle)
+add_dependencies(guitar_dsp_tests rave_stub_model)
 
 target_link_libraries(guitar_dsp_tests PRIVATE
     guitar_dsp_audio
     guitar_dsp_scenes
     guitar_dsp_midi
     guitar_dsp_ai
+    guitar_dsp_ml
     juce::juce_audio_formats
     juce::juce_audio_processors
     juce::juce_gui_basics
     Catch2::Catch2WithMain
+    onnxruntime::onnxruntime
 )
 
 target_include_directories(guitar_dsp_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+target_compile_definitions(guitar_dsp_tests PRIVATE
+    STUB_MODEL_PATH="${RAVE_STUB_MODEL}")
 
 include(${CMAKE_SOURCE_DIR}/external/Catch2/extras/Catch.cmake)
 catch_discover_tests(guitar_dsp_tests)

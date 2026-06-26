@@ -38,6 +38,7 @@ void AudioGraph::prepare(double sampleRate, int blockSize) {
     vocoder_.setCarrierNoise(0.30f);
     carousel_.prepare(sampleRate, blockSize);
     sungDirectPath_.prepare(sampleRate, blockSize);
+    rave_.prepare(sampleRate, blockSize);
     limiter_.prepare(sampleRate);
 
     // Re-apply the cached onset sensitivity so a sample-rate change /
@@ -108,15 +109,20 @@ void AudioGraph::process(const float* in, float* out, std::size_t numSamples) {
         clipBankPlayer_.setDetectedPitchHz(pitchState.freqHz);
     }
 
-    if (wetSource_.load(std::memory_order_relaxed)
-            == static_cast<int>(WetSource::SungDirect)) {
+    const auto src = static_cast<WetSource>(wetSource_.load(std::memory_order_relaxed));
+    if (src == WetSource::SungDirect) {
         // SungDirect branch: pitch-shift and formant-preserve the sung vowel
         // grains directly to the wet buffer, driven by the detected guitar pitch.
         sungDirectPath_.process(postInputBuffer_.data(),
                                 detectedHz_.load(std::memory_order_relaxed),
                                 wetBuffer_.data(), numSamples);
-    } else if (wetSource_.load(std::memory_order_relaxed)
-            == static_cast<int>(WetSource::Carousel)) {
+    } else if (src == WetSource::Rave) {
+        // RAVE branch: route guitar through the neural vocoder. The RaveSynthesizer
+        // writes to wetBuffer_; the dry/wet blend is applied via the Mixer's dryWet.
+        const float dw = raveDryWet_.load(std::memory_order_relaxed);
+        rave_.processBlock(postInputBuffer_.data(), wetBuffer_.data(), numSamples);
+        mixer_.setDryWet(dw);
+    } else if (src == WetSource::Carousel) {
         // Carousel branch: transform the guitar directly into the wet buffer.
         carousel_.process(postInputBuffer_.data(), wetBuffer_.data(), numSamples);
     } else {
@@ -250,6 +256,24 @@ void AudioGraph::setMicBlock(const float* mono, std::size_t numSamples) noexcept
 
         micPeak_.store(0.0f, std::memory_order_relaxed);
     }
+}
+
+void AudioGraph::loadRaveModel(const std::string& path) {
+    rave_.loadModel(path);
+}
+
+void AudioGraph::swapRaveModel(const std::string& path) {
+    rave_.swapModel(path);
+}
+
+AudioGraph::RaveStatusForUI AudioGraph::raveStatusForUI() const noexcept {
+    switch (rave_.status()) {
+        case RaveBranchStatus::Loading:     return RaveStatusForUI::Loading;
+        case RaveBranchStatus::Loaded:      return RaveStatusForUI::Loaded;
+        case RaveBranchStatus::Unavailable: return RaveStatusForUI::Unavailable;
+        case RaveBranchStatus::Stalled:     return RaveStatusForUI::Stalled;
+    }
+    return RaveStatusForUI::Unavailable;
 }
 
 } // namespace guitar_dsp::audio

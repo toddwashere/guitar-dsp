@@ -46,6 +46,20 @@ PluginEditor::PluginEditor(PluginProcessor& p)
 
     const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
 
+    {
+        std::vector<juce::String> raveModelNames;
+        for (const auto& opt : PluginProcessor::raveModelOptions())
+            raveModelNames.emplace_back(opt.displayName);
+        ravePanel_ = std::make_unique<app::RavePanel>(
+            processor_.graph(),
+            std::move(raveModelNames),
+            [this](const juce::String& name) {
+                processor_.swapRaveModelByName(name);
+            });
+    }
+    addAndMakeVisible(*ravePanel_);
+    ravePanel_->setVisible(false);
+
     conversationPanel_ = std::make_unique<ConversationPanel>(
         processor_.conversationEngine(), processor_.conversationBuffer(), compact);
     addAndMakeVisible(*conversationPanel_);
@@ -238,6 +252,8 @@ void PluginEditor::resized() {
     // SungDirectPanel: shown only when the active scene requests it (scene 12).
     // Callback wiring is done once per scene change in timerCallback(), not here.
     sungDirectPanel_.setVisible(processor_.sceneEngine().getActiveScene().showSungDirectPanel);
+    // RavePanel: shown only when the active scene declares showRave (scene 5).
+    if (ravePanel_) ravePanel_->setVisible(processor_.sceneEngine().getActiveScene().showRave);
     sayPanel_      .setVisible(showSay);
     oscilloscope_     .setVisible(showScope);
     spectrumAnalyzer_ .setVisible(showScope);
@@ -252,6 +268,7 @@ void PluginEditor::resized() {
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     if (showKnobs) vocoderPanel_.setBounds(bounds.removeFromTop(170));
     if (sungDirectPanel_.isVisible()) sungDirectPanel_.setBounds(bounds.removeFromTop(108));
+    if (ravePanel_ && ravePanel_->isVisible()) ravePanel_->setBounds(bounds.removeFromTop(230));
 
     // Waveform + slice overlay sits BETWEEN the knobs and the scope so
     // when v2 is active the boundary lines are the most prominent thing
