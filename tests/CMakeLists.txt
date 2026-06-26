@@ -151,6 +151,7 @@ add_executable(guitar_dsp_tests
     integration/test_sung_vowels_scene.cpp
     integration/test_sung_direct_scene.cpp
     integration/test_rave_scene.cpp
+    integration/test_rave_soak.cpp
     ${CMAKE_SOURCE_DIR}/src/app/AssetLocator.cpp
     harness/RealtimeSentinel.cpp
     harness/SyntheticGuitar.cpp
