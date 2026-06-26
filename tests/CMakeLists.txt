@@ -89,6 +89,7 @@ add_executable(guitar_dsp_tests
     unit/scenes/test_scene_library_sung_direct.cpp
     unit/scenes/test_scene_library_carousel.cpp
     unit/scenes/test_scene_library_carousel_pitch.cpp
+    unit/scenes/test_scene_library_rave.cpp
     unit/scenes/test_scene_library_carousel_formant.cpp
     unit/scenes/test_scene_library_speech_v2.cpp
     unit/scenes/test_scene_library_developers.cpp

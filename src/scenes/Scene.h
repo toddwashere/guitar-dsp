@@ -24,6 +24,14 @@ struct TtsConfig {
     float clarity = 0.0f; // 0 = fully vocoded; 1 = dry TTS (speak-clearly mode)
 };
 
+struct RaveConfig {
+    bool   enabled = false;
+    float  gateDb  = -40.0f;   // clamp -80..-10
+    float  presence = 0.5f;    // clamp 0..1
+    float  driveDb  = 0.0f;    // clamp -12..+12
+    float  dryWet   = 0.95f;   // clamp 0..1
+};
+
 struct CarouselConfig {
     bool  enabled = false;
     float drive   = 0.0f;          // dB pre-gain
@@ -108,6 +116,7 @@ struct Scene {
     MixerParams    mixer{};
     TtsConfig      tts{};
     CarouselConfig carousel{};
+    RaveConfig     raveConfig{};
     Speech         speech{};
 
     struct VoicePack {
@@ -148,6 +157,7 @@ struct Scene {
     // what it needs.
     bool showChat        = false;   // Scene 4 only: big conversation panel
     bool showVocoder     = false;   // Scenes 7, 8 (talkbox, auto-vocal)
+    bool showRave        = false;   // RAVE synthesis panel visibility
     bool showSay         = true;    // Most TTS scenes; off for clipBank/mic
     bool showWordReadout = true;    // Off for scenes with no per-word stepping
 

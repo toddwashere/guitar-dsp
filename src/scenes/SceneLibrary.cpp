@@ -283,6 +283,26 @@ std::optional<Scene> SceneLibrary::loadOne(const std::string& path) {
         }
     }
 
+    if (obj->hasProperty("rave")) {
+        if (auto* r = obj->getProperty("rave").getDynamicObject()) {
+            auto& cfg = s.raveConfig;
+            auto clamp = [](float v, float lo, float hi) { return std::min(std::max(v, lo), hi); };
+
+            if (r->hasProperty("enabled"))
+                cfg.enabled = static_cast<bool>(r->getProperty("enabled"));
+            if (r->hasProperty("gateDb"))
+                cfg.gateDb = clamp(static_cast<float>(static_cast<double>(r->getProperty("gateDb"))), -80.0f, -10.0f);
+            if (r->hasProperty("presence"))
+                cfg.presence = clamp(static_cast<float>(static_cast<double>(r->getProperty("presence"))), 0.0f, 1.0f);
+            if (r->hasProperty("driveDb"))
+                cfg.driveDb = clamp(static_cast<float>(static_cast<double>(r->getProperty("driveDb"))), -12.0f, 12.0f);
+            if (r->hasProperty("dryWet"))
+                cfg.dryWet = clamp(static_cast<float>(static_cast<double>(r->getProperty("dryWet"))), 0.0f, 1.0f);
+        }
+    }
+    if (obj->hasProperty("showRave"))
+        s.showRave = static_cast<bool>(obj->getProperty("showRave"));
+
     return s;
 }
 
