@@ -46,58 +46,30 @@ it for the stage taught me about building with AI.
 -->
 
 ---
-layout: two-cols
-class: gap-8
+layout: center
+class: text-center
 ---
 
 # Live performances rock
 
-- **Slipknot's drummer** — flips upside-down mid-set
-- **Blue Man Group** — silence as performance
-- **The Sphere** — Las Vegas
-- **Stranger Things: The First Shadow** — NYC
-
-<div class="pt-8 opacity-75 text-sm">
-We've all been blown away at some point.<br/>
-Live shows connect us in a way recorded media can't.
+<v-clicks>
+<div>
+Leverage technology in a creative way
 </div>
+</v-clicks>
 
-<div class="pt-6 text-xl">
-What's the next evolution — with AI?
-</div>
-
-::right::
-
-<img src="/slipknot.jpg" class="rounded-lg w-full" />
-
-<!--
-Slipknot's drummer is on a rig that flips upside-down. Blue Man
-Group turned percussion and silence into a brand. The Sphere is
-its own visual category. Stranger Things in NYC is a full
-theatrical experience. We've all been amazed at some point.
-The question this talk is about: what does the next layer of
-live performance look like, now that AI tools are in the kit?
--->
-
-<div class="absolute bottom-4 left-6 text-xs opacity-30">1m</div>
+<div class="absolute bottom-4 left-6 text-xs opacity-20">1m</div>
 
 ---
+layout: center
+class: text-center
+---
 
-# Setting the stage
+<!-- # Remember those personal projects? -->
 
-- Great experiences stay with us forever.
-- Creativity × technology yields surprising results
-- A lot of interesting things are happening with AI right now
-- The tools we have today are opening up new possibilities for **live performance**
-
-<!--
-This talk lives at the intersection of all three. I'm a software
-engineer who plays guitar; I built a tool that uses TTS, LLMs,
-real-time DSP, and a foot controller to make a guitar talk and
-sing on stage. The interesting part isn't the AI — it's what live
-performance lets you do with it.
--->
-
+<div class="flex justify-center pt-6">
+  <img src="/112-domain-names.png" class="max-h-[65vh] max-w-full rounded-lg" />
+</div>
 
 ---
 
@@ -283,26 +255,14 @@ flowchart LR
   Cut --> Words["N word segments"]
 ```
 
-<v-click>
-
-**Energy-gap segmentation, not engine timestamps.** Build a peak envelope, find the longest silences between words, cut there. `N` words → `N-1` cuts.
-
-</v-click>
-
-<v-click>
-
-**The release time is the trick.** A 30 ms envelope release rides over the tiny gaps *inside* a word (s**t**op, **th**ink) but still drops on real ~80 ms inter-word silences. No false cuts mid-word.
-
-</v-click>
-
-<v-click>
-
-**Same algorithm for every backend.** Piper, Apple, prebaked WAV — it only needs the samples + word list. Not enough silences? Fall back to evenly spaced cuts.
-
-</v-click>
+<div
+  v-motion
+  :initial="{ opacity: 0, y: 12 }"
+  :enter="{ opacity: 1, y: 0, transition: { delay: 4000, duration: 600 } }"
+  class="text-center text-4xl font-semibold pt-8"
+>💡 Energy-gap segmentation</div>
 
 <div class="absolute bottom-4 left-6 text-xs opacity-30">Scene 0</div>
-
 
 <!--
 The TTS engines hand back raw PCM with no word boundaries. Rather
@@ -328,13 +288,11 @@ for all three TTS sources — that's the whole point.
   <img src="/sonority-sequencing-cats-run-fast.png" class="max-h-80 rounded-lg" />
 </div>
 
----
+<!-- ---
 
-# Manually slice n dice
-
-- Pre baking ensures the best quality.
-- First pass: auto-slice
-- Visually edit the wave forms.
+<div class="absolute inset-0 flex items-center justify-center p-6">
+  <img src="/slide-and-dice.png" class="max-h-full max-w-full object-contain" />
+</div> -->
 
 ---
 layout: section
@@ -347,9 +305,6 @@ layout: section
 Next Stop: Pitch detection.
 </div>
 </div>
-
-
-
 
 ---
 
@@ -546,9 +501,12 @@ class: text-center
 layout: section
 ---
 
-# Part 3.5 — From speaking to singing
-
-The next step: drop the TTS, drop the synth carrier, sing with someone's actual voice
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+  <div class="text-5xl">What if my guitar could</div>
+  <div class="text-7xl font-bold pt-6 pb-10">REALLY sing?</div>
+  <div class="text-2xl">
+</div>
+</div>
 
 ---
 
@@ -556,18 +514,12 @@ The next step: drop the TTS, drop the synth carrier, sing with someone's actual 
 
 The university-academic version of "we have a vocal sample pack."
 
-<v-clicks>
-
 - **VocalSet** (Wilkins et al., ISMIR 2018) — 10 hours of professional vocalists, sung vowels at controlled techniques, CC-BY-4.0
 - 20 singers, all 5 vowels, recorded in a controlled studio
 - Curated a handful into the app and cut each recording into **grains** — short audio fragments, each a single sung note about a second long
 - A bundle of grains becomes the source of truth for "what the guitar should sound like when you play this string"
 
-</v-clicks>
-
-<div v-click class="pt-6 opacity-75 text-sm text-center">
-
-The hardest part of "use a real voice" was sourcing it. VocalSet meant zero studio time, zero licensing email chains, zero "I have a friend who sings."
+<div class="pt-6 opacity-75 text-sm text-center">
 
 </div>
 
@@ -584,58 +536,62 @@ grains is the raw material for everything downstream.
 
 ---
 
-# Two paths to the same audio
+# WORLD: pitch-shift without the chipmunk
 
-The same grains, two completely different DSP chains, two completely different results.
+**WORLD** is an open-source analysis/synthesis vocoder — it takes a recording of a singer and **changes the pitch while keeping the vowel**.
 
-<div class="grid grid-cols-2 gap-6 pt-2 text-sm">
+<div class="pt-4 text-sm opacity-90">
 
-<div v-click class="p-3 border rounded">
-
-**Vocoder version**
-
-The grain is the modulator; a pitched saw at your guitar's note is the carrier. The voice comes through with the vocoder's synth character on top — still recognizable as "a vocoder talking."
+A VocalSet grain might be someone singing **"ah" at 250 Hz**. Your guitar plucks **82 Hz**. Naive pitch-shifting sounds like Alvin. WORLD avoids that.
 
 </div>
 
-<div v-click class="p-3 border rounded">
-
-**Direct version**
-
-No vocoder, no saw. A formant-preserving pitch shifter (WORLD) shifts the recorded grain to match your guitar's note. Output is the actual singer's voice, transposed.
-
+<div class="flex items-center justify-center gap-3 pt-8 text-sm flex-wrap">
+<div class="rounded-md px-4 py-3 font-medium" style="background:#ffedd5;color:#7c2d12">🎤 Singer grain</div>
+<div class="text-xl opacity-40">→</div>
+<div class="rounded-md px-4 py-3 font-medium" style="background:#ede9fe;color:#5b21b6">Split into 3 parts</div>
+<div class="text-xl opacity-40">→</div>
+<div class="rounded-md px-4 py-3 font-medium" style="background:#dbeafe;color:#1e3a8a">Shift pitch only</div>
+<div class="text-xl opacity-40">→</div>
+<div class="rounded-md px-4 py-3 font-medium" style="background:#dcfce7;color:#14532d">Resynthesize</div>
+<div class="text-xl opacity-40">→</div>
+<div class="rounded-md px-4 py-3 font-medium" style="background:#fee2e2;color:#7f1d1d">Same singer, your note</div>
 </div>
 
+<div class="grid grid-cols-3 gap-4 pt-8 text-xs text-center">
+<div class="p-3 border border-gray-600 rounded-lg"><b>F0</b><br/>pitch</div>
+<div class="p-3 border border-gray-600 rounded-lg"><b>Envelope</b><br/>vowel / formants</div>
+<div class="p-3 border border-gray-600 rounded-lg"><b>Aperiodicity</b><br/>breath &amp; noise</div>
 </div>
 
-<div v-click class="pt-6 opacity-75 text-sm text-center">
+<div class="pt-6 opacity-75 text-sm text-center">
 
-Shipping both lets the audience hear the difference on the same instrument. Same pluck, same vowel, two outputs. The vocoder version was already free given the existing pipeline; the direct version is where the engineering got interesting.
+Shift **F0**. Leave envelope and aperiodicity alone. The vowel still sounds like that singer's **"ah"** — just at your guitar's pitch.
 
 </div>
 
 <!--
-Once we had the grains, two architectural choices. Path one feeds
-the grains into the existing vocoder as the modulator — cheap,
-ships immediately, sounds vocoder-y because the saw carrier
-signature is still there. Path two bypasses the vocoder entirely
-and runs a formant-preserving pitch shifter on the grain so the
-output IS the singer. Two scenes side by side on the FCB makes the
-audible difference between vocoder character and direct-shift
-character.
+WORLD (Morise et al.) is a vocoder in the DSP sense — analysis/
+synthesis — not the talking-guitar vocoder from earlier. It
+decomposes a grain into F0 (pitch), spectral envelope (formants
+that define the vowel), and aperiodicity (breath/noise). To
+pitch-shift without chipmunking, scale only F0 and resynthesize.
+Output is the real recorded voice, transposed — no saw carrier, no
+24-band stamp. Next slide: why that resynthesis step is expensive
+enough to pre-render offline.
 -->
 
 ---
 
-# What those 90 seconds were doing
+# This is a heavy process
 
-A grain is a recording of someone singing "ah" at, say, 250 Hz. Your guitar might be playing 82 Hz. **Pitch-shift without chipmunk** is the whole problem.
+WORLD works — but **not on the audio thread, not per pluck.** Some steps are fine offline once; **Synthesis** is the killer.
 
-<div v-click class="pt-4 grid grid-cols-2 gap-6 text-sm">
+<div class="pt-3 grid grid-cols-2 gap-6 text-sm">
 
 <div>
 
-**WORLD decomposes the grain into three streams:**
+**1. Analyze the grain** *(offline, once per grain — OK)*
 
 ```
                 ┌─ F0 contour    (Harvest)
@@ -643,29 +599,29 @@ A grain is a recording of someone singing "ah" at, say, 250 Hz. Your guitar migh
                 └─ aperiodicity  (D4C)
 ```
 
-Pitch lives in F0. The vowel character — the *formants* that make "ah" sound like "ah" — lives in the envelope. The noise/breath lives in aperiodicity.
+~1 s of compute per grain. Also **allocates heap** — fatal on the real-time audio thread.
 
 </div>
 
 <div>
 
-**To pitch-shift without chipmunking,** scale the F0 contour and resynthesize. Envelope and aperiodicity stay put:
+**2. Resynthesize at each target pitch** *(heavy — pre-bake)*
 
 ```
   scaled_F0  ─┐
   envelope   ─┼─ Synthesis ─→ shifted audio
   aperiod    ─┘
+                      ↑
+                 🔥 ~1 s each
 ```
 
-</div>
+Scale F0, leave envelope + aperiodicity alone. **This step is what we cannot run live.**
 
 </div>
 
-<div v-click class="pt-6 text-sm">
-
-**The 90 seconds:** the Synthesis step is the expensive one, and we run it **once per output pitch we want to support, per grain.** Twenty grains × thirty-seven discrete pitch ratios from −18 to +18 semitones × about a second of WORLD compute per ratio = a few minutes per voice. Done once, written to disk, never repeated.
-
 </div>
+
+<div class="absolute bottom-4 left-6 text-xs opacity-30">Scene 12</div>
 
 <!--
 A grain is a short recording — someone singing the vowel "ah" at,
@@ -686,13 +642,11 @@ every grain in the bundle. Twenty grains times 37 ratios times a
 second of compute per ratio. A few minutes per voice. Once.
 -->
 
----
+<!-- ---
 
 # Things we had to adjust to make it work on stage
 
 The interesting bugs, in the order they bit.
-
-<v-clicks>
 
 - **WORLD allocates heap on every call.** Fatal on the audio thread. So we run it offline at activation time and the audio thread just picks the nearest pre-rendered buffer. Continuous portamento becomes nearest-semitone snap — fine for fretted instruments.
 
@@ -702,9 +656,7 @@ The interesting bugs, in the order they bit.
 
 - **Notes kept singing forever** after you stopped playing — the grain ran out its full length regardless of your guitar. Added an amplitude envelope on the guitar input that gates the output when the string goes quiet. "Stop playing" actually stops now.
 
-- **"Three octaves up, same note coming out."** Two compounding causes: pitch detection wasn't even running for the direct-shift path (it lived inside the vocoder branch). And the source slices were each 4 seconds long — long enough to contain two of the singer's scale notes, so a single strum played a rising line. Both fixed.
-
-</v-clicks>
+- **"Three octaves up, same note coming out."** Two compounding causes: pitch detection wasn't even running for the direct-shift path (it lived inside the vocoder branch). And the source slices were each 4 seconds long — long enough to contain two of the singer's scale notes, so a single strum played a rising line. Both fixed. -->
 
 <!--
 This is where the engineering got interesting. WORLD allocates heap
@@ -722,6 +674,9 @@ enough to contain multiple sung notes. Each one took an afternoon
 to find. The fixes are short. The finding-them part is the cost.
 -->
 
+---
+layout: center
+class: text-center
 ---
 
 # Where to go from here?
