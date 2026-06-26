@@ -21,7 +21,9 @@ void RaveSynthesizer::prepare(double sampleRate, int samplesPerBlock) {
     inRing_.clear();
     outRing_.clear();
     guard_.reset();
-    lastOutputReadMsSinceEpoch_.store(nowMs_(), std::memory_order_relaxed);
+    const auto t0 = nowMs_();
+    lastOutputReadMsSinceEpoch_.store(t0, std::memory_order_relaxed);
+    lastInputPushMsSinceEpoch_.store(t0, std::memory_order_relaxed);
 }
 
 void RaveSynthesizer::releaseResources() {
@@ -61,7 +63,7 @@ void RaveSynthesizer::backgroundLoop_() {
                 off += w;
             }
         } else {
-            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
 }
@@ -82,6 +84,15 @@ void RaveSynthesizer::processBlock(const float* in, float* wetOut, std::size_t n
         return;
     }
 
+    // Scene-activation watchdog reset: if input has been quiet for >500 ms,
+    // treat this as a fresh activation and reset the output-read timestamp
+    // so the watchdog doesn't fire before the inference pipeline has time
+    // to produce its first window.
+    const auto nowMs = nowMs_();
+    if (nowMs - lastInputPushMsSinceEpoch_.load(std::memory_order_relaxed) > 500) {
+        lastOutputReadMsSinceEpoch_.store(nowMs, std::memory_order_relaxed);
+    }
+
     applyParamsIfChanged_();
 
     // Front-end conditioning into pre-allocated scratch (no audio-thread alloc).
@@ -92,6 +103,7 @@ void RaveSynthesizer::processBlock(const float* in, float* wetOut, std::size_t n
     frontEnd_.processBlock(scratch_.data(), nn);
     inputRms_.store(frontEnd_.postRms(), std::memory_order_relaxed);
     inRing_.write(scratch_.data(), nn);
+    lastInputPushMsSinceEpoch_.store(nowMs, std::memory_order_relaxed);
 
     // Pull whatever is available from outRing. If we get nothing for >100 ms while Loaded, flip to Stalled.
     const auto got = outRing_.read(wetOut, n);
@@ -107,7 +119,8 @@ void RaveSynthesizer::processBlock(const float* in, float* wetOut, std::size_t n
     }
 
     // NaN/Inf guard.
-    if (!guard_.processBlock(wetOut, n) && guard_.stalled()) {
+    if (!guard_.processBlock(wetOut, n) && guard_.stalled() &&
+        s == RaveBranchStatus::Loaded) {
         status_.store(RaveBranchStatus::Stalled, std::memory_order_release);
         std::memset(wetOut, 0, n * sizeof(float));
     }

@@ -70,6 +70,8 @@ private:
 
     // Watchdog: last time audio thread successfully read from outRing.
     std::atomic<int64_t> lastOutputReadMsSinceEpoch_{0};
+    // Watchdog reset: last time processBlock pushed input (used to detect scene activation).
+    std::atomic<int64_t> lastInputPushMsSinceEpoch_{0};
     static int64_t nowMs_() {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
                    std::chrono::steady_clock::now().time_since_epoch()).count();

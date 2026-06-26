@@ -58,6 +58,29 @@ TEST_CASE("RaveSynthesizer: stub model passes audio through (after warm-up)", "[
     REQUIRE(syn.outputRms() > 0.0f);  // identity model + audio in -> audio out
 }
 
+TEST_CASE("RaveSynthesizer: scene activation after long quiet period does not spuriously stall",
+          "[audio][rave-synth][status]") {
+    RaveSynthesizer syn;
+    syn.prepare(48000.0, 512);
+    syn.loadModel(STUB_MODEL_PATH);
+    for (int i = 0; i < 50 && syn.status() != RaveBranchStatus::Loaded; ++i)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    REQUIRE(syn.status() == RaveBranchStatus::Loaded);
+
+    // Simulate scene 5 being inactive for >500 ms (no processBlock calls).
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+
+    // Now activate: push a single block. The watchdog must NOT fire on this
+    // call just because lastOutputReadMs is now far in the past.
+    std::vector<float> in(512), out(512);
+    for (size_t i = 0; i < 512; ++i)
+        in[i] = 0.3f * std::sin(2.0f * 3.14159265f * 220.0f * float(i) / 48000.0f);
+    syn.processBlock(in.data(), out.data(), 512);
+
+    // Status should still be Loaded (not Stalled).
+    REQUIRE(syn.status() == RaveBranchStatus::Loaded);
+}
+
 TEST_CASE("RaveSynthesizer: Unavailable produces silent wet output", "[audio][rave-synth][audio]") {
     RaveSynthesizer syn;
     syn.prepare(48000.0, 512);
