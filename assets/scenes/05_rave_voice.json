@@ -1,6 +1,6 @@
 {
     "id": 5,
-    "name": "Neural Voice",
+    "name": "Neural Voice (WIP)",
     "colorRgb": [110, 180, 220],
     "mixer": {
         "masterGainDb": -3.0,
