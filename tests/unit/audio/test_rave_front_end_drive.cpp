@@ -8,7 +8,7 @@ using guitar_dsp::audio::RaveFrontEnd;
 
 TEST_CASE("RaveFrontEnd::Drive: 0 dB drive is near-bitexact passthrough", "[audio][rave-frontend][drive]") {
     RaveFrontEnd f; f.prepare(48000.0); f.setDriveDb(0.0f);
-    std::vector<float> b{0.1f, -0.3f, 0.5f, -0.7f};
+    std::vector<float> b{0.001f, -0.003f, 0.005f, -0.008f};
     auto in = b;
     f.processBlockDriveOnly(b.data(), b.size());
     for (size_t i = 0; i < b.size(); ++i)

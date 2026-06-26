@@ -35,7 +35,7 @@ public:
     void processBlockDriveOnly(float* buf, std::size_t n) noexcept {
         for (std::size_t i = 0; i < n; ++i) {
             float x = buf[i] * driveLin_;
-            buf[i] = std::fabs(x) < 0.891253533f ? x : std::tanh(x);
+            buf[i] = std::tanh(x);
         }
     }
 
