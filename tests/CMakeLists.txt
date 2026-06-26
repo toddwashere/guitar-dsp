@@ -77,6 +77,7 @@ add_executable(guitar_dsp_tests
     unit/audio/test_rave_front_end_eq.cpp
     unit/audio/test_rave_front_end_drive.cpp
     unit/audio/test_rave_front_end.cpp
+    unit/audio/test_rave_synthesizer.cpp
     unit/scenes/test_scene_compiles.cpp
     unit/scenes/test_scene_library.cpp
     unit/scenes/test_scene_library_tts.cpp

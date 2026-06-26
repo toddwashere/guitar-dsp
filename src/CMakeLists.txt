@@ -55,6 +55,7 @@ add_library(guitar_dsp_audio STATIC
     audio/Limiter.cpp
     audio/PrerenderCache.cpp
     audio/SungDirectPath.cpp
+    audio/RaveSynthesizer.cpp
 )
 
 target_include_directories(guitar_dsp_audio PUBLIC
@@ -66,6 +67,7 @@ target_compile_features(guitar_dsp_audio PUBLIC cxx_std_20)
 target_link_libraries(guitar_dsp_audio
     PUBLIC
         guitar_dsp_util
+        guitar_dsp_ml
         juce::juce_audio_formats
         juce::juce_dsp
     PRIVATE
