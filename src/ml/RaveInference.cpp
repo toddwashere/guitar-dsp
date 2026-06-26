@@ -48,7 +48,9 @@ bool RaveInference::process(const float* in, float* out, std::size_t n) noexcept
     try {
         const auto t0 = std::chrono::steady_clock::now();
 
-        std::array<int64_t, 2> shape{1, int64_t(n)};
+        // RAVE checkpoints (Acids-IRCAM, Scyclone, IIL) all use [batch, channels=1, samples]
+        // 3D tensor convention. Our hop is 2048 samples per call.
+        std::array<int64_t, 3> shape{1, 1, int64_t(n)};
         Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
         Ort::Value inputTensor = Ort::Value::CreateTensor<float>(
             mem, const_cast<float*>(in), n, shape.data(), shape.size());

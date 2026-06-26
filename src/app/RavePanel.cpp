@@ -2,7 +2,11 @@
 
 namespace guitar_dsp::app {
 
-RavePanel::RavePanel(audio::AudioGraph& graph) : graph_(graph) {
+RavePanel::RavePanel(audio::AudioGraph& graph,
+                     std::vector<juce::String> modelNames,
+                     ModelSwapFn onSwap)
+    : graph_(graph), onSwap_(std::move(onSwap)),
+      hasPicker_(!modelNames.empty() && onSwap_) {
     auto addSlider = [this](juce::Slider& s, juce::Label& lbl, const juce::String& name,
                             double lo, double hi, double init,
                             std::function<void(float)> onChange) {
@@ -52,6 +56,22 @@ RavePanel::RavePanel(audio::AudioGraph& graph) : graph_(graph) {
     addAndMakeVisible(inputMeter_);
     addAndMakeVisible(outputMeter_);
 
+    if (hasPicker_) {
+        modelPickerLabel_.setText("Model", juce::dontSendNotification);
+        modelPickerLabel_.setFont(juce::Font{juce::FontOptions{}.withHeight(10.5f)});
+        modelPickerLabel_.setColour(juce::Label::textColourId, juce::Colour::fromRGB(150, 160, 175));
+        addAndMakeVisible(modelPickerLabel_);
+
+        int id = 1;
+        for (const auto& name : modelNames) modelPicker_.addItem(name, id++);
+        modelPicker_.setSelectedId(1, juce::dontSendNotification);
+        modelPicker_.onChange = [this]() {
+            const auto name = modelPicker_.getText();
+            if (onSwap_ && name.isNotEmpty()) onSwap_(name);
+        };
+        addAndMakeVisible(modelPicker_);
+    }
+
     startTimerHz(30);
 }
 
@@ -77,6 +97,12 @@ void RavePanel::resized() {
     r.removeFromTop(6);
     inputMeter_.setBounds(r.removeFromTop(18));
     outputMeter_.setBounds(r.removeFromTop(18));
+    if (hasPicker_) {
+        r.removeFromTop(6);
+        auto pickerRow = r.removeFromTop(22);
+        modelPickerLabel_.setBounds(pickerRow.removeFromLeft(48));
+        modelPicker_.setBounds(pickerRow);
+    }
 }
 
 void RavePanel::paint(juce::Graphics& g) {

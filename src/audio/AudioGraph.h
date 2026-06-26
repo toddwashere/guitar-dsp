@@ -77,6 +77,10 @@ public:
     // Load the RAVE ONNX model. Non-blocking: triggers background load;
     // reports Unavailable gracefully if the file doesn't exist (T14).
     void loadRaveModel(const std::string& onnxPath);
+    // Runtime swap from the RavePanel model picker. Joins+respawns the
+    // inference worker with the new model. Unlike loadRaveModel, this is
+    // intended for explicit UI-triggered swaps, not host lifecycle.
+    void swapRaveModel(const std::string& onnxPath);
 
     // RAVE parameter setters — message thread, atomic writes.
     void setRaveGateDb(float db)  noexcept { rave_.setGateDb(db); }

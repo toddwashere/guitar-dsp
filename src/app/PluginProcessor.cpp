@@ -297,10 +297,12 @@ void PluginProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     phonemeExtractor_ = std::make_unique<audio::PhonemeExtractor>(
         AssetLocator::espeakBinaryPath());
 
-    // Load the RAVE model (graceful degradation: if the model file doesn't
-    // exist yet — T14 adds it — loadRaveModel reports Unavailable and scene 5
-    // still works in dry-passthrough mode. No crash.
-    graph_.loadRaveModel(AssetLocator::resolveRelativePath("assets/models/rave-voice.onnx"));
+    // Load the default RAVE model. The RavePanel picker can swap to any of
+    // the bundled models at runtime via swapRaveModelByName. Graceful
+    // degradation: if the file is missing, status flips to Unavailable and
+    // scene 5 passes dry guitar through.
+    graph_.loadRaveModel(AssetLocator::resolveRelativePath(
+        std::string("assets/models/") + raveModelOptions()[0].filename));
 
     currentTtsClipKey_.clear();
     lastSeenSceneId_ = -1;

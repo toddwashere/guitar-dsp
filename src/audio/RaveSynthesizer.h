@@ -21,6 +21,11 @@ public:
     ~RaveSynthesizer();
 
     void loadModel(const std::string& onnxPath);
+    // Runtime model swap (user-initiated, e.g. from the RavePanel picker).
+    // Unlike loadModel, this always joins the current worker and respawns
+    // with the new model — meant for explicit user action, not host
+    // prepareToPlay lifecycle (which uses loadModel's one-shot guard).
+    void swapModel(const std::string& onnxPath);
     void prepare(double sampleRate, int samplesPerBlock);
     void releaseResources();
 
@@ -40,6 +45,7 @@ private:
     static constexpr std::size_t kRingCap  = 8192;
 
     void backgroundLoop_();
+    void spawnWorker_(const std::string& onnxPath);
     void applyParamsIfChanged_();
 
     double sr_ = 48000.0;

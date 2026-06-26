@@ -46,7 +46,17 @@ PluginEditor::PluginEditor(PluginProcessor& p)
 
     const bool compact = (processor_.wrapperType == juce::AudioProcessor::wrapperType_AudioUnit);
 
-    ravePanel_ = std::make_unique<app::RavePanel>(processor_.graph());
+    {
+        std::vector<juce::String> raveModelNames;
+        for (const auto& opt : PluginProcessor::raveModelOptions())
+            raveModelNames.emplace_back(opt.displayName);
+        ravePanel_ = std::make_unique<app::RavePanel>(
+            processor_.graph(),
+            std::move(raveModelNames),
+            [this](const juce::String& name) {
+                processor_.swapRaveModelByName(name);
+            });
+    }
     addAndMakeVisible(*ravePanel_);
     ravePanel_->setVisible(false);
 
@@ -258,7 +268,7 @@ void PluginEditor::resized() {
     diagToggleBar_.setBounds(bounds.removeFromTop(26));
     if (showKnobs) vocoderPanel_.setBounds(bounds.removeFromTop(170));
     if (sungDirectPanel_.isVisible()) sungDirectPanel_.setBounds(bounds.removeFromTop(108));
-    if (ravePanel_ && ravePanel_->isVisible()) ravePanel_->setBounds(bounds.removeFromTop(170));
+    if (ravePanel_ && ravePanel_->isVisible()) ravePanel_->setBounds(bounds.removeFromTop(230));
 
     // Waveform + slice overlay sits BETWEEN the knobs and the scope so
     // when v2 is active the boundary lines are the most prominent thing

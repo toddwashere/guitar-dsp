@@ -1,12 +1,22 @@
 #pragma once
 #include "audio/AudioGraph.h"
+#include <functional>
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <vector>
 
 namespace guitar_dsp::app {
 
 class RavePanel : public juce::Component, private juce::Timer {
 public:
-    explicit RavePanel(audio::AudioGraph& graph);
+    // Callback the picker fires when the user selects a model. Receives the
+    // display name (e.g. "Funk Drums"); the caller is responsible for
+    // resolving to an .onnx path and triggering AudioGraph::swapRaveModel.
+    using ModelSwapFn = std::function<void(const juce::String&)>;
+    // modelNames empty (or onSwap unset) hides the picker — RavePanel still
+    // works as a plain readout-and-knobs component.
+    explicit RavePanel(audio::AudioGraph& graph,
+                       std::vector<juce::String> modelNames = {},
+                       ModelSwapFn onSwap = nullptr);
     void resized() override;
     void paint(juce::Graphics& g) override;
 
@@ -33,6 +43,12 @@ private:
     juce::Label  latencyLabel_;
     juce::Label  inputMeter_;
     juce::Label  outputMeter_;
+
+    // Model picker (optional — only constructed/shown when modelNames non-empty).
+    juce::ComboBox modelPicker_;
+    juce::Label    modelPickerLabel_;
+    ModelSwapFn    onSwap_;
+    bool           hasPicker_ = false;
 };
 
 } // namespace guitar_dsp::app

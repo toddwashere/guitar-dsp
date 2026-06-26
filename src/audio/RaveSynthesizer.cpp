@@ -35,12 +35,28 @@ void RaveSynthesizer::releaseResources() {
 void RaveSynthesizer::loadModel(const std::string& path) {
     if (worker_.joinable()) {
         juce::Logger::writeToLog("RaveSynthesizer::loadModel called twice — ignoring subsequent call. "
-                                  "Model is one-shot; restart the host to swap models.");
+                                  "Use swapModel() for runtime model changes.");
         return;
     }
+    spawnWorker_(path);
+}
+
+void RaveSynthesizer::swapModel(const std::string& path) {
+    // Explicit user-initiated swap. Join the current worker, then respawn
+    // with the new model. The join is bounded by the worker's current
+    // inference call (~ms for stub, tens of ms for real RAVE) — acceptable
+    // for a message-thread UI action.
     releaseResources();
+    spawnWorker_(path);
+}
+
+void RaveSynthesizer::spawnWorker_(const std::string& path) {
     stop_.store(false, std::memory_order_release);
     status_.store(RaveBranchStatus::Loading, std::memory_order_release);
+    // Clear the rings so stale audio from the previous model doesn't bleed
+    // into the new model's first inference window.
+    inRing_.clear();
+    outRing_.clear();
     worker_ = std::thread([this, path]() {
         inference_.loadModel(path);
         if (inference_.status() != ml::RaveStatus::Loaded) {

@@ -262,6 +262,10 @@ void AudioGraph::loadRaveModel(const std::string& path) {
     rave_.loadModel(path);
 }
 
+void AudioGraph::swapRaveModel(const std::string& path) {
+    rave_.swapModel(path);
+}
+
 AudioGraph::RaveStatusForUI AudioGraph::raveStatusForUI() const noexcept {
     switch (rave_.status()) {
         case RaveBranchStatus::Loading:     return RaveStatusForUI::Loading;
