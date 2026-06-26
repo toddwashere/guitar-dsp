@@ -34,15 +34,16 @@ TEST_CASE("Soak: rapid scene switching to/from Rave for 200 cycles", "[integrati
         g.setWetSource(AudioGraph::WetSource::Vocoder);
         for (int b = 0; b < 4; ++b) g.process(in.data(), nullptr, out.data(), 256);
     }
-    // App did not crash; that's the test. Bonus: status should still be Loaded.
-    REQUIRE(g.raveStatusForUI() != AudioGraph::RaveStatusForUI::Unavailable);
+    // After 200 cycles the worker should land in Loaded once it drains.
+    waitForStatus(g, AudioGraph::RaveStatusForUI::Loaded);
+    REQUIRE(g.raveStatusForUI() == AudioGraph::RaveStatusForUI::Loaded);
 }
 
 TEST_CASE("Soak: model-missing scene activation degrades to silent wet, dry preserved", "[integration][rave][soak]") {
     AudioGraph g;
     g.prepare(48000.0, 256);
     g.loadRaveModel("/no/such/file.onnx");
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    waitForStatus(g, AudioGraph::RaveStatusForUI::Unavailable);
     g.setWetSource(AudioGraph::WetSource::Rave);
 
     std::vector<float> in(256), out(256);
