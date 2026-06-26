@@ -61,3 +61,13 @@ add cleaner eddie munson picture after pumkin slide.
 dont accidentally hit the guitar - or mute it or something?
 IDEA: Add a say mute button
 
+
+
+# Talk Track
+
+Slipnot
+Broadway Stranger things
+we've all seen Amazing performances
+apply tech + creativity
+easy with AI to do side projects, 50 domain names
+share one of my projects today, but before I do (guitar evolution)
